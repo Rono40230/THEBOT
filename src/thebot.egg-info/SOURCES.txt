@@ -1,0 +1,12 @@
+README.md
+setup.py
+src/thebot/__init__.py
+src/thebot.egg-info/PKG-INFO
+src/thebot.egg-info/SOURCES.txt
+src/thebot.egg-info/dependency_links.txt
+src/thebot.egg-info/entry_points.txt
+src/thebot.egg-info/requires.txt
+src/thebot.egg-info/top_level.txt
+src/thebot/core/__init__.py
+src/thebot/core/exceptions.py
+src/thebot/core/types.py

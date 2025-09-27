@@ -1,0 +1,48 @@
+# Configuration THEBOT pour Fedora Linux
+# Ce fichier sera lu par les scripts de lancement
+
+# Python
+PYTHON_EXECUTABLE=python3
+PYTHON_MIN_VERSION=3.11
+
+# Jupyter Configuration  
+JUPYTER_PORT=8888
+JUPYTER_IP=0.0.0.0
+JUPYTER_BROWSER=firefox  # ou google-chrome, chromium
+
+# Environnement Virtuel
+VENV_NAME=venv_thebot
+
+# Dépendances Système Fedora
+SYSTEM_PACKAGES=(
+    "python3-pip"
+    "python3-venv"
+    "python3-devel"
+    "gcc"
+    "gcc-c++"
+    "make"
+    "git"
+    "nodejs"
+    "npm"
+    "sqlite"
+    "sqlite-devel"
+)
+
+# Extensions Jupyter
+JUPYTER_EXTENSIONS=(
+    "jupyterlab"
+    "ipywidgets"
+    "jupyter-widgets-base"
+    "@jupyter-widgets/jupyterlab-manager"
+)
+
+# Marchés par défaut du Dashboard
+DEFAULT_CRYPTO_PAIRS=("BTCUSDT" "ETHUSD")
+DEFAULT_FOREX_PAIRS=("EURUSD" "GBPUSD")
+
+# Indicateurs activés
+AVAILABLE_INDICATORS=("SMA" "EMA" "ATR" "RSI")
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=thebot.log

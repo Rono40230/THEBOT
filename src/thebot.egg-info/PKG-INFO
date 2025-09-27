@@ -1,0 +1,53 @@
+Metadata-Version: 2.4
+Name: thebot
+Version: 1.0.0
+Summary: Advanced Trading Analysis Platform with AI Integration
+Home-page: https://github.com/Rono40230/THEBOT
+Author: Rono40230
+Author-email: 
+Project-URL: Bug Reports, https://github.com/Rono40230/THEBOT/issues
+Project-URL: Source, https://github.com/Rono40230/THEBOT
+Project-URL: Documentation, https://github.com/Rono40230/THEBOT/docs
+Keywords: trading,finance,indicators,ai,backtesting,crypto,forex
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Financial and Insurance Industry
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Office/Business :: Financial :: Investment
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.11
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: numpy>=1.24.0
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: aiohttp>=3.8.0
+Requires-Dist: plotly>=5.15.0
+Requires-Dist: jupyter>=1.0.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: loguru>=0.7.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: isort>=5.12.0; extra == "dev"
+Requires-Dist: mypy>=1.5.0; extra == "dev"
+Provides-Extra: ai
+Requires-Dist: tensorflow>=2.13.0; extra == "ai"
+Requires-Dist: torch>=2.0.0; extra == "ai"
+Requires-Dist: openai>=0.27.0; extra == "ai"
+Requires-Dist: anthropic>=0.3.0; extra == "ai"
+Provides-Extra: performance
+Requires-Dist: numba>=0.57.0; extra == "performance"
+Requires-Dist: cython>=0.29.0; extra == "performance"
+Dynamic: author
+Dynamic: classifier
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: project-url
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
