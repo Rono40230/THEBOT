@@ -65,6 +65,16 @@ setup_thebot() {
     # Rendre les scripts exécutables
     chmod +x *.sh 2>/dev/null || true
     
+    # Installation dépendances Python si environnement virtuel détecté
+    if [ -d "venv_thebot" ]; then
+        echo -e "${CYAN}📦 Installation dépendances critiques...${NC}"
+        source venv_thebot/bin/activate
+        pip install --upgrade pip
+        pip install matplotlib PyQt6 plotly ipywidgets -q
+        pip install -r requirements.txt -q || true
+        pip install -e . -q || true
+    fi
+    
     echo -e "${GREEN}✅ THEBOT configuré${NC}"
 }
 

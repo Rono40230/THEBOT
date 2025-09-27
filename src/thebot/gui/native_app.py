@@ -31,9 +31,13 @@ except ImportError:
 if not PYQT_AVAILABLE:
     import tkinter as tk
     from tkinter import ttk, messagebox
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_tkagg import FigureCanvasTk
-    from matplotlib.figure import Figure
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_tkagg import FigureCanvasTk
+        from matplotlib.figure import Figure
+        MATPLOTLIB_AVAILABLE = True
+    except ImportError:
+        MATPLOTLIB_AVAILABLE = False
 
 # Imports des indicateurs THEBOT
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))

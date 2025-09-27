@@ -35,6 +35,7 @@ auto_install() {
     pip install -r requirements.txt || true
     pip install -e . || true
     pip install PyQt6 PyQt6-tools PyQt6-Charts || true
+    pip install matplotlib plotly ipywidgets || true  # Dépendances critiques
     
     echo -e "${GREEN}✅ Installation terminée !${NC}"
 }
