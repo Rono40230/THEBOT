@@ -51,7 +51,27 @@ launch_native() {
 launch_jupyter() {
     echo -e "${GREEN}📊 Lancement Dashboard Jupyter...${NC}"
     source venv_thebot/bin/activate
-    jupyter lab --ip=0.0.0.0 --port=8888 --no-browser 2>/dev/null &
+    
+    # Vérifier dashboard
+    if [ ! -f "jupyter_dashboard.ipynb" ]; then
+        echo -e "${RED}❌ Dashboard jupyter_dashboard.ipynb non trouvé !${NC}"
+        exit 1
+    fi
+    
+    echo -e "${CYAN}🚀 Démarrage Jupyter Lab...${NC}"
+    echo -e "${CYAN}   URL: http://localhost:8888${NC}"
+    echo -e "${CYAN}   Ctrl+C pour arrêter${NC}"
+    
+    # Lancer sans token pour usage local
+    jupyter lab \
+        --ip=0.0.0.0 \
+        --port=8888 \
+        --no-browser \
+        --NotebookApp.token='' \
+        --NotebookApp.password='' \
+        --allow-root 2>/dev/null &
+    
+    # Attendre démarrage
     sleep 3
     
     # Ouvrir navigateur
