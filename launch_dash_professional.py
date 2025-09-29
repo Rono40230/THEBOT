@@ -393,7 +393,8 @@ class THEBOTDashApp:
                     dbc.Tab(label="📰 News & Economic Calendar", tab_id="news-economic-tab"),
                     dbc.Tab(label="💰 Crypto", tab_id="crypto-tab"),
                     dbc.Tab(label="💱 Forex", tab_id="forex-tab"),
-                    dbc.Tab(label="📊 Stocks", tab_id="stocks-tab")
+                    dbc.Tab(label="📊 Stocks", tab_id="stocks-tab"),
+                    dbc.Tab(label="🎯 Stratégies", tab_id="strategies-tab")
                 ], id="main-tabs", active_tab="news-economic-tab", className="mb-0")
             ], width=8),
             
@@ -455,13 +456,7 @@ class THEBOTDashApp:
         """Sidebar avec contrôles avancés"""
         
         return dbc.Card([
-            dbc.CardHeader([
-                html.H5([
-                    html.I(className="fas fa-cogs me-2"),
-                    "Analysis Controls"
-                ], className="mb-0 text-light")
-            ]),
-            
+            # Suppression du header "Analysis Controls" pour gagner de l'espace
             dbc.CardBody([
                 
                 # Section Indicateurs Techniques
@@ -599,16 +594,9 @@ class THEBOTDashApp:
                         )
                     ], width=6)
                 ], align="center")
-            ], className="mb-3"),
+            ], className="mb-3")
             
-            # Boutons presets
-            html.Hr(),
-            dbc.ButtonGroup([
-                dbc.Button("Scalping", size="sm", outline=True, color="info"),
-                dbc.Button("Swing", size="sm", outline=True, color="warning"),
-                dbc.Button("Custom", size="sm", outline=True, color="secondary")
-            ], size="sm", className="w-100")
-            
+            # Suppression des boutons presets pour épurer l'interface
         ])
         
     def create_ai_controls(self):
@@ -737,7 +725,7 @@ class THEBOTDashApp:
                 ], width=4)
             ]),
             
-            # Tab AI Insights
+            # Tab AI Insights uniquement - Backtesting déplacé vers l'onglet Stratégies
             dbc.Tabs([
                 dbc.Tab(
                     label="🧠 AI Insights",
@@ -745,17 +733,6 @@ class THEBOTDashApp:
                     children=[
                         html.Div([
                             self.create_ai_dashboard()
-                        ], className="p-3")
-                    ]
-                ),
-                
-                # Tab Backtesting
-                dbc.Tab(
-                    label="🔄 Backtesting",
-                    tab_id="backtest-tab",
-                    children=[
-                        html.Div([
-                            self.create_backtesting_panel()
                         ], className="p-3")
                     ]
                 )
@@ -827,14 +804,7 @@ class THEBOTDashApp:
         
         return html.Div([
             
-            # Status IA
-            dbc.Alert([
-                html.I(className="fas fa-robot me-2"),
-                html.Strong("AI Status: "),
-                html.Span("Analyzing market conditions...", id="ai-status-text")
-            ], color="info", className="mb-4"),
-            
-            # Insights cards
+            # Insights cards directement - suppression du status AI inutile
             dbc.Row([
                 
                 dbc.Col([
