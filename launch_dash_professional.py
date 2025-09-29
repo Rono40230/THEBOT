@@ -298,6 +298,21 @@ class THEBOTDashApp:
         atr = true_range.rolling(window=period).mean()
         return atr.fillna(0).tolist()
         
+    def format_price_adaptive(self, price):
+        """Formatage adaptatif du prix selon sa valeur"""
+        if price >= 1:
+            # Prix >= 1 : 2-4 décimales
+            return f"{price:.2f}"
+        elif price >= 0.01:
+            # Prix entre 0.01 et 1 : 4-6 décimales
+            return f"{price:.4f}"
+        elif price >= 0.0001:
+            # Prix entre 0.0001 et 0.01 : 6-8 décimales
+            return f"{price:.6f}"
+        else:
+            # Prix très petits : 8-10 décimales
+            return f"{price:.8f}"
+        
     def setup_calculators(self):
         """Initialiser les calculateurs THEBOT"""
         if CALCULATORS_AVAILABLE:
@@ -354,12 +369,12 @@ class THEBOTDashApp:
             dcc.Store(id='main-symbol-selected', data='BTCUSDT'),
             dcc.Store(id='symbols-cache-store', data=self.all_symbols),
             
-            # Interval pour updates
+            # Interval pour updates automatiques
             dcc.Interval(
                 id='realtime-interval',
-                interval=2000,  # 2 secondes
+                interval=5000,  # 5 secondes
                 n_intervals=0,
-                disabled=True
+                disabled=False  # Toujours actif
             )
             
         ], fluid=True, className="dbc dbc-ag-grid", style={
@@ -372,7 +387,7 @@ class THEBOTDashApp:
         """Créer le header avec navigation et indicateurs"""
         
         return dbc.Row([
-            # Navigation principale à gauche
+            # Navigation principale
             dbc.Col([
                 dbc.Tabs([
                     dbc.Tab(label="📰 News & Economic Calendar", tab_id="news-economic-tab"),
@@ -382,25 +397,12 @@ class THEBOTDashApp:
                 ], id="main-tabs", active_tab="news-economic-tab", className="mb-0")
             ], width=8),
             
-            # Indicateurs à droite
+            # Indicateurs de marchés globaux à droite
             dbc.Col([
                 html.Div([
-                    # Indicateurs de performance en temps réel
-                    dbc.Badge([
-                        html.I(className="fas fa-signal me-1"),
-                        html.Span("LIVE", id="connection-status")
-                    ], color="success", className="me-2 pulse"),
-                    
-                    dbc.Badge([
-                        html.I(className="fas fa-chart-line me-1"),
-                        html.Span("Markets: 4", id="markets-count")
-                    ], color="info", className="me-2"),
-                    
-                    dbc.Badge([
-                        html.I(className="fas fa-brain me-1"),
-                        html.Span("AI: Active", id="ai-status")
-                    ], color="warning", className="me-2"),
-                    
+                    dbc.Badge("NY: Open", color="success", className="me-2"),
+                    dbc.Badge("London: Open", color="success", className="me-2"),
+                    dbc.Badge("Tokyo: Closed", color="secondary", className="me-2")
                 ], className="d-flex justify-content-end align-items-center")
             ], width=4)
             
@@ -445,35 +447,7 @@ class THEBOTDashApp:
                 )
             ], width=2),
             
-            dbc.Col([
-                dbc.Label("Actions", className="fw-bold text-light small"),
-                html.Div([
-                    dbc.ButtonGroup([
-                        dbc.Button([
-                            html.I(className="fas fa-play"),
-                            " Start"
-                        ], id="start-btn", color="success", size="sm"),
-                        
-                        dbc.Button([
-                            html.I(className="fas fa-stop"),
-                            " Stop"
-                        ], id="stop-btn", color="danger", size="sm", disabled=True),
-                        
-                        dbc.Button([
-                            html.I(className="fas fa-refresh"),
-                        ], id="refresh-btn", color="secondary", size="sm")
-                    ])
-                ])
-            ], width=2),
-            
-            dbc.Col([
-                dbc.Label("Market Status", className="fw-bold text-light small"),
-                html.Div([
-                    dbc.Badge("NY: Open", color="success", className="me-1 small"),
-                    dbc.Badge("London: Open", color="success", className="me-1 small"),
-                    dbc.Badge("Tokyo: Closed", color="secondary", className="me-1 small")
-                ])
-            ], width=3)
+
             
         ], className="bg-dark p-3 rounded border border-secondary mb-3")
         
@@ -1208,10 +1182,11 @@ class THEBOTDashApp:
         @self.app.callback(
             Output('market-data-store', 'data'),
             [Input('main-symbol-selected', 'data'),
-             Input('timeframe-selector', 'value')],
+             Input('timeframe-selector', 'value'),
+             Input('realtime-interval', 'n_intervals')],
             prevent_initial_call=True
         )
-        def load_symbol_data(selected_symbol, timeframe):
+        def load_symbol_data(selected_symbol, timeframe, n_intervals):
             """Charger les données du symbole sélectionné"""
             if not selected_symbol:
                 return {}
@@ -1236,9 +1211,10 @@ class THEBOTDashApp:
              Input('sma-switch', 'value'),
              Input('ema-switch', 'value'),
              Input('sma-period', 'value'),
-             Input('ema-period', 'value')]
+             Input('ema-period', 'value'),
+             Input('realtime-interval', 'n_intervals')]
         )
-        def update_main_chart(market_data, sma_enabled, ema_enabled, sma_period, ema_period):
+        def update_main_chart(market_data, sma_enabled, ema_enabled, sma_period, ema_period, n_intervals):
             """Mise à jour du graphique principal avec vrais calculs THEBOT"""
             
             if not market_data or 'data' not in market_data:
@@ -1273,6 +1249,25 @@ class THEBOTDashApp:
                 increasing_line_color='#00ff88',
                 decreasing_line_color='#ff4444'
             ))
+            
+            # Ajouter ligne de prix actuel en pointillés
+            current_price = df['close'].iloc[-1]
+            formatted_price = self.format_price_adaptive(current_price)
+            fig.add_hline(
+                y=current_price,
+                line_dash="dot",
+                line_color="#FFD700",  # Couleur or
+                line_width=2,
+                opacity=0.8,
+                annotation_text=f"Prix actuel: ${formatted_price}",
+                annotation_position="bottom right",
+                annotation=dict(
+                    font=dict(color="#FFD700", size=12),
+                    bgcolor="rgba(0,0,0,0.7)",
+                    bordercolor="#FFD700",
+                    borderwidth=1
+                )
+            )
             
             # Ajouter SMA si activé - AVEC VRAIS CALCULS
             if sma_enabled and sma_period:
@@ -1448,27 +1443,6 @@ class THEBOTDashApp:
             
             return fig
         
-        # Callback pour démarrer/arrêter le streaming
-        @self.app.callback(
-            [Output('start-btn', 'disabled'),
-             Output('stop-btn', 'disabled'),
-             Output('realtime-interval', 'disabled')],
-            [Input('start-btn', 'n_clicks'),
-             Input('stop-btn', 'n_clicks')]
-        )
-        def toggle_streaming(start_clicks, stop_clicks):
-            """Toggle du streaming temps réel"""
-            
-            ctx = callback_context
-            if not ctx.triggered:
-                return False, True, True
-                
-            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-            
-            if button_id == 'start-btn':
-                return True, False, False  # Démarrer
-            else:
-                return False, True, True   # Arrêter
                 
     def run(self, debug=False, port=8050):
         """Lancer l'application Dash"""
