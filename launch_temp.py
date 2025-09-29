@@ -351,7 +351,7 @@ class THEBOTDashApp:
             dcc.Store(id='market-data-store', data=self.get_default_market_data()),
             dcc.Store(id='indicators-store', data={}),
             dcc.Store(id='settings-store', data=self.get_default_settings()),
-            dcc.Store(id='main-symbol-selected', data='BTCUSDT'),
+            dcc.Store(id='symbol-search-selected', data='BTCUSDT'),
             dcc.Store(id='symbols-cache-store', data=self.all_symbols),
             
             # Interval pour updates
@@ -369,20 +369,9 @@ class THEBOTDashApp:
         })
         
     def create_header(self):
-        """Créer le header avec navigation et indicateurs"""
+        """Créer le header compact avec indicateurs globaux"""
         
         return dbc.Row([
-            # Navigation principale à gauche
-            dbc.Col([
-                dbc.Tabs([
-                    dbc.Tab(label="📰 News & Economic Calendar", tab_id="news-economic-tab"),
-                    dbc.Tab(label="💰 Crypto", tab_id="crypto-tab"),
-                    dbc.Tab(label="💱 Forex", tab_id="forex-tab"),
-                    dbc.Tab(label="📊 Stocks", tab_id="stocks-tab")
-                ], id="main-tabs", active_tab="news-economic-tab", className="mb-0")
-            ], width=8),
-            
-            # Indicateurs à droite
             dbc.Col([
                 html.Div([
                     # Indicateurs de performance en temps réel
@@ -401,8 +390,8 @@ class THEBOTDashApp:
                         html.Span("AI: Active", id="ai-status")
                     ], color="warning", className="me-2"),
                     
-                ], className="d-flex justify-content-end align-items-center")
-            ], width=4)
+                ], className="d-flex justify-content-center align-items-center")
+            ], width=12)
             
         ], className="border-bottom border-secondary pb-2 mb-2")
         
@@ -730,65 +719,84 @@ class THEBOTDashApp:
     def create_main_content(self):
         """Zone principale avec graphiques et tableaux"""
         
-        return html.Div([
+        return dbc.Tabs([
             
-            # Graphique principal
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(
-                        id='main-chart',
-                        style={'height': '500px'},
-                        config={
-                            'displayModeBar': True,
-                            'displaylogo': False,
-                            'modeBarButtonsToRemove': [
-                                'pan2d', 'lasso2d', 'select2d',
-                                'autoScale2d', 'hoverClosestCartesian'
-                            ]
-                        }
-                    )
-                ], width=12)
-            ], className="mb-3"),
+            # Tab 1: Real-Time Analysis
+            dbc.Tab(
+                label="📈 Real-Time Analysis",
+                tab_id="realtime-tab",
+                children=[
+                    html.Div([
+                        
+                        # Graphique principal
+                        dbc.Row([
+                            dbc.Col([
+                                dcc.Graph(
+                                    id='main-chart',
+                                    style={'height': '500px'},
+                                    config={
+                                        'displayModeBar': True,
+                                        'displaylogo': False,
+                                        'modeBarButtonsToRemove': [
+                                            'pan2d', 'lasso2d', 'select2d',
+                                            'autoScale2d', 'hoverClosestCartesian'
+                                        ]
+                                    }
+                                )
+                            ], width=12)
+                        ], className="mb-3"),
+                        
+                        # Indicateurs secondaires
+                        dbc.Row([
+                            dbc.Col([
+                                dcc.Graph(id='rsi-chart', style={'height': '200px'})
+                            ], width=4),
+                            dbc.Col([
+                                dcc.Graph(id='volume-chart', style={'height': '200px'})
+                            ], width=4),
+                            dbc.Col([
+                                dcc.Graph(id='atr-chart', style={'height': '200px'})
+                            ], width=4)
+                        ])
+                        
+                    ], className="p-3")
+                ]
+            ),
             
-            # Indicateurs secondaires
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(id='rsi-chart', style={'height': '200px'})
-                ], width=4),
-                dbc.Col([
-                    dcc.Graph(id='volume-chart', style={'height': '200px'})
-                ], width=4),
-                dbc.Col([
-                    dcc.Graph(id='atr-chart', style={'height': '200px'})
-                ], width=4)
-            ]),
+            # Tab 2: Economic Calendar
+            dbc.Tab(
+                label="📅 Economic Calendar",
+                tab_id="economic-tab",
+                children=[
+                    html.Div([
+                        self.create_economic_calendar()
+                    ], className="p-3")
+                ]
+            ),
             
-            # Tab AI Insights
-            dbc.Tabs([
-                dbc.Tab(
-                    label="🧠 AI Insights",
-                    tab_id="ai-tab",
-                    children=[
-                        html.Div([
-                            self.create_ai_dashboard()
-                        ], className="p-3")
-                    ]
-                ),
-                
-                # Tab Backtesting
-                dbc.Tab(
-                    label="🔄 Backtesting",
-                    tab_id="backtest-tab",
-                    children=[
-                        html.Div([
-                            self.create_backtesting_panel()
-                        ], className="p-3")
-                    ]
-                )
-                
-            ], id="secondary-tabs", active_tab="ai-tab", className="custom-tabs mt-3")
+            # Tab 3: AI Insights
+            dbc.Tab(
+                label="🧠 AI Insights",
+                tab_id="ai-tab",
+                children=[
+                    html.Div([
+                        self.create_ai_dashboard()
+                    ], className="p-3")
+                ]
+            ),
             
-        ], className="p-3")
+            # Tab 4: Backtesting
+            dbc.Tab(
+                label="🔄 Backtesting",
+                tab_id="backtest-tab",
+                children=[
+                    html.Div([
+                        self.create_backtesting_panel()
+                    ], className="p-3")
+                ]
+            )
+            
+        ], id="main-tabs", active_tab="realtime-tab", className="custom-tabs")
         
     def create_economic_calendar(self):
         """Calendrier économique interactif"""
@@ -1181,7 +1189,7 @@ class THEBOTDashApp:
         
         # Callback pour sélectionner un symbole (modulaire)
         @self.app.callback(
-            [Output('main-symbol-selected', 'data'),
+            [Output('symbol-search-selected', 'data'),
              Output('symbol-search-input', 'value')],
             [Input({'type': 'symbol-search-result', 'index': ALL}, 'n_clicks')],
             prevent_initial_call=True
@@ -1207,7 +1215,7 @@ class THEBOTDashApp:
         # Callback pour charger les données du symbole sélectionné
         @self.app.callback(
             Output('market-data-store', 'data'),
-            [Input('main-symbol-selected', 'data'),
+            [Input('symbol-search-selected', 'data'),
              Input('timeframe-selector', 'value')],
             prevent_initial_call=True
         )
@@ -1470,7 +1478,7 @@ class THEBOTDashApp:
             else:
                 return False, True, True   # Arrêter
                 
-    def run(self, debug=False, port=8050):
+    def run(self, debug=False, port=8055):
         """Lancer l'application Dash"""
         
         print(f"""
@@ -1497,7 +1505,7 @@ class THEBOTDashApp:
 def main():
     """Point d'entrée principal"""
     app = THEBOTDashApp()
-    app.run(debug=True, port=8050)
+    app.run(debug=True, port=8055)
 
 
 if __name__ == '__main__':

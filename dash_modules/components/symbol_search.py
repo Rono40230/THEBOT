@@ -27,7 +27,12 @@ class SymbolSearchComponent:
                 placeholder=placeholder,
                 type='text',
                 className="bg-dark text-light border-secondary",
-                style={'fontSize': '14px'},
+                style={
+                    'fontSize': '14px',
+                    'border': '2px solid #6c757d',
+                    'borderRadius': '0.375rem 0 0 0.375rem',
+                    'boxShadow': '0 0 0 0.2rem rgba(108, 117, 125, 0.25)'
+                },
                 debounce=True,
                 value=""
             ),
@@ -36,8 +41,12 @@ class SymbolSearchComponent:
             ], 
             id=f"{self.component_id}-search-btn", 
             color="primary", 
-            size="sm")
-        ])
+            size="sm",
+            style={
+                'border': '2px solid #0d6efd',
+                'borderLeft': 'none'
+            })
+        ], style={'border': 'none'})
     
     def render_results_container(self) -> html.Div:
         """Conteneur pour les résultats de recherche - masqué par défaut"""
