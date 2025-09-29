@@ -13,7 +13,7 @@ code .
 echo ""
 echo "🎯 ACTIONS À FAIRE DANS VS CODE :"
 echo ""
-echo "1️⃣ OUVRIR LE TERMINAL INTÉGRÉ (Ctrl+`)"
+echo "1️⃣ OUVRIR LE TERMINAL INTÉGRÉ (Ctrl+\`)"
 echo "   source venv_thebot/bin/activate"
 echo ""
 echo "2️⃣ LANCER LES TESTS :"

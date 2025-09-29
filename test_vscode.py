@@ -48,9 +48,9 @@ def run_unit_tests():
     import subprocess
     
     try:
-        # Lancer pytest
+        # Lancer pytest avec l'interpréteur Python courant
         result = subprocess.run([
-            'python', '-m', 'pytest', 
+            sys.executable, '-m', 'pytest', 
             'tests/unit/indicators/', 
             '-v', '--tb=short'
         ], capture_output=True, text=True)

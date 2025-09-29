@@ -1,0 +1,307 @@
+"""
+Controls Components Module - THEBOT Dash
+Composants    def create_control_bar(self) -> dbc.Row:
+        """Barre de contrôle avec sélecteurs principaux"""
+        
+        # Options des marchés Binance (statiques pour éviter erreurs d'import)
+        market_options = [
+            {'label': 'Bitcoin/USDT', 'value': 'BTCUSDT'},
+            {'label': 'Ethereum/USDT', 'value': 'ETHUSDT'},
+            {'label': 'Binance Coin/USDT', 'value': 'BNBUSDT'},
+            {'label': 'Cardano/USDT', 'value': 'ADAUSDT'},
+            {'label': 'Solana/USDT', 'value': 'SOLUSDT'},
+            {'label': 'Polkadot/USDT', 'value': 'DOTUSDT'},
+            {'label': 'Chainlink/USDT', 'value': 'LINKUSDT'},
+            {'label': 'Litecoin/USDT', 'value': 'LTCUSDT'},
+            {'label': 'Avalanche/USDT', 'value': 'AVAXUSDT'},
+            {'label': 'Polygon/USDT', 'value': 'MATICUSDT'},
+            {'label': 'Cosmos/USDT', 'value': 'ATOMUSDT'},
+            {'label': 'Ripple/USDT', 'value': 'XRPUSDT'},
+        ]rôles d'interface réutilisables
+"""
+
+import dash_bootstrap_components as dbc
+from dash import dcc, html
+from typing import List, Dict, Any
+from ..core.config import dash_config, ui_config
+from ..data_providers.real_data_manager import real_data_manager
+
+
+class ControlsComponents:
+    """Composants de contrôles d'interface"""
+    
+    def __init__(self):
+        self.dash_config = dash_config
+        self.ui_config = ui_config
+        
+    def create_header(self) -> dbc.Row:
+        """Header compact avec indicateurs essentiels"""
+        
+        return dbc.Row([
+            dbc.Col([
+                html.Div([
+                    html.H4([
+                        html.I(className="fas fa-robot me-2"),
+                        "THEBOT",
+                    ], className="mb-0 d-flex align-items-center text-light")
+                ])
+            ], width=4),
+            
+            dbc.Col([
+                html.Div([
+                    # Indicateurs de statut compacts
+                    dbc.Badge([
+                        html.I(className="fas fa-signal me-1"),
+                        html.Span("LIVE", id="connection-status")
+                    ], color="success", className="me-2 pulse"),
+                    
+                    dbc.Badge([
+                        html.I(className="fas fa-chart-line me-1"),
+                        html.Span(str(len(real_data_manager.supported_markets)), id="markets-count")
+                    ], color="info", className="me-2"),
+                    
+                    dbc.Badge([
+                        html.I(className="fas fa-brain me-1"),
+                        html.Span("AI", id="ai-status")
+                    ], color="warning", className="me-2"),
+                    
+                ], className="d-flex justify-content-end align-items-center")
+            ], width=8)
+            
+        ], className="border-bottom border-secondary pb-2 mb-2")
+    
+    def create_control_bar(self) -> dbc.Row:
+        """Barre de contrôle avec sélecteurs principaux"""
+        
+        # Options des marchés Binance (statiques)
+        market_options = [
+            {'label': 'Bitcoin/USDT', 'value': 'BTCUSDT'},
+            {'label': 'Ethereum/USDT', 'value': 'ETHUSDT'},
+            {'label': 'Binance Coin/USDT', 'value': 'BNBUSDT'},
+            {'label': 'Cardano/USDT', 'value': 'ADAUSDT'},
+            {'label': 'Solana/USDT', 'value': 'SOLUSDT'},
+            {'label': 'Polkadot/USDT', 'value': 'DOTUSDT'},
+            {'label': 'Chainlink/USDT', 'value': 'LINKUSDT'},
+            {'label': 'Litecoin/USDT', 'value': 'LTCUSDT'},
+        ]
+        
+        return dbc.Row([
+            
+            dbc.Col([
+                dbc.Label("Market", className="fw-bold text-light small"),
+                dcc.Dropdown(
+                    id='symbol-selector',
+                    options=market_options,
+                    value='BTCUSDT',
+                    className="dash-bootstrap",
+                    style={'backgroundColor': '#1f2937', 'color': 'white'}
+                )
+            ], width=3),
+            
+            dbc.Col([
+                dbc.Label("Timeframe", className="fw-bold text-light small"),
+                dcc.Dropdown(
+                    id='timeframe-selector',
+                    options=self.ui_config.timeframes,
+                    value='5m',
+                    className="dash-bootstrap"
+                )
+            ], width=2),
+            
+            dbc.Col([
+                dbc.Label("Analysis Type", className="fw-bold text-light small"),
+                dcc.Dropdown(
+                    id='analysis-selector',
+                    options=self.ui_config.analysis_types,
+                    value='technical',
+                    className="dash-bootstrap"
+                )
+            ], width=2),
+            
+            dbc.Col([
+                dbc.Label("Action", className="fw-bold text-light small"),
+                dbc.ButtonGroup([
+                    dbc.Button("BUY", color="success", size="sm", outline=True),
+                    dbc.Button("SELL", color="danger", size="sm", outline=True),
+                    dbc.Button("HOLD", color="warning", size="sm", outline=True)
+                ])
+            ], width=2),
+            
+            dbc.Col([
+                dbc.Label("Real-Time", className="fw-bold text-light small"),
+                html.Div([
+                    dbc.Button([
+                        html.I(className="fas fa-play me-1"),
+                        "Start"
+                    ], id="start-btn", color="success", size="sm", className="me-1"),
+                    
+                    dbc.Button([
+                        html.I(className="fas fa-stop me-1"),
+                        "Stop"
+                    ], id="stop-btn", color="secondary", size="sm", disabled=True)
+                ])
+            ], width=3)
+            
+        ], className="mb-4 p-3 bg-dark rounded")
+    
+    def create_indicators_sidebar(self) -> html.Div:
+        """Sidebar avec contrôles d'indicateurs"""
+        
+        return html.Div([
+            
+            # Titre section
+            html.H5([
+                html.I(className="fas fa-sliders-h me-2"),
+                "Technical Indicators"
+            ], className="text-primary mb-3"),
+            
+            # SMA Controls
+            html.Div([
+                html.H6("📊 Simple Moving Average", className="text-light mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Switch(
+                            id="sma-switch",
+                            label="Enable SMA",
+                            value=True,
+                            className="mb-2"
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Input(
+                            id="sma-period",
+                            type="number",
+                            value=self.dash_config.default_periods['sma'],
+                            min=5,
+                            max=100,
+                            size="sm",
+                            placeholder="Period"
+                        )
+                    ], width=6)
+                ], align="center")
+            ], className="mb-3 p-2 border rounded"),
+            
+            # EMA Controls
+            html.Div([
+                html.H6("📈 Exponential Moving Average", className="text-light mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Switch(
+                            id="ema-switch",
+                            label="Enable EMA",
+                            value=True,
+                            className="mb-2"
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Input(
+                            id="ema-period",
+                            type="number",
+                            value=self.dash_config.default_periods['ema'],
+                            min=5,
+                            max=50,
+                            size="sm",
+                            placeholder="Period"
+                        )
+                    ], width=6)
+                ], align="center")
+            ], className="mb-3 p-2 border rounded"),
+            
+            # RSI Controls
+            html.Div([
+                html.H6("🌊 Relative Strength Index", className="text-light mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Switch(
+                            id="rsi-switch",
+                            label="Enable RSI",
+                            value=True,
+                            className="mb-2"
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Input(
+                            id="rsi-period",
+                            type="number",
+                            value=self.dash_config.default_periods['rsi'],
+                            min=5,
+                            max=30,
+                            size="sm",
+                            placeholder="Period"
+                        )
+                    ], width=6)
+                ], align="center")
+            ], className="mb-3 p-2 border rounded"),
+            
+            # ATR Controls  
+            html.Div([
+                html.H6("📊 Average True Range", className="text-light mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Switch(
+                            id="atr-switch",
+                            label="Enable ATR",
+                            value=True,
+                            className="mb-2"
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        dbc.Input(
+                            id="atr-period",
+                            type="number",
+                            value=self.dash_config.default_periods['atr'],
+                            min=5,
+                            max=30,
+                            size="sm",
+                            placeholder="Period"
+                        )
+                    ], width=6)
+                ], align="center")
+            ], className="mb-3 p-2 border rounded"),
+            
+            # Presets
+            html.Hr(),
+            html.H6("⚡ Quick Presets", className="text-light mb-2"),
+            dbc.ButtonGroup([
+                dbc.Button("Scalping", size="sm", outline=True, color="info", className="mb-1"),
+                dbc.Button("Day Trading", size="sm", outline=True, color="warning", className="mb-1"),
+                dbc.Button("Swing", size="sm", outline=True, color="success", className="mb-1"),
+            ], vertical=True, className="w-100"),
+            
+        ], className="p-3")
+    
+    def create_status_info(self) -> html.Div:
+        """Créer panneau d'informations de status"""
+        
+        return html.Div([
+            
+            dbc.Card([
+                dbc.CardHeader([
+                    html.I(className="fas fa-info-circle me-2"),
+                    "Market Status"
+                ]),
+                dbc.CardBody([
+                    html.Div(id="current-price", className="mb-2"),
+                    html.Div(id="price-change", className="mb-2"),
+                    html.Div(id="volume-info", className="mb-2"),
+                    html.Div(id="indicators-summary")
+                ])
+            ], className="mb-3"),
+            
+            dbc.Card([
+                dbc.CardHeader([
+                    html.I(className="fas fa-chart-line me-2"),
+                    "Technical Summary"  
+                ]),
+                dbc.CardBody([
+                    html.Div(id="technical-signal", className="mb-2"),
+                    html.Div(id="support-resistance", className="mb-2"),
+                    html.Div(id="trend-analysis")
+                ])
+            ])
+            
+        ])
+
+
+# Instance globale
+controls = ControlsComponents()
