@@ -369,18 +369,9 @@ class THEBOTDashApp:
         })
         
     def create_header(self):
-        """Créer le header avec titre et indicateurs globaux"""
+        """Créer le header compact avec indicateurs globaux"""
         
         return dbc.Row([
-            dbc.Col([
-                html.Div([
-                    html.H4([
-                        html.I(className="fas fa-robot me-2"),
-                        "THEBOT"
-                    ], className="mb-1 d-flex align-items-center text-light")
-                ])
-            ], width=6),
-            
             dbc.Col([
                 html.Div([
                     # Indicateurs de performance en temps réel
@@ -399,8 +390,8 @@ class THEBOTDashApp:
                         html.Span("AI: Active", id="ai-status")
                     ], color="warning", className="me-2"),
                     
-                ], className="d-flex justify-content-end align-items-center")
-            ], width=6)
+                ], className="d-flex justify-content-center align-items-center")
+            ], width=12)
             
         ], className="border-bottom border-secondary pb-2 mb-2")
         
@@ -1138,20 +1129,41 @@ class THEBOTDashApp:
         
         # Callback pour la recherche dynamique de symboles (modulaire)
         @self.app.callback(
-            Output('symbol-search-results', 'children'),
+            [Output('symbol-search-results', 'children'),
+             Output('symbol-search-results', 'style')],
             [Input('symbol-search-input', 'value')],
             [State('symbols-cache-store', 'data')]
         )
         def update_search_results(search_query, all_symbols):
             """Mettre à jour les résultats de recherche en temps réel"""
+            
+            # Style par défaut (masqué)
+            hidden_style = {
+                'maxHeight': '0px',
+                'overflowY': 'hidden',
+                'backgroundColor': 'transparent',
+                'borderRadius': '0.375rem',
+                'padding': '0rem',
+                'transition': 'all 0.3s ease'
+            }
+            
+            # Style visible
+            visible_style = {
+                'maxHeight': '200px',
+                'overflowY': 'auto',
+                'backgroundColor': '#1f2937',
+                'borderRadius': '0.375rem',
+                'padding': '0.5rem',
+                'transition': 'all 0.3s ease'
+            }
+            
             if not search_query or len(search_query) < 2:
-                # Afficher les symboles populaires par défaut
-                popular_symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 'LINKUSDT']
-                return default_symbol_search.render_popular_symbols(popular_symbols)
+                # Masquer par défaut quand pas de recherche
+                return [], hidden_style
             
             # Rechercher des correspondances dans la liste des symboles
             if not all_symbols:
-                return [dbc.Alert("Symboles non chargés", color="warning", className="small")]
+                return [dbc.Alert("Symboles non chargés", color="warning", className="small")], visible_style
             
             # Fonction de recherche simple
             query_upper = search_query.upper()
@@ -1168,7 +1180,12 @@ class THEBOTDashApp:
                     break
             
             # Utiliser le composant modulaire pour créer les boutons
-            return default_symbol_search.create_result_buttons(matches[:10])
+            results = default_symbol_search.create_result_buttons(matches[:10])
+            
+            # Afficher le conteneur seulement s'il y a des résultats
+            style = visible_style if matches else hidden_style
+            
+            return results, style
         
         # Callback pour sélectionner un symbole (modulaire)
         @self.app.callback(

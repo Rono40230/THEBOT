@@ -40,16 +40,17 @@ class SymbolSearchComponent:
         ])
     
     def render_results_container(self) -> html.Div:
-        """Conteneur pour les résultats de recherche"""
+        """Conteneur pour les résultats de recherche - masqué par défaut"""
         return html.Div(
             id=self.results_id,
-            className="mt-2",
+            className="mt-1",
             style={
-                'maxHeight': '200px', 
-                'overflowY': 'auto',
-                'backgroundColor': '#1f2937',
+                'maxHeight': '0px',  # Masqué par défaut
+                'overflowY': 'hidden',
+                'backgroundColor': 'transparent',
                 'borderRadius': '0.375rem',
-                'padding': '0.5rem'
+                'padding': '0rem',
+                'transition': 'all 0.3s ease'
             }
         )
     
