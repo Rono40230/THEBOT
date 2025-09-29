@@ -26,6 +26,8 @@ from decimal import Decimal
 # Import modules THEBOT
 from dash_modules.data_providers.binance_api import binance_provider
 from dash_modules.components.symbol_search import default_symbol_search
+from dash_modules.core.api_config import api_config
+from dash_modules.data_providers.alpha_vantage_api import AlphaVantageAPI
 
 # Import calculateurs THEBOT
 try:
@@ -362,6 +364,9 @@ class THEBOTDashApp:
             # ===== FOOTER STATUS =====
             self.create_footer(),
             
+            # ===== API CONFIGURATION MODAL =====
+            api_config.get_api_config_modal(),
+            
             # Stores pour données avec initialisation par défaut
             dcc.Store(id='market-data-store', data=self.get_default_market_data()),
             dcc.Store(id='indicators-store', data={}),
@@ -396,16 +401,24 @@ class THEBOTDashApp:
                     dbc.Tab(label="📊 Stocks", tab_id="stocks-tab"),
                     dbc.Tab(label="🎯 Stratégies", tab_id="strategies-tab")
                 ], id="main-tabs", active_tab="news-economic-tab", className="mb-0")
-            ], width=8),
+            ], width=7),
             
-            # Indicateurs de marchés globaux à droite
+            # Indicateurs de marchés globaux et API Keys
             dbc.Col([
                 html.Div([
                     dbc.Badge("NY: Open", color="success", className="me-2"),
                     dbc.Badge("London: Open", color="success", className="me-2"),
-                    dbc.Badge("Tokyo: Closed", color="secondary", className="me-2")
+                    dbc.Badge("Tokyo: Closed", color="secondary", className="me-2"),
+                    dbc.Button(
+                        [html.I(className="fas fa-key me-1"), "🔑 API Keys"],
+                        color="dark",
+                        size="sm",
+                        outline=True,
+                        className="ms-3",
+                        id="open-api-config-btn"
+                    )
                 ], className="d-flex justify-content-end align-items-center")
-            ], width=4)
+            ], width=5)
             
         ], className="border-bottom border-secondary pb-2 mb-2")
         
@@ -1434,6 +1447,45 @@ class THEBOTDashApp:
         
 🎯 Ready for professional trading analysis!
         """)
+        
+        # ===== CALLBACKS API CONFIGURATION =====
+        @self.app.callback(
+            Output("api-config-modal", "is_open"),
+            [Input("open-api-config-btn", "n_clicks"),
+             Input("close-config-btn", "n_clicks")],
+            [State("api-config-modal", "is_open")]
+        )
+        def toggle_api_modal(open_clicks, close_clicks, is_open):
+            """Toggle API configuration modal"""
+            if open_clicks or close_clicks:
+                return not is_open
+            return is_open
+        
+        @self.app.callback(
+            Output("api-config-modal", "is_open", allow_duplicate=True),
+            [Input("save-config-btn", "n_clicks")],
+            prevent_initial_call=True
+        )
+        def save_api_config(save_clicks):
+            """Save API configuration and close modal"""
+            if save_clicks:
+                # Save configuration logic will be added here
+                api_config.save_config()
+                return False
+            return dash.no_update
+        
+        @self.app.callback(
+            Output("api-config-modal", "is_open", allow_duplicate=True),
+            [Input("test-all-btn", "n_clicks")],
+            prevent_initial_call=True
+        )
+        def test_all_connections(test_clicks):
+            """Test all API connections"""
+            if test_clicks:
+                # Test all connections logic will be added here
+                print("🔄 Testing all API connections...")
+                return dash.no_update
+            return dash.no_update
         
         self.app.run(debug=debug, port=port, host='0.0.0.0')
 

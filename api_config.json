@@ -1,0 +1,161 @@
+{
+  "providers": {
+    "data_sources": {
+      "crypto": [
+        {
+          "name": "Binance",
+          "type": "crypto",
+          "status": "active",
+          "api_key_required": false,
+          "description": "Real-time cryptocurrency data",
+          "data_types": [
+            "prices",
+            "volume",
+            "historical"
+          ],
+          "rate_limit": "1200 calls/minute",
+          "cost": "Free",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "https://api.binance.com",
+            "klines": "/api/v3/klines",
+            "ticker": "/api/v3/ticker/24hr"
+          },
+          "config": {}
+        }
+      ],
+      "forex": [
+        {
+          "name": "Alpha Vantage",
+          "type": "forex",
+          "status": "inactive",
+          "api_key_required": true,
+          "description": "Professional forex and currency data",
+          "data_types": [
+            "fx_rates",
+            "historical",
+            "intraday"
+          ],
+          "rate_limit": "5 calls/minute (free)",
+          "cost": "Free tier: 5 calls/min, Pro: $49.99/month",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "https://www.alphavantage.co/query",
+            "fx_daily": "function=FX_DAILY",
+            "fx_intraday": "function=FX_INTRADAY"
+          },
+          "config": {
+            "api_key": ""
+          }
+        }
+      ],
+      "stocks": [
+        {
+          "name": "Alpha Vantage",
+          "type": "stocks",
+          "status": "inactive",
+          "api_key_required": true,
+          "description": "Global equity market data",
+          "data_types": [
+            "stocks",
+            "etfs",
+            "historical",
+            "real_time"
+          ],
+          "rate_limit": "5 calls/minute (free)",
+          "cost": "Free tier: 5 calls/min, Pro: $49.99/month",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "https://www.alphavantage.co/query",
+            "daily": "function=TIME_SERIES_DAILY",
+            "intraday": "function=TIME_SERIES_INTRADAY"
+          },
+          "config": {
+            "api_key": ""
+          }
+        }
+      ],
+      "news": [
+        {
+          "name": "Alpha Vantage News",
+          "type": "news",
+          "status": "inactive",
+          "api_key_required": true,
+          "description": "Economic news and sentiment analysis",
+          "data_types": [
+            "news",
+            "sentiment",
+            "economic_events"
+          ],
+          "rate_limit": "5 calls/minute (free)",
+          "cost": "Free tier: 5 calls/min, Pro: $49.99/month",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "https://www.alphavantage.co/query",
+            "news": "function=NEWS_SENTIMENT"
+          },
+          "config": {
+            "api_key": ""
+          }
+        }
+      ]
+    },
+    "ai_providers": [
+      {
+        "name": "OpenAI GPT",
+        "type": "ai",
+        "status": "inactive",
+        "api_key_required": true,
+        "description": "Advanced AI analysis and insights",
+        "capabilities": [
+          "analysis",
+          "predictions",
+          "explanations"
+        ],
+        "models": [
+          "gpt-4",
+          "gpt-3.5-turbo"
+        ],
+        "rate_limit": "3000 tokens/minute",
+        "cost": "$0.03/1K tokens (GPT-4)",
+        "priority": 1,
+        "config": {
+          "api_key": "",
+          "model": "gpt-4",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        }
+      },
+      {
+        "name": "Anthropic Claude",
+        "type": "ai",
+        "status": "inactive",
+        "api_key_required": true,
+        "description": "Claude AI for market analysis",
+        "capabilities": [
+          "analysis",
+          "reasoning",
+          "explanations"
+        ],
+        "models": [
+          "claude-3-opus",
+          "claude-3-sonnet"
+        ],
+        "rate_limit": "4000 tokens/minute",
+        "cost": "$15/million tokens",
+        "priority": 2,
+        "config": {
+          "api_key": "",
+          "model": "claude-3-sonnet",
+          "max_tokens": 1000
+        }
+      }
+    ]
+  },
+  "settings": {
+    "auto_fallback": true,
+    "health_monitoring": true,
+    "cost_tracking": true,
+    "last_updated": "2025-09-29T20:48:50.440589"
+  }
+}
