@@ -219,25 +219,65 @@ class BinanceProvider:
         """Retourner symboles populaires"""
         return self.popular_symbols.copy()
     
-    def search_symbols(self, query: str) -> List[str]:
-        """Rechercher symboles contenant la requête"""
+    def get_all_symbols(self) -> List[str]:
+        """Récupérer TOUS les symboles Binance actifs (USDT seulement)"""
+        cache_key = "all_usdt_symbols"
+        
+        # Cache 1 heure pour la liste des symboles
+        if cache_key in self.cache:
+            cache_time, data = self.cache[cache_key]
+            if time.time() - cache_time < 3600:
+                return data
+        
         try:
             exchange_info = self.get_exchange_info()
             if not exchange_info:
-                return self.popular_symbols[:5]
+                logger.warning("Impossible de récupérer exchange info - utilisation symboles populaires")
+                return self.popular_symbols.copy()
             
-            symbols = [s['symbol'] for s in exchange_info['symbols'] 
-                      if s['status'] == 'TRADING']
+            # Filtrer symboles USDT actifs uniquement
+            usdt_symbols = [
+                s['symbol'] for s in exchange_info['symbols'] 
+                if (s['status'] == 'TRADING' and 
+                    s['symbol'].endswith('USDT') and
+                    s['quoteAsset'] == 'USDT')
+            ]
             
-            # Filtrer par requête
+            # Trier alphabétiquement
+            usdt_symbols.sort()
+            
+            self.cache[cache_key] = (time.time(), usdt_symbols)
+            logger.info(f"✅ {len(usdt_symbols)} symboles USDT récupérés")
+            
+            return usdt_symbols
+            
+        except Exception as e:
+            logger.error(f"Erreur récupération symboles: {str(e)}")
+            return self.popular_symbols.copy()
+
+    def search_symbols(self, query: str, limit: int = 15) -> List[str]:
+        """Recherche intelligente de symboles"""
+        if not query or len(query) < 2:
+            return self.popular_symbols[:limit]
+        
+        try:
+            all_symbols = self.get_all_symbols()
             query_upper = query.upper()
-            matching_symbols = [s for s in symbols if query_upper in s]
             
-            return matching_symbols[:20]  # Limiter à 20 résultats
+            # Recherche prioritaire : symboles qui commencent par la requête
+            exact_start = [s for s in all_symbols if s.startswith(query_upper)]
+            
+            # Recherche secondaire : symboles qui contiennent la requête
+            contains = [s for s in all_symbols 
+                       if query_upper in s and s not in exact_start]
+            
+            # Combiner et limiter
+            results = exact_start + contains
+            return results[:limit]
             
         except Exception as e:
             logger.error(f"Erreur recherche symboles: {str(e)}")
-            return self.popular_symbols[:5]
+            return self.popular_symbols[:limit]
     
     def get_market_summary(self) -> Dict[str, Any]:
         """Résumé du marché avec symboles populaires"""

@@ -23,6 +23,10 @@ import threading
 import time
 from decimal import Decimal
 
+# Import modules THEBOT
+from dash_modules.data_providers.binance_api import binance_provider
+from dash_modules.components.symbol_search import default_symbol_search
+
 # Import calculateurs THEBOT
 try:
     from thebot.indicators.basic.sma.config import SMAConfig
@@ -58,8 +62,11 @@ class THEBOTDashApp:
         # Configuration globale
         self.app.title = "🤖 THEBOT - Trading Intelligence Platform"
         
-        # Données simulées
-        self.market_data = self.generate_sample_data()
+        # Cache des symboles Binance
+        self.all_symbols = self.get_all_binance_symbols()
+        
+        # Données de marché (chargées à la demande)
+        self.market_data = {}
         self.indicators_data = {}
         self.economic_events = self.generate_economic_events()
         
@@ -72,6 +79,58 @@ class THEBOTDashApp:
         self.setup_callbacks()
         self.setup_calculators()
         
+    def get_all_binance_symbols(self):
+        """Récupérer tous les symboles Binance disponibles"""
+        try:
+            import requests
+            
+            url = "https://api.binance.com/api/v3/exchangeInfo"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code != 200:
+                print(f"❌ Erreur récupération symboles: {response.status_code}")
+                return self.get_popular_symbols()
+            
+            data = response.json()
+            symbols = []
+            
+            for symbol_info in data['symbols']:
+                if (symbol_info['status'] == 'TRADING' and 
+                    symbol_info['symbol'].endswith('USDT')):
+                    symbols.append(symbol_info['symbol'])
+            
+            print(f"✅ {len(symbols)} symboles Binance chargés")
+            return sorted(symbols)
+            
+        except Exception as e:
+            print(f"❌ Erreur API exchange info: {e}")
+            return self.get_popular_symbols()
+    
+    def get_popular_symbols(self):
+        """Symboles populaires en fallback"""
+        return ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 
+                'LINKUSDT', 'LTCUSDT', 'BCHABCUSDT', 'EOSUSDT', 'TRXUSDT', 'ETCUSDT', 'XLMUSDT']
+    
+    def search_symbols(self, query, symbols_list, limit=10):
+        """Rechercher des symboles selon une requête"""
+        if not query:
+            return self.get_popular_symbols()[:limit]
+        
+        query_upper = query.upper()
+        matches = []
+        
+        # Recherche exacte au début
+        for symbol in symbols_list:
+            if symbol.startswith(query_upper):
+                matches.append(symbol)
+                
+        # Recherche partielle
+        for symbol in symbols_list:
+            if query_upper in symbol and symbol not in matches:
+                matches.append(symbol)
+                
+        return matches[:limit]
+
     def get_binance_data(self, symbol='BTCUSDT', interval='1h', limit=500):
         """Récupérer vraies données Binance (GRATUIT et ILLIMITÉ)"""
         try:
@@ -113,24 +172,18 @@ class THEBOTDashApp:
             print(f"❌ Erreur Binance {symbol}: {e}")
             return None
 
-    def generate_sample_data(self):
-        """Récupérer vraies données de marché via Binance"""
-        
-        # Symboles crypto populaires Binance
-        symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT']
-        
-        data = {}
-        
-        for symbol in symbols:
-            df = self.get_binance_data(symbol, '1h', 200)
-            if df is not None:
-                data[symbol] = df
-            else:
-                # Fallback avec données simulées si API échoue
-                print(f"⚠️ Fallback simulation pour {symbol}")
-                data[symbol] = self._create_fallback_data(symbol)
-            
-        return data
+    def load_symbol_data(self, symbol, interval='1h', limit=200):
+        """Charger les données d'un symbole spécifique à la demande"""
+        df = self.get_binance_data(symbol, interval, limit)
+        if df is not None:
+            self.market_data[symbol] = df
+            return df
+        else:
+            # Fallback avec données simulées
+            print(f"⚠️ Fallback simulation pour {symbol}")
+            fallback_data = self._create_fallback_data(symbol)
+            self.market_data[symbol] = fallback_data
+            return fallback_data
     
     def _create_fallback_data(self, symbol):
         """Créer données simulées en cas d'échec API"""
@@ -294,10 +347,12 @@ class THEBOTDashApp:
             # ===== FOOTER STATUS =====
             self.create_footer(),
             
-            # Stores pour données
-            dcc.Store(id='market-data-store', data={}),
+            # Stores pour données avec initialisation par défaut
+            dcc.Store(id='market-data-store', data=self.get_default_market_data()),
             dcc.Store(id='indicators-store', data={}),
             dcc.Store(id='settings-store', data=self.get_default_settings()),
+            dcc.Store(id='symbol-search-selected', data='BTCUSDT'),
+            dcc.Store(id='symbols-cache-store', data=self.all_symbols),
             
             # Interval pour updates
             dcc.Interval(
@@ -353,23 +408,8 @@ class THEBOTDashApp:
         """Barre de contrôle avec sélecteurs principaux"""
         
         return dbc.Row([
-            
-            dbc.Col([
-                dbc.Label("Market", className="fw-bold text-light small"),
-                dcc.Dropdown(
-                    id='symbol-selector',
-                    options=[
-                        {'label': '₿ BTCUSDT - Bitcoin', 'value': 'BTCUSDT'},
-                        {'label': '⟠ ETHUSDT - Ethereum', 'value': 'ETHUSDT'},
-                        {'label': '🟡 BNBUSDT - Binance Coin', 'value': 'BNBUSDT'},
-                        {'label': '🔵 ADAUSDT - Cardano', 'value': 'ADAUSDT'},
-                        {'label': '🟣 SOLUSDT - Solana', 'value': 'SOLUSDT'}
-                    ],
-                    value='BTCUSDT',
-                    className="dash-bootstrap",
-                    style={'backgroundColor': '#1f2937', 'color': 'white'}
-                )
-            ], width=3),
+            # Remplacement par le composant modulaire
+            default_symbol_search.get_complete_layout(),
             
             dbc.Col([
                 dbc.Label("Timeframe", className="fw-bold text-light small"),
@@ -1078,31 +1118,138 @@ class THEBOTDashApp:
                 'confidence': 75
             }
         }
+    
+    def get_default_market_data(self):
+        """Initialiser les données par défaut pour éviter les chargements redondants"""
+        default_symbol = 'BTCUSDT'
+        print(f"🔄 Initialisation des données par défaut: {default_symbol}")
+        df = self.load_symbol_data(default_symbol, '1h', 200)
+        
+        if df is not None and not df.empty:
+            return {
+                'symbol': default_symbol,
+                'data': df.to_json(date_format='iso'),
+                'timestamp': datetime.now().isoformat()
+            }
+        return {}
         
     def setup_callbacks(self):
         """Configurer les callbacks Dash"""
         
+        # Callback pour la recherche dynamique de symboles (modulaire)
+        @self.app.callback(
+            Output('symbol-search-results', 'children'),
+            [Input('symbol-search-input', 'value')],
+            [State('symbols-cache-store', 'data')]
+        )
+        def update_search_results(search_query, all_symbols):
+            """Mettre à jour les résultats de recherche en temps réel"""
+            if not search_query or len(search_query) < 2:
+                # Afficher les symboles populaires par défaut
+                popular_symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 'LINKUSDT']
+                return default_symbol_search.render_popular_symbols(popular_symbols)
+            
+            # Rechercher des correspondances dans la liste des symboles
+            if not all_symbols:
+                return [dbc.Alert("Symboles non chargés", color="warning", className="small")]
+            
+            # Fonction de recherche simple
+            query_upper = search_query.upper()
+            matches = []
+            
+            # Recherche exacte puis partielle
+            for symbol in all_symbols:
+                if symbol.startswith(query_upper):
+                    matches.append(symbol)
+                elif query_upper in symbol:
+                    matches.append(symbol)
+                
+                if len(matches) >= 10:  # Limiter à 10 résultats
+                    break
+            
+            # Utiliser le composant modulaire pour créer les boutons
+            return default_symbol_search.create_result_buttons(matches[:10])
+        
+        # Callback pour sélectionner un symbole (modulaire)
+        @self.app.callback(
+            [Output('symbol-search-selected', 'data'),
+             Output('symbol-search-input', 'value')],
+            [Input({'type': 'symbol-search-result', 'index': ALL}, 'n_clicks')],
+            prevent_initial_call=True
+        )
+        def select_symbol(n_clicks_list):
+            """Sélectionner un symbole depuis les résultats de recherche"""
+            ctx = callback_context
+            if not ctx.triggered:
+                return dash.no_update, dash.no_update
+            
+            # Identifier quel bouton a été cliqué
+            button_id = ctx.triggered[0]['prop_id']
+            if button_id == '.':
+                return dash.no_update, dash.no_update
+            
+            # Extraire le symbole du bouton cliqué
+            import json
+            button_data = json.loads(button_id.split('.')[0])
+            selected_symbol = button_data['index']
+            
+            return selected_symbol, selected_symbol
+        
+        # Callback pour charger les données du symbole sélectionné
+        @self.app.callback(
+            Output('market-data-store', 'data'),
+            [Input('symbol-search-selected', 'data'),
+             Input('timeframe-selector', 'value')],
+            prevent_initial_call=True
+        )
+        def load_symbol_data(selected_symbol, timeframe):
+            """Charger les données du symbole sélectionné"""
+            if not selected_symbol:
+                return {}
+            
+            print(f"🔄 Chargement des données pour {selected_symbol}...")
+            # Utiliser la méthode de l'instance directement
+            df = self.load_symbol_data(selected_symbol, timeframe, 200)
+            
+            if df is not None and not df.empty:
+                # Convertir en format JSON pour le store
+                return {
+                    'symbol': selected_symbol,
+                    'data': df.to_json(date_format='iso'),
+                    'timestamp': datetime.now().isoformat()
+                }
+            
+            return {}
+        
         @self.app.callback(
             Output('main-chart', 'figure'),
-            [Input('symbol-selector', 'value'),
-             Input('timeframe-selector', 'value'),
+            [Input('market-data-store', 'data'),
              Input('sma-switch', 'value'),
              Input('ema-switch', 'value'),
              Input('sma-period', 'value'),
              Input('ema-period', 'value')]
         )
-        def update_main_chart(symbol, timeframe, sma_enabled, ema_enabled, sma_period, ema_period):
+        def update_main_chart(market_data, sma_enabled, ema_enabled, sma_period, ema_period):
             """Mise à jour du graphique principal avec vrais calculs THEBOT"""
             
-            print(f"🔍 DEBUG: Symbole demandé: {symbol}")
-            print(f"📊 Symboles disponibles: {list(self.market_data.keys())}")
+            if not market_data or 'data' not in market_data:
+                print("❌ Aucune donnée de marché disponible")
+                return {
+                    'data': [],
+                    'layout': {
+                        'title': 'Sélectionnez un symbole pour commencer l\'analyse',
+                        'paper_bgcolor': '#1f2937',
+                        'plot_bgcolor': '#1f2937',
+                        'font': {'color': 'white'}
+                    }
+                }
             
-            if not symbol or symbol not in self.market_data:
-                print(f"❌ Symbole {symbol} introuvable dans les données!")
-                return {}
-                
-            df = self.market_data[symbol].copy()
-            print(f"✅ Données trouvées pour {symbol}: {len(df)} points")
+            # Récupérer les données depuis le store
+            symbol = market_data['symbol']
+            from io import StringIO
+            df = pd.read_json(StringIO(market_data['data']))
+            
+            print(f"📊 Mise à jour graphique pour {symbol}: {len(df)} points")
             
             # Graphique candlestick
             fig = go.Figure()
@@ -1142,7 +1289,7 @@ class THEBOTDashApp:
             
             # Configuration du graphique
             fig.update_layout(
-                title=f"{symbol} - {timeframe} | 📊 THEBOT Analysis",
+                title=f"{symbol} | 📊 THEBOT Analysis",
                 xaxis_title="Time",
                 yaxis_title="Price",
                 template="plotly_dark",
@@ -1158,17 +1305,19 @@ class THEBOTDashApp:
         
         @self.app.callback(
             Output('rsi-chart', 'figure'),
-            [Input('symbol-selector', 'value'),
+            [Input('market-data-store', 'data'),
              Input('rsi-switch', 'value'),
              Input('rsi-period', 'value')]
         )
-        def update_rsi_chart(symbol, rsi_enabled, rsi_period):
+        def update_rsi_chart(market_data, rsi_enabled, rsi_period):
             """Mise à jour du graphique RSI avec vrais calculs THEBOT"""
             
             fig = go.Figure()
             
-            if symbol and symbol in self.market_data and rsi_enabled:
-                df = self.market_data[symbol]
+            if market_data and 'data' in market_data and rsi_enabled:
+                symbol = market_data['symbol']
+                from io import StringIO
+                df = pd.read_json(StringIO(market_data['data']))
                 
                 # RSI réel avec calculateur THEBOT
                 rsi_values = self.calculate_real_rsi(df['close'].tolist(), rsi_period)
@@ -1205,15 +1354,17 @@ class THEBOTDashApp:
         
         @self.app.callback(
             Output('volume-chart', 'figure'),
-            Input('symbol-selector', 'value')
+            Input('market-data-store', 'data')
         )
-        def update_volume_chart(symbol):
+        def update_volume_chart(market_data):
             """Mise à jour du graphique de volume"""
             
             fig = go.Figure()
             
-            if symbol and symbol in self.market_data:
-                df = self.market_data[symbol]
+            if market_data and 'data' in market_data:
+                symbol = market_data['symbol']
+                from io import StringIO
+                df = pd.read_json(StringIO(market_data['data']))
                 
                 fig.add_trace(go.Bar(
                     x=df.index,
@@ -1234,17 +1385,19 @@ class THEBOTDashApp:
         
         @self.app.callback(
             Output('atr-chart', 'figure'),
-            [Input('symbol-selector', 'value'),
+            [Input('market-data-store', 'data'),
              Input('atr-switch', 'value'),
              Input('atr-period', 'value')]
         )
-        def update_atr_chart(symbol, atr_enabled, atr_period):
+        def update_atr_chart(market_data, atr_enabled, atr_period):
             """Mise à jour du graphique ATR avec vrais calculs THEBOT"""
             
             fig = go.Figure()
             
-            if symbol and symbol in self.market_data and atr_enabled:
-                df = self.market_data[symbol]
+            if market_data and 'data' in market_data and atr_enabled:
+                symbol = market_data['symbol']
+                from io import StringIO
+                df = pd.read_json(StringIO(market_data['data']))
                 
                 # ATR réel avec calculateur THEBOT
                 atr_values = self.calculate_real_atr(
