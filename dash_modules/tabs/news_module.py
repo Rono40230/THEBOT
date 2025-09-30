@@ -10,15 +10,33 @@ import pandas as pd
 from typing import List, Dict
 from datetime import datetime, timedelta
 import dash
-from dash import dcc, html
+from dash import dcc, html, callback, Input, Output, State
 import dash_bootstrap_components as dbc
+import json
+
+# Import pour la traduction
+try:
+    from googletrans import Translator
+    TRANSLATION_AVAILABLE = True
+except ImportError:
+    TRANSLATION_AVAILABLE = False
+    print("⚠️ Traduction non disponible: googletrans non installé")
+
+# Import pour récupération de contenu web
+try:
+    import requests
+    from bs4 import BeautifulSoup
+    WEB_SCRAPING_AVAILABLE = True
+except ImportError:
+    WEB_SCRAPING_AVAILABLE = False
+    print("⚠️ Web scraping non disponible: requests ou beautifulsoup4 non installés")
 
 class NewsModule(BaseMarketModule):
     """News module using Alpha Vantage API for economic news and events"""
     
     def __init__(self, calculators: Dict = None):
         # Get Alpha Vantage API key from config
-        news_provider = api_config.get_provider('news', 'Alpha Vantage')
+        news_provider = api_config.get_provider('news', 'Alpha Vantage News')
         api_key = news_provider['config'].get('api_key', '') if news_provider else ''
         
         super().__init__(
@@ -31,6 +49,94 @@ class NewsModule(BaseMarketModule):
             'All News', 'Market News', 'Economic Indicators', 'Central Banks',
             'Earnings', 'Commodities', 'Technology', 'Financial', 'Energy'
         ]
+        
+    def fetch_full_article_content(self, url: str) -> str:
+        """
+        Récupère le contenu complet d'un article depuis son URL
+        """
+        if not WEB_SCRAPING_AVAILABLE:
+            return "Contenu complet non disponible (web scraping non configuré)"
+        
+        # Vérifier si l'URL est valide
+        if not url or url == '#' or url == '' or not url.startswith(('http://', 'https://')):
+            return "URL de l'article non disponible. Seul le résumé peut être affiché."
+        
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Supprimer les éléments indésirables
+            for element in soup(["script", "style", "nav", "header", "footer", "aside"]):
+                element.decompose()
+            
+            # Chercher le contenu principal dans différentes balises communes
+            content_selectors = [
+                'article',
+                '.article-body',
+                '.content',
+                '.post-content',
+                '.entry-content',
+                'main',
+                '[role="main"]'
+            ]
+            
+            content = ""
+            for selector in content_selectors:
+                elements = soup.select(selector)
+                if elements:
+                    content = elements[0].get_text(strip=True)
+                    break
+            
+            # Si aucun sélecteur spécifique ne fonctionne, prendre tous les paragraphes
+            if not content:
+                paragraphs = soup.find_all('p')
+                content = '\n\n'.join([p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 50])
+            
+            # Nettoyer et limiter le contenu
+            if content:
+                # Supprimer les espaces multiples et les sauts de ligne excessifs
+                import re
+                content = re.sub(r'\s+', ' ', content)
+                content = re.sub(r'\n\s*\n', '\n\n', content)
+                
+                # Limiter à 3000 caractères pour éviter les modales trop longues
+                if len(content) > 3000:
+                    content = content[:3000] + "..."
+                
+                return content
+            else:
+                return "Impossible d'extraire le contenu de cet article."
+                
+        except requests.RequestException as e:
+            return f"Erreur lors de la récupération de l'article: {str(e)}"
+        except Exception as e:
+            return f"Erreur lors du traitement de l'article: {str(e)}"
+    
+    def refresh_api_config(self):
+        """Refresh API configuration - useful when API keys are updated"""
+        news_provider = api_config.get_provider('news', 'Alpha Vantage News')
+        api_key = news_provider['config'].get('api_key', '') if news_provider else ''
+        self.data_provider.api_key = api_key
+        print(f"🔄 News API config refreshed: {'✅ Key loaded' if api_key else '❌ No key'}")
+    
+    def translate_to_french(self, text: str) -> str:
+        """Translate text to French using Google Translate"""
+        if not TRANSLATION_AVAILABLE:
+            return text
+        
+        try:
+            translator = Translator()
+            result = translator.translate(text, dest='fr')
+            return result.text
+        except Exception as e:
+            print(f"⚠️ Erreur de traduction: {e}")
+            return text
     
     def get_symbols_list(self) -> List[str]:
         """Get list of news categories"""
@@ -48,10 +154,15 @@ class NewsModule(BaseMarketModule):
     def load_news_data(self, category: str = 'All News', limit: int = 50) -> pd.DataFrame:
         """Load economic news data from Alpha Vantage"""
         try:
-            print(f"🔄 Loading news data for category: {category}...")
-            news_data = self.data_provider.get_economic_news(topics=category.lower(), limit=limit)
+            # Refresh API configuration to get latest API key
+            self.refresh_api_config()
             
-            if not news_data.empty:
+            print(f"🔄 Loading news data for category: {category}...")
+            news_list = self.data_provider.get_economic_news(limit=limit)
+            
+            if news_list and len(news_list) > 0:
+                # Convert list of news items to DataFrame
+                news_data = pd.DataFrame(news_list)
                 print(f"✅ {category}: {len(news_data)} news articles loaded")
                 return news_data
             else:
@@ -220,13 +331,29 @@ class NewsModule(BaseMarketModule):
                         ])
                     ])
                 ], width=4)
-            ])
+            ]),
+            
+            # Modal pour l'affichage détaillé des articles
+            dbc.Modal([
+                dbc.ModalHeader(dbc.ModalTitle(id="news-modal-title"), close_button=True),
+                dbc.ModalBody([
+                    html.Div(id="news-modal-content", style={"min-height": "400px"})
+                ]),
+                dbc.ModalFooter([
+                    dbc.Button("🔗 Lire la source originale", id="news-modal-source-btn", 
+                               color="primary", size="sm", external_link=True, className="me-2"),
+                    dbc.Button("Fermer", id="news-modal-close", color="secondary", size="sm")
+                ])
+            ], id="news-modal", size="lg", scrollable=True),
+            
+            # Store pour les données d'articles
+            dcc.Store(id="news-articles-store", data=[])
         ])
     
-    def create_news_feed(self, news_data: pd.DataFrame, sentiment_filter: str = 'all') -> html.Div:
-        """Create news feed component"""
+    def create_news_feed(self, news_data: pd.DataFrame, sentiment_filter: str = 'all') -> tuple:
+        """Create news feed component and return HTML + data"""
         if news_data.empty:
-            return html.Div("No news data available", className="text-muted")
+            return html.Div("No news data available", className="text-muted"), []
         
         # Filter by sentiment if needed
         if sentiment_filter != 'all':
@@ -238,9 +365,23 @@ class NewsModule(BaseMarketModule):
                 news_data = news_data[(news_data['sentiment_score'] >= 0.4) & 
                                      (news_data['sentiment_score'] <= 0.6)]
         
+        # Store articles data for modal access
+        articles_data = []
+        
         # Create news items
         news_items = []
-        for _, article in news_data.head(20).iterrows():
+        for idx, (_, article) in enumerate(news_data.head(20).iterrows()):
+            # Store article data
+            articles_data.append({
+                'title': article.get('title', ''),
+                'summary': article.get('summary', ''),
+                'url': article.get('url', ''),
+                'source': article.get('source', 'Unknown'),
+                'time_published': article.get('time_published', ''),
+                'sentiment_score': article.get('sentiment_score', 0.5),
+                'sentiment_label': article.get('sentiment_label', 'Neutral')
+            })
+            
             # Sentiment badge
             sentiment_score = article.get('sentiment_score', 0.5)
             if sentiment_score > 0.6:
@@ -268,15 +409,22 @@ class NewsModule(BaseMarketModule):
                             html.Small(time_ago, className="text-muted")
                         ], className="d-flex align-items-center"),
                         html.Hr(className="my-2"),
-                        dbc.Button("Read More", size="sm", color="outline-primary", 
-                                 href=article.get('url', '#'), target="_blank")
+                        html.Div([
+                            dbc.Button("📖 Lire l'article", size="sm", color="outline-primary", 
+                                     id={"type": "news-read-btn", "index": idx}, className="me-2"),
+                            # Afficher le bouton Source seulement si l'URL est valide
+                            *([dbc.Button("🔗 Source", size="sm", color="outline-secondary", 
+                                        href=article.get('url', '#'), target="_blank")] 
+                              if article.get('url') and article.get('url') != '#' and article.get('url').startswith(('http://', 'https://'))
+                              else [])
+                        ])
                     ])
                 ])
             ], className="mb-3")
             
             news_items.append(news_item)
         
-        return html.Div(news_items)
+        return html.Div(news_items), articles_data
     
     def create_market_impact_widget(self, news_data: pd.DataFrame) -> html.Div:
         """Create market impact analysis widget"""
@@ -321,14 +469,62 @@ class NewsModule(BaseMarketModule):
         ])
     
     def create_economic_calendar_widget(self) -> html.Div:
-        """Create economic calendar widget"""
-        # Mock economic events
+        """Create economic calendar widget with current dates"""
+        from datetime import datetime, timedelta
+        
+        # Get current date and generate events for the coming weeks
+        today = datetime.now()
+        
+        # Create realistic upcoming economic events with current dates
         events = [
-            {'date': '2024-01-15', 'event': 'Federal Reserve Meeting', 'impact': 'High'},
-            {'date': '2024-01-18', 'event': 'GDP Release', 'impact': 'High'},
-            {'date': '2024-01-22', 'event': 'Employment Data', 'impact': 'Medium'},
-            {'date': '2024-01-25', 'event': 'Corporate Earnings', 'impact': 'Medium'},
-            {'date': '2024-01-29', 'event': 'Consumer Confidence', 'impact': 'Low'}
+            {
+                'date': (today + timedelta(days=1)).strftime('%Y-%m-%d'),
+                'event': 'Unemployment Rate',
+                'impact': 'High',
+                'time': '08:30 EST'
+            },
+            {
+                'date': (today + timedelta(days=3)).strftime('%Y-%m-%d'),
+                'event': 'Consumer Price Index (CPI)',
+                'impact': 'High',
+                'time': '08:30 EST'
+            },
+            {
+                'date': (today + timedelta(days=5)).strftime('%Y-%m-%d'),
+                'event': 'Federal Reserve Meeting',
+                'impact': 'High',
+                'time': '14:00 EST'
+            },
+            {
+                'date': (today + timedelta(days=7)).strftime('%Y-%m-%d'),
+                'event': 'GDP Growth Rate',
+                'impact': 'High',
+                'time': '08:30 EST'
+            },
+            {
+                'date': (today + timedelta(days=10)).strftime('%Y-%m-%d'),
+                'event': 'Producer Price Index (PPI)',
+                'impact': 'Medium',
+                'time': '08:30 EST'
+            },
+            {
+                'date': (today + timedelta(days=12)).strftime('%Y-%m-%d'),
+                'event': 'Retail Sales',
+                'impact': 'Medium',
+                'time': '08:30 EST'
+            },
+            {
+                'date': (today + timedelta(days=14)).strftime('%Y-%m-%d'),
+                'event': 'Industrial Production',
+                'impact': 'Medium',
+                'time': '09:15 EST'
+            },
+            {
+                'date': (today + timedelta(days=17)).strftime('%Y-%m-%d'),
+                'event': 'Consumer Confidence Index',
+                'impact': 'Low',
+                'time': '10:00 EST'
+            }
         ]
         
         event_items = []
@@ -339,19 +535,38 @@ class NewsModule(BaseMarketModule):
                 'Low': 'success'
             }.get(event['impact'], 'secondary')
             
+            # Calculate days from today
+            event_date = datetime.strptime(event['date'], '%Y-%m-%d')
+            days_diff = (event_date - today).days
+            
+            if days_diff == 0:
+                date_display = "Aujourd'hui"
+            elif days_diff == 1:
+                date_display = "Demain"
+            else:
+                date_display = f"Dans {days_diff} jours"
+            
             event_item = html.Div([
                 html.Div([
-                    html.Strong(event['event']),
-                    dbc.Badge(event['impact'], color=impact_color, className="float-end")
-                ], className="d-flex justify-content-between align-items-center"),
-                html.Small(event['date'], className="text-muted")
-            ], className="border-bottom pb-2 mb-2")
+                    html.Div([
+                        html.Strong(event['event']),
+                        html.Br(),
+                        html.Small(f"{event['time']}", className="text-muted")
+                    ]),
+                    html.Div([
+                        dbc.Badge(event['impact'], color=impact_color, className="mb-1"),
+                        html.Br(),
+                        html.Small(date_display, className="text-info")
+                    ], className="text-end")
+                ], className="d-flex justify-content-between align-items-start"),
+                html.Hr(className="my-2")
+            ], className="mb-2")
             
             event_items.append(event_item)
         
         return html.Div([
-            html.H6("Upcoming Events", className="mb-3"),
-            html.Div(event_items)
+            html.H6("📅 Événements à venir", className="mb-3"),
+            html.Div(event_items, style={"max-height": "400px", "overflow-y": "auto"})
         ])
     
     def _calculate_time_ago(self, timestamp: datetime) -> str:
@@ -406,3 +621,149 @@ class NewsModule(BaseMarketModule):
             return "Declining sentiment"
         else:
             return "Stable sentiment"
+    
+    def get_article_data(self, article_index: int, news_data: pd.DataFrame) -> Dict:
+        """Get article data for modal display"""
+        if article_index >= len(news_data):
+            return {}
+        
+        article = news_data.iloc[article_index]
+        return {
+            'title': article.get('title', ''),
+            'summary': article.get('summary', ''),
+            'url': article.get('url', ''),
+            'source': article.get('source', 'Unknown'),
+            'time_published': article.get('time_published', ''),
+            'sentiment_score': article.get('sentiment_score', 0),
+            'sentiment_label': article.get('sentiment_label', 'Neutral')
+        }
+    
+    def create_article_modal_content(self, article_data: Dict, translate: bool = True) -> html.Div:
+        """Create content for article modal with optional translation and full content"""
+        if not article_data:
+            return html.Div("Article non trouvé", className="text-muted")
+        
+        # Récupération du contenu complet de l'article
+        article_url = article_data.get('url', '')
+        full_content = self.fetch_full_article_content(article_url) if article_url else "URL de l'article non disponible"
+        
+        # Vérifier si le contenu complet est disponible
+        content_available = (full_content and 
+                           "non disponible" not in full_content and 
+                           "Erreur" not in full_content and
+                           "URL invalide" not in full_content)
+        
+        # Traduction en français si demandée
+        title = article_data['title']
+        summary = article_data['summary']
+        
+        if translate and TRANSLATION_AVAILABLE:
+            try:
+                title_fr = self.translate_to_french(title)
+                summary_fr = self.translate_to_french(summary)
+                # Traduire aussi le contenu complet si disponible et pas trop long
+                if content_available and len(full_content) < 2000:
+                    full_content_fr = self.translate_to_french(full_content)
+                else:
+                    full_content_fr = full_content
+            except:
+                title_fr = title
+                summary_fr = summary
+                full_content_fr = full_content
+        else:
+            title_fr = title
+            summary_fr = summary
+            full_content_fr = full_content
+        
+        # Analyse du sentiment
+        sentiment_score = article_data.get('sentiment_score', 0)
+        if sentiment_score > 0.6:
+            sentiment_color = "success"
+            sentiment_text = "🟢 Positif"
+        elif sentiment_score < 0.4:
+            sentiment_color = "danger" 
+            sentiment_text = "🔴 Négatif"
+        else:
+            sentiment_color = "secondary"
+            sentiment_text = "🟡 Neutre"
+        
+        # Formatage de la date
+        try:
+            time_published = pd.to_datetime(article_data['time_published'], format='%Y%m%dT%H%M%S')
+            date_formatted = time_published.strftime("%d/%m/%Y à %H:%M")
+        except:
+            date_formatted = "Date inconnue"
+        
+        return html.Div([
+            # Header avec métadonnées
+            dbc.Row([
+                dbc.Col([
+                    dbc.Badge(article_data.get('source', 'Source inconnue'), 
+                              color="info", className="me-2"),
+                    dbc.Badge(sentiment_text, color=sentiment_color, className="me-2"),
+                    html.Small(f"Publié le {date_formatted}", className="text-muted")
+                ], width=12)
+            ], className="mb-3"),
+            
+            # Contenu principal
+            html.Div([
+                html.H5(title_fr, className="mb-3"),
+                html.P(summary_fr, className="lead text-justify mb-4"),
+                
+                # Contenu complet de l'article
+                html.Hr(),
+                html.H6("📖 Article complet", className="mb-3"),
+                html.Div([
+                    html.P(full_content_fr, 
+                          className="text-justify" if content_available else "text-muted fst-italic", 
+                          style={"line-height": "1.6"})
+                ], className="mb-4", 
+                  style={
+                      "max-height": "400px", 
+                      "overflow-y": "auto", 
+                      "border": "1px solid #dee2e6", 
+                      "border-radius": "0.375rem", 
+                      "padding": "15px", 
+                      "background-color": "#f8f9fa" if content_available else "#fff3cd"
+                  }),
+                
+                # Section traduction
+                html.Hr(),
+                dbc.Accordion([
+                    dbc.AccordionItem([
+                        html.Div([
+                            html.H6("Titre original :", className="mb-2"),
+                            html.P(title, className="text-muted mb-3"),
+                            html.H6("Résumé original :", className="mb-2"), 
+                            html.P(summary, className="text-muted"),
+                            html.H6("Contenu original :", className="mb-2"),
+                            html.P(full_content if content_available else "Contenu original non disponible", 
+                                   className="text-muted", 
+                                   style={"max-height": "300px", "overflow-y": "auto"})
+                        ])
+                    ], title="📄 Version originale (anglais)", item_id="original-text")
+                ], start_collapsed=True, className="mb-3"),
+                
+                # Analyse de sentiment détaillée
+                html.Hr(),
+                dbc.Card([
+                    dbc.CardHeader(html.H6("📊 Analyse de sentiment", className="mb-0")),
+                    dbc.CardBody([
+                        html.Div([
+                            html.Span("Score: ", className="fw-bold"),
+                            html.Span(f"{sentiment_score:.2f}/1.0", className="me-3"),
+                            dbc.Progress(
+                                value=abs(sentiment_score) * 100,
+                                color=sentiment_color,
+                                style={"height": "20px"},
+                                className="mb-2"
+                            ),
+                            html.Small(
+                                f"Impact potentiel sur les marchés : {'Élevé' if abs(sentiment_score) > 0.7 else 'Modéré' if abs(sentiment_score) > 0.4 else 'Faible'}",
+                                className="text-muted"
+                            )
+                        ])
+                    ])
+                ], className="mb-3")
+            ])
+        ])

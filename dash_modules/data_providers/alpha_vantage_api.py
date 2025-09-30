@@ -121,7 +121,12 @@ class AlphaVantageAPI:
     
     def get_economic_news(self, limit: int = 50) -> List[Dict]:
         """Get economic news and sentiment"""
+        print(f"🔍 API Key status: {'✅ Available' if self.api_key else '❌ Missing'}")
+        if self.api_key:
+            print(f"🔑 API Key: {self.api_key[:8]}...")
+        
         if not self.api_key:
+            print("⚠️ No API key, using fallback news")
             return self._create_fallback_news()
         
         params = {
@@ -130,13 +135,15 @@ class AlphaVantageAPI:
             "limit": limit
         }
         
-        print("🔄 Fetching economic news...")
+        print("🔄 Fetching economic news from Alpha Vantage...")
         data = self._make_request(params)
         
         if not data or "feed" not in data:
             print("⚠️ Alpha Vantage news unavailable, using fallback")
+            print(f"📊 Response keys: {list(data.keys()) if data else 'No data'}")
             return self._create_fallback_news()
         
+        print(f"✅ Received {len(data.get('feed', []))} news articles from Alpha Vantage")
         return self._parse_news_data(data)
     
     def _parse_forex_data(self, data: Dict, function: str) -> pd.DataFrame:

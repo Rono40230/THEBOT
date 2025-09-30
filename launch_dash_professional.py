@@ -1552,7 +1552,8 @@ class THEBOTDashApp:
         # Callbacks pour le module News
         if 'news' in self.modules:
             @self.app.callback(
-                Output('news-feed-content', 'children'),
+                [Output('news-feed-content', 'children'),
+                 Output('news-articles-store', 'data')],
                 [Input('news-category-dropdown', 'value'),
                  Input('sentiment-filter', 'value')]
             )
@@ -1560,9 +1561,11 @@ class THEBOTDashApp:
                 """Mettre à jour le feed d'actualités"""
                 try:
                     news_data = self.modules['news'].load_market_data(category)
-                    return self.modules['news'].create_news_feed(news_data, sentiment)
-                except:
-                    return html.Div("Erreur de chargement des actualités", className="text-muted")
+                    news_html, articles_data = self.modules['news'].create_news_feed(news_data, sentiment)
+                    return news_html, articles_data
+                except Exception as e:
+                    print(f"❌ Erreur callback news: {e}")
+                    return html.Div("Erreur de chargement des actualités", className="text-muted"), []
             
             @self.app.callback(
                 Output('market-impact-content', 'children'),
@@ -1588,6 +1591,62 @@ class THEBOTDashApp:
                     except:
                         return html.Div("Calendrier non disponible", className="text-muted")
                 return html.Div()
+            
+            # Callbacks pour la modal d'article
+            @self.app.callback(
+                [Output("news-modal", "is_open"),
+                 Output("news-modal-title", "children"),
+                 Output("news-modal-content", "children"),
+                 Output("news-modal-source-btn", "href"),
+                 Output("news-modal-source-btn", "style")],
+                [Input({"type": "news-read-btn", "index": ALL}, "n_clicks"),
+                 Input("news-modal-close", "n_clicks")],
+                [State("news-modal", "is_open"),
+                 State("news-articles-store", "data")],
+                prevent_initial_call=True
+            )
+            def handle_news_modal(read_clicks, close_clicks, is_open, articles_data):
+                """Gérer l'ouverture/fermeture de la modal d'article"""
+                ctx = callback_context
+                if not ctx.triggered:
+                    return False, "", "", "", {"display": "none"}
+                
+                trigger_id = ctx.triggered[0]["prop_id"]
+                
+                # Fermer la modal
+                if "news-modal-close" in trigger_id:
+                    return False, "", "", "", {"display": "none"}
+                
+                # Ouvrir la modal avec un article
+                if "news-read-btn" in trigger_id and any(read_clicks):
+                    try:
+                        # Trouver quel bouton a été cliqué
+                        clicked_index = None
+                        for i, clicks in enumerate(read_clicks):
+                            if clicks:
+                                clicked_index = i
+                                break
+                        
+                        if clicked_index is not None and articles_data and clicked_index < len(articles_data):
+                            article = articles_data[clicked_index]
+                            modal_content = self.modules['news'].create_article_modal_content(article, translate=True)
+                            
+                            # Vérifier si l'URL est valide
+                            article_url = article.get('url', '#')
+                            button_style = {"display": "none"} if (not article_url or article_url == '#' or not article_url.startswith(('http://', 'https://'))) else {}
+                            
+                            return (
+                                True,
+                                f"📰 {article.get('title', 'Article')[:60]}{'...' if len(article.get('title', '')) > 60 else ''}",
+                                modal_content,
+                                article_url,
+                                button_style
+                            )
+                    except Exception as e:
+                        print(f"❌ Erreur modal: {e}")
+                        return True, "Erreur", html.Div("Impossible de charger l'article"), "", {"display": "none"}
+                
+                return is_open, "", "", "", {"display": "none"}
         
         # Callbacks pour le module Strategies
         if 'strategies' in self.modules:
