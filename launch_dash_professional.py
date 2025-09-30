@@ -29,6 +29,13 @@ from dash_modules.components.symbol_search import default_symbol_search
 from dash_modules.core.api_config import api_config
 from dash_modules.data_providers.alpha_vantage_api import AlphaVantageAPI
 
+# Import modules modulaires
+from dash_modules.tabs.crypto_module import CryptoModule
+from dash_modules.tabs.forex_module import ForexModule
+from dash_modules.tabs.stocks_module import StocksModule
+from dash_modules.tabs.news_module import NewsModule
+from dash_modules.tabs.strategies_module import StrategiesModule
+
 # Import calculateurs THEBOT
 try:
     from thebot.indicators.basic.sma.config import SMAConfig
@@ -76,11 +83,44 @@ class THEBOTDashApp:
         self.is_streaming = False
         self.selected_symbol = "BTCUSDT"
         self.selected_timeframe = "5m"
+        self.current_tab = "crypto"  # Onglet actuel
         
+        # Initialisation des modules modulaires
+        self._init_modular_modules()
+        
+        # Initialisation de l'interface
+        self.setup_calculators()
         self.setup_layout()
         self.setup_callbacks()
-        self.setup_calculators()
+    
+    def _init_modular_modules(self):
+        """Initialise les modules modulaires"""
+        print("🔄 Initialisation des modules modulaires...")
         
+        try:
+            # Initialisation des modules avec calculateurs partagés
+            shared_calculators = {
+                'sma': None,
+                'ema': None, 
+                'rsi': None,
+                'atr': None
+            }
+            
+            self.modules = {
+                'crypto': CryptoModule(calculators=shared_calculators),
+                'forex': ForexModule(calculators=shared_calculators),
+                'stocks': StocksModule(calculators=shared_calculators),
+                'news': NewsModule(calculators=shared_calculators),
+                'strategies': StrategiesModule(calculators=shared_calculators)
+            }
+            
+            print("✅ Modules modulaires initialisés avec succès")
+            
+        except Exception as e:
+            print(f"❌ Erreur lors de l'initialisation des modules: {e}")
+            # Fallback - continuer sans modules modulaires
+            self.modules = {}
+
     def get_all_binance_symbols(self):
         """Récupérer tous les symboles Binance disponibles"""
         try:
@@ -349,15 +389,15 @@ class THEBOTDashApp:
             # ===== MAIN CONTENT =====
             dbc.Row([
                 
-                # Sidebar gauche
+                # Sidebar gauche (conditionnel selon l'onglet)
                 dbc.Col([
-                    self.create_sidebar()
-                ], width=3, className="pe-0"),
+                    html.Div(id="sidebar-content", children=self.create_sidebar())
+                ], width=3, className="pe-0", id="sidebar-col"),
                 
-                # Zone principale
+                # Zone principale modulaire
                 dbc.Col([
-                    self.create_main_content()
-                ], width=9, className="ps-2")
+                    self.create_modular_content()
+                ], width=9, className="ps-2", id="main-content-col")
                 
             ], className="g-0 mt-3"),
             
@@ -389,18 +429,18 @@ class THEBOTDashApp:
         })
         
     def create_header(self):
-        """Créer le header avec navigation et indicateurs"""
+        """Créer le header avec navigation modulaire"""
         
         return dbc.Row([
-            # Navigation principale
+            # Navigation principale - Onglets modulaires
             dbc.Col([
                 dbc.Tabs([
-                    dbc.Tab(label="📰 News & Economic Calendar", tab_id="news-economic-tab"),
-                    dbc.Tab(label="💰 Crypto", tab_id="crypto-tab"),
-                    dbc.Tab(label="💱 Forex", tab_id="forex-tab"),
-                    dbc.Tab(label="📊 Stocks", tab_id="stocks-tab"),
-                    dbc.Tab(label="🎯 Stratégies", tab_id="strategies-tab")
-                ], id="main-tabs", active_tab="news-economic-tab", className="mb-0")
+                    dbc.Tab(label="📰 News", tab_id="news"),
+                    dbc.Tab(label="₿ Crypto", tab_id="crypto"),
+                    dbc.Tab(label="💱 Forex", tab_id="forex"),
+                    dbc.Tab(label="� Stocks", tab_id="stocks"),
+                    dbc.Tab(label="🎯 Strategies", tab_id="strategies")
+                ], id="main-tabs", active_tab="crypto", className="mb-0")
             ], width=7),
             
             # Indicateurs de marchés globaux et API Keys
@@ -701,6 +741,21 @@ class THEBOTDashApp:
             ]),
             
         ])
+    
+    def create_modular_content(self):
+        """Créer le contenu modulaire basé sur l'onglet actif"""
+        return html.Div(id="modular-content", children=[
+            # Le contenu sera mis à jour par les callbacks selon l'onglet actif
+            self.create_default_crypto_content()  # Contenu par défaut
+        ])
+    
+    def create_default_crypto_content(self):
+        """Contenu par défaut pour l'onglet crypto"""
+        if 'crypto' in self.modules:
+            # Utiliser le layout du module crypto mais garder compatibilité
+            return self.create_main_content()
+        else:
+            return self.create_main_content()
         
     def create_main_content(self):
         """Zone principale avec graphiques et tableaux"""
@@ -1076,6 +1131,72 @@ class THEBOTDashApp:
     def setup_callbacks(self):
         """Configurer les callbacks Dash"""
         
+        # Callback principal pour la navigation entre onglets modulaires
+        @self.app.callback(
+            [Output('modular-content', 'children'),
+             Output('sidebar-content', 'children'),
+             Output('sidebar-col', 'width'),
+             Output('main-content-col', 'width')],
+            [Input('main-tabs', 'active_tab')]
+        )
+        def update_tab_content(active_tab):
+            """Mettre à jour le contenu selon l'onglet actif"""
+            
+            self.current_tab = active_tab
+            
+            try:
+                if active_tab == 'news':
+                    if 'news' in self.modules:
+                        return (
+                            self.modules['news'].create_news_layout(),
+                            html.Div(),  # Pas de sidebar pour News
+                            0,  # Largeur sidebar
+                            12  # Largeur contenu principal
+                        )
+                
+                elif active_tab == 'strategies':
+                    if 'strategies' in self.modules:
+                        return (
+                            self.modules['strategies'].create_strategies_layout(),
+                            html.Div(),  # Pas de sidebar pour Strategies  
+                            0,
+                            12
+                        )
+                
+                # Pour crypto, forex, stocks - garder le layout actuel avec sidebar
+                elif active_tab in ['crypto', 'forex', 'stocks']:
+                    sidebar_content = self.create_sidebar()
+                    
+                    if active_tab == 'crypto':
+                        main_content = self.create_main_content()
+                    elif active_tab == 'forex' and 'forex' in self.modules:
+                        main_content = self.create_main_content()  # Pour l'instant, garder le layout existant
+                    elif active_tab == 'stocks' and 'stocks' in self.modules:
+                        main_content = self.create_main_content()  # Pour l'instant, garder le layout existant
+                    else:
+                        main_content = self.create_main_content()
+                    
+                    return (main_content, sidebar_content, 3, 9)
+                
+                else:
+                    # Fallback vers crypto
+                    return (
+                        self.create_main_content(),
+                        self.create_sidebar(),
+                        3,
+                        9
+                    )
+                    
+            except Exception as e:
+                print(f"❌ Erreur dans update_tab_content: {e}")
+                # Fallback vers le contenu crypto par défaut
+                return (
+                    self.create_main_content(),
+                    self.create_sidebar(),
+                    3,
+                    9
+                )
+        
         # Callback pour la recherche dynamique de symboles (modulaire)
         @self.app.callback(
             [Output('symbol-search-results', 'children'),
@@ -1426,6 +1547,108 @@ class THEBOTDashApp:
             
             return fig
         
+        # ===== CALLBACKS POUR MODULES MODULAIRES =====
+        
+        # Callbacks pour le module News
+        if 'news' in self.modules:
+            @self.app.callback(
+                Output('news-feed-content', 'children'),
+                [Input('news-category-dropdown', 'value'),
+                 Input('sentiment-filter', 'value')]
+            )
+            def update_news_feed(category, sentiment):
+                """Mettre à jour le feed d'actualités"""
+                try:
+                    news_data = self.modules['news'].load_market_data(category)
+                    return self.modules['news'].create_news_feed(news_data, sentiment)
+                except:
+                    return html.Div("Erreur de chargement des actualités", className="text-muted")
+            
+            @self.app.callback(
+                Output('market-impact-content', 'children'),
+                [Input('news-category-dropdown', 'value')]
+            )
+            def update_market_impact(category):
+                """Mettre à jour l'analyse d'impact marché"""
+                try:
+                    news_data = self.modules['news'].load_market_data(category)
+                    return self.modules['news'].create_market_impact_widget(news_data)
+                except:
+                    return html.Div("Pas de données d'impact", className="text-muted")
+            
+            @self.app.callback(
+                Output('economic-calendar-content', 'children'),
+                [Input('main-tabs', 'active_tab')]
+            )
+            def update_economic_calendar(active_tab):
+                """Mettre à jour le calendrier économique"""
+                if active_tab == 'news':
+                    try:
+                        return self.modules['news'].create_economic_calendar_widget()
+                    except:
+                        return html.Div("Calendrier non disponible", className="text-muted")
+                return html.Div()
+        
+        # Callbacks pour le module Strategies
+        if 'strategies' in self.modules:
+            @self.app.callback(
+                [Output('performance-metrics-content', 'children'),
+                 Output('equity-curve-chart', 'figure'),
+                 Output('trade-analysis-content', 'children'),
+                 Output('ai-recommendations-content', 'children')],
+                [Input('run-backtest-btn', 'n_clicks')],
+                [State('strategy-type-dropdown', 'value'),
+                 State('initial-capital-input', 'value'),
+                 State('position-size-input', 'value'),
+                 State('stop-loss-input', 'value')]
+            )
+            def run_backtest(n_clicks, strategy_type, initial_capital, position_size, stop_loss):
+                """Exécuter un backtest de stratégie"""
+                if not n_clicks:
+                    return (
+                        html.Div("Cliquez sur 'Run Backtest' pour commencer", className="text-muted"),
+                        go.Figure(),
+                        html.Div(),
+                        html.Div()
+                    )
+                
+                try:
+                    # Configuration du backtest
+                    config = {
+                        'initial_capital': initial_capital or 10000,
+                        'position_size': position_size or 10,
+                        'stop_loss': stop_loss or 5
+                    }
+                    
+                    # Exécuter le backtest
+                    results = self.modules['strategies'].run_strategy_backtest(
+                        strategy_type, pd.DataFrame(), config
+                    )
+                    
+                    # Retourner les résultats
+                    return (
+                        self.modules['strategies'].create_performance_metrics_display(
+                            results.get('performance_metrics', {})
+                        ),
+                        self.modules['strategies'].create_equity_curve_chart(
+                            results.get('equity_curve', [])
+                        ),
+                        html.Div([
+                            html.H6("📊 Trade Summary"),
+                            html.P(f"Total Trades: {len(results.get('trades', []))}"),
+                            html.P(f"Strategy: {results.get('strategy_name', 'Unknown')}")
+                        ]),
+                        self.modules['strategies'].create_ai_recommendations(results)
+                    )
+                    
+                except Exception as e:
+                    error_msg = f"Erreur lors du backtest: {str(e)}"
+                    return (
+                        html.Div(error_msg, className="text-danger"),
+                        go.Figure(),
+                        html.Div(),
+                        html.Div()
+                    )
                 
     def run(self, debug=False, port=8050):
         """Lancer l'application Dash"""

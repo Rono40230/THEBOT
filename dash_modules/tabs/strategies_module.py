@@ -47,6 +47,12 @@ class StrategiesModule(BaseMarketModule):
         """Get default strategy"""
         return 'Simple Moving Average Crossover'
     
+    def load_market_data(self, symbol: str, interval: str = '1h', limit: int = 200) -> pd.DataFrame:
+        """Load market data for backtesting (strategies don't load external data)"""
+        # Strategies module doesn't load external market data
+        # It uses data provided by other modules or creates sample data for backtesting
+        return pd.DataFrame()
+    
     def create_strategies_layout(self) -> html.Div:
         """Create strategies-specific layout"""
         return html.Div([

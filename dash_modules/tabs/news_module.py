@@ -40,7 +40,12 @@ class NewsModule(BaseMarketModule):
         """Get default news category"""
         return 'All News'
     
-    def load_market_data(self, category: str = 'All News', limit: int = 50) -> pd.DataFrame:
+    def load_market_data(self, category: str = 'All News', interval: str = '1h', limit: int = 50) -> pd.DataFrame:
+        """Load economic news data from Alpha Vantage"""
+        # Alias pour la compatibilité avec BaseMarketModule
+        return self.load_news_data(category, limit)
+    
+    def load_news_data(self, category: str = 'All News', limit: int = 50) -> pd.DataFrame:
         """Load economic news data from Alpha Vantage"""
         try:
             print(f"🔄 Loading news data for category: {category}...")
