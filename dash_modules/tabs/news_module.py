@@ -146,10 +146,16 @@ class NewsModule(BaseMarketModule):
         """Get default news category"""
         return 'All News'
     
-    def load_market_data(self, category: str = 'All News', interval: str = '1h', limit: int = 50) -> pd.DataFrame:
-        """Load economic news data from Alpha Vantage"""
-        # Alias pour la compatibilité avec BaseMarketModule
-        return self.load_news_data(category, limit)
+    def load_market_data(self, category: str = 'All News', time_range: str = '24h', limit: int = 50) -> pd.DataFrame:
+        """Load economic news data from Alpha Vantage with time filtering"""
+        # Load the news data
+        news_data = self.load_news_data(category, limit)
+        
+        # Apply time filtering
+        if not news_data.empty and 'time_published' in news_data.columns:
+            news_data = self._filter_by_time_range(news_data, time_range)
+        
+        return news_data
     
     def load_news_data(self, category: str = 'All News', limit: int = 50) -> pd.DataFrame:
         """Load economic news data from Alpha Vantage"""
@@ -163,6 +169,16 @@ class NewsModule(BaseMarketModule):
             if news_list and len(news_list) > 0:
                 # Convert list of news items to DataFrame
                 news_data = pd.DataFrame(news_list)
+                
+                # Apply category filtering only if not "All News" and we have real data
+                if category != 'All News' and len(news_data) > 10:  # Only filter if we have many articles (real data)
+                    original_count = len(news_data)
+                    news_data = self._filter_by_category(news_data, category)
+                    # If filtering removed too many articles, keep original data
+                    if len(news_data) < original_count * 0.1:  # Less than 10% remaining
+                        print(f"⚠️ Category filter too restrictive, keeping all {original_count} articles")
+                        news_data = pd.DataFrame(news_list)  # Reset to original
+                
                 print(f"✅ {category}: {len(news_data)} news articles loaded")
                 return news_data
             else:
@@ -172,6 +188,99 @@ class NewsModule(BaseMarketModule):
         except Exception as e:
             print(f"❌ Error loading news data for {category}: {e}")
             return self._create_fallback_news_data(category)
+    
+    def _filter_by_time_range(self, data: pd.DataFrame, time_range: str) -> pd.DataFrame:
+        """Filter news data by time range"""
+        if time_range == "all" or not time_range:
+            return data
+        
+        try:
+            # Check for time_published (Alpha Vantage) or published column
+            time_col = None
+            if 'time_published' in data.columns:
+                time_col = 'time_published'
+            elif 'published' in data.columns:
+                time_col = 'published'
+            else:
+                print("⚠️ No time column found, returning unfiltered data")
+                return data
+            
+            # Convert time column to datetime if not already
+            if not pd.api.types.is_datetime64_any_dtype(data[time_col]):
+                data[time_col] = pd.to_datetime(data[time_col], errors='coerce')
+            
+            # Get current time and calculate cutoff
+            now = pd.Timestamp.now()
+            
+            if time_range == "1h":
+                cutoff = now - pd.Timedelta(hours=1)
+            elif time_range == "24h":
+                cutoff = now - pd.Timedelta(hours=24)
+            elif time_range == "7d":
+                cutoff = now - pd.Timedelta(days=7)
+            elif time_range == "30d":
+                cutoff = now - pd.Timedelta(days=30)
+            else:
+                print(f"⚠️ Unknown time range: {time_range}, returning unfiltered data")
+                return data
+            
+            # Filter data
+            filtered_data = data[data[time_col] >= cutoff]
+            print(f"🕒 Filtered {len(data)} articles to {len(filtered_data)} articles for time range: {time_range}")
+            
+            return filtered_data
+            
+        except Exception as e:
+            print(f"❌ Error filtering by time range {time_range}: {e}")
+            return data
+    
+    def _filter_by_category(self, data: pd.DataFrame, category: str) -> pd.DataFrame:
+        """Filter news data by category based on keywords and topics"""
+        try:
+            # Category keyword mapping - more comprehensive and flexible
+            category_keywords = {
+                'Market News': ['market', 'stock', 'trading', 'index', 'equity', 'share', 'portfolio', 'investor', 'wall street', 'nasdaq', 'dow', 'sp500', 'bull', 'bear'],
+                'Economic Indicators': ['gdp', 'inflation', 'unemployment', 'cpi', 'ppi', 'employment', 'economic', 'indicator', 'growth', 'recession', 'economy', 'fiscal'],
+                'Central Banks': ['fed', 'federal reserve', 'ecb', 'central bank', 'interest rate', 'monetary policy', 'boe', 'boj', 'rate hike', 'rate cut', 'powell', 'fomc'],
+                'Earnings': ['earnings', 'revenue', 'profit', 'quarterly', 'annual report', 'eps', 'guidance', 'results', 'beat', 'miss', 'outlook'],
+                'Commodities': ['oil', 'gold', 'silver', 'commodity', 'crude', 'natural gas', 'copper', 'agricultural', 'wheat', 'corn', 'precious metals'],
+                'Technology': ['tech', 'technology', 'ai', 'artificial intelligence', 'software', 'hardware', 'semiconductor', 'apple', 'microsoft', 'google', 'amazon'],
+                'Financial': ['bank', 'financial', 'credit', 'lending', 'mortgage', 'insurance', 'fintech', 'jpmorgan', 'goldman', 'wells fargo'],
+                'Energy': ['energy', 'oil', 'gas', 'renewable', 'solar', 'wind', 'electricity', 'power', 'exxon', 'chevron', 'bp']
+            }
+            
+            if category not in category_keywords:
+                print(f"⚠️ Unknown category: {category}, returning unfiltered data")
+                return data
+            
+            # Get keywords for the category
+            keywords = category_keywords[category]
+            
+            # Filter by checking title and summary for keywords (case insensitive)
+            mask = pd.Series([False] * len(data), index=data.index)
+            
+            for idx, row in data.iterrows():
+                text_to_search = ""
+                
+                # Combine title, summary and topics for keyword search
+                for col in ['title', 'summary', 'topics', 'overall_sentiment_label']:
+                    if col in row and pd.notna(row[col]):
+                        text_to_search += str(row[col]).lower() + " "
+                
+                # Check if any keyword matches (more flexible matching)
+                for keyword in keywords:
+                    if keyword.lower() in text_to_search:
+                        mask[idx] = True
+                        break
+            
+            filtered_data = data[mask]
+            print(f"📂 Filtered {len(data)} articles to {len(filtered_data)} articles for category: {category}")
+            
+            return filtered_data
+            
+        except Exception as e:
+            print(f"❌ Error filtering by category {category}: {e}")
+            return data
     
     def _create_fallback_news_data(self, category: str) -> pd.DataFrame:
         """Create fallback news data when API unavailable"""

@@ -141,6 +141,10 @@ class AlphaVantageAPI:
         if not data or "feed" not in data:
             print("⚠️ Alpha Vantage news unavailable, using fallback")
             print(f"📊 Response keys: {list(data.keys()) if data else 'No data'}")
+            if data and 'Information' in data:
+                print(f"ℹ️ Alpha Vantage Information: {data['Information']}")
+            elif data and 'Note' in data:
+                print(f"ℹ️ Alpha Vantage Note: {data['Note']}")
             return self._create_fallback_news()
         
         print(f"✅ Received {len(data.get('feed', []))} news articles from Alpha Vantage")

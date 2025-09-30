@@ -383,8 +383,8 @@ class THEBOTDashApp:
             # ===== HEADER =====
             self.create_header(),
             
-            # ===== CONTROL BAR =====  
-            self.create_control_bar(),
+            # ===== CONTROL BAR (conditionnelle) =====  
+            html.Div(id="control-bar-content"),
             
             # ===== MAIN CONTENT =====
             dbc.Row([
@@ -1131,6 +1131,22 @@ class THEBOTDashApp:
     def setup_callbacks(self):
         """Configurer les callbacks Dash"""
         
+        # Callback pour la barre de contrôle conditionnelle
+        @self.app.callback(
+            Output('control-bar-content', 'children'),
+            [Input('main-tabs', 'active_tab')]
+        )
+        def update_control_bar(active_tab):
+            """Afficher la barre de contrôle seulement pour les onglets de marché"""
+            # Onglets qui ont besoin de la barre de contrôle
+            market_tabs = ['crypto', 'forex', 'stocks']
+            
+            if active_tab in market_tabs:
+                return self.create_control_bar()
+            else:
+                # Pas de barre de contrôle pour news et strategies
+                return html.Div()
+        
         # Callback principal pour la navigation entre onglets modulaires
         @self.app.callback(
             [Output('modular-content', 'children'),
@@ -1555,12 +1571,13 @@ class THEBOTDashApp:
                 [Output('news-feed-content', 'children'),
                  Output('news-articles-store', 'data')],
                 [Input('news-category-dropdown', 'value'),
+                 Input('news-time-range', 'value'),
                  Input('sentiment-filter', 'value')]
             )
-            def update_news_feed(category, sentiment):
-                """Mettre à jour le feed d'actualités"""
+            def update_news_feed(category, time_range, sentiment):
+                """Mettre à jour le feed d'actualités avec tous les filtres"""
                 try:
-                    news_data = self.modules['news'].load_market_data(category)
+                    news_data = self.modules['news'].load_market_data(category, time_range)
                     news_html, articles_data = self.modules['news'].create_news_feed(news_data, sentiment)
                     return news_html, articles_data
                 except Exception as e:
@@ -1569,12 +1586,13 @@ class THEBOTDashApp:
             
             @self.app.callback(
                 Output('market-impact-content', 'children'),
-                [Input('news-category-dropdown', 'value')]
+                [Input('news-category-dropdown', 'value'),
+                 Input('news-time-range', 'value')]
             )
-            def update_market_impact(category):
+            def update_market_impact(category, time_range):
                 """Mettre à jour l'analyse d'impact marché"""
                 try:
-                    news_data = self.modules['news'].load_market_data(category)
+                    news_data = self.modules['news'].load_market_data(category, time_range)
                     return self.modules['news'].create_market_impact_widget(news_data)
                 except:
                     return html.Div("Pas de données d'impact", className="text-muted")
