@@ -438,9 +438,9 @@ class THEBOTDashApp:
                     dbc.Tab(label="📰 News", tab_id="news"),
                     dbc.Tab(label="₿ Crypto", tab_id="crypto"),
                     dbc.Tab(label="💱 Forex", tab_id="forex"),
-                    dbc.Tab(label="� Stocks", tab_id="stocks"),
+                    dbc.Tab(label="📈 Stocks", tab_id="stocks"),
                     dbc.Tab(label="🎯 Strategies", tab_id="strategies")
-                ], id="main-tabs", active_tab="crypto", className="mb-0")
+                ], id="main-tabs", active_tab="news", className="mb-0")
             ], width=7),
             
             # Indicateurs de marchés globaux et API Keys
@@ -1687,15 +1687,61 @@ class THEBOTDashApp:
         @self.app.callback(
             Output("api-config-modal", "is_open", allow_duplicate=True),
             [Input("save-config-btn", "n_clicks")],
+            [State("api-key-forex-alpha-vantage", "value"),
+             State("api-key-stocks-alpha-vantage", "value"),
+             State("api-key-news-alpha-vantage-news", "value")],
             prevent_initial_call=True
         )
-        def save_api_config(save_clicks):
+        def save_api_config(save_clicks, forex_key, stocks_key, news_key):
             """Save API configuration and close modal"""
             if save_clicks:
-                # Save configuration logic will be added here
-                api_config.save_config()
+                try:
+                    # Save Alpha Vantage keys
+                    if forex_key:
+                        api_config.set_api_key('Alpha Vantage', 'forex', forex_key)
+                        print(f"✅ Forex API key saved: {forex_key[:8]}...")
+                    
+                    if stocks_key:
+                        api_config.set_api_key('Alpha Vantage', 'stocks', stocks_key)
+                        print(f"✅ Stocks API key saved: {stocks_key[:8]}...")
+                    
+                    if news_key:
+                        api_config.set_api_key('Alpha Vantage News', 'news', news_key)
+                        print(f"✅ News API key saved: {news_key[:8]}...")
+                    
+                    # Save to file
+                    api_config.save_config()
+                    print("✅ Configuration saved successfully")
+                    
+                except Exception as e:
+                    print(f"❌ Error saving API config: {e}")
+                
                 return False
             return dash.no_update
+        
+        @self.app.callback(
+            [Output("api-key-forex-alpha-vantage", "value"),
+             Output("api-key-stocks-alpha-vantage", "value"),
+             Output("api-key-news-alpha-vantage-news", "value")],
+            [Input("api-config-modal", "is_open")]
+        )
+        def load_api_keys(is_open):
+            """Load existing API keys when modal opens"""
+            if is_open:
+                try:
+                    forex_provider = api_config.get_provider('forex', 'Alpha Vantage')
+                    stocks_provider = api_config.get_provider('stocks', 'Alpha Vantage')
+                    news_provider = api_config.get_provider('news', 'Alpha Vantage News')
+                    
+                    forex_key = forex_provider['config'].get('api_key', '') if forex_provider else ''
+                    stocks_key = stocks_provider['config'].get('api_key', '') if stocks_provider else ''
+                    news_key = news_provider['config'].get('api_key', '') if news_provider else ''
+                    
+                    return forex_key, stocks_key, news_key
+                except Exception as e:
+                    print(f"❌ Error loading API keys: {e}")
+                    return '', '', ''
+            return dash.no_update, dash.no_update, dash.no_update
         
         @self.app.callback(
             Output("api-config-modal", "is_open", allow_duplicate=True),

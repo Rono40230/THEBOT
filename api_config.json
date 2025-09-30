@@ -28,7 +28,7 @@
         {
           "name": "Alpha Vantage",
           "type": "forex",
-          "status": "inactive",
+          "status": "active",
           "api_key_required": true,
           "description": "Professional forex and currency data",
           "data_types": [
@@ -45,7 +45,7 @@
             "fx_intraday": "function=FX_INTRADAY"
           },
           "config": {
-            "api_key": ""
+            "api_key": "8LOI149VLAXKFQ08"
           }
         }
       ],
@@ -53,7 +53,7 @@
         {
           "name": "Alpha Vantage",
           "type": "stocks",
-          "status": "inactive",
+          "status": "active",
           "api_key_required": true,
           "description": "Global equity market data",
           "data_types": [
@@ -71,7 +71,7 @@
             "intraday": "function=TIME_SERIES_INTRADAY"
           },
           "config": {
-            "api_key": ""
+            "api_key": "8LOI149VLAXKFQ08"
           }
         }
       ],
@@ -79,7 +79,7 @@
         {
           "name": "Alpha Vantage News",
           "type": "news",
-          "status": "inactive",
+          "status": "active",
           "api_key_required": true,
           "description": "Economic news and sentiment analysis",
           "data_types": [
@@ -95,7 +95,7 @@
             "news": "function=NEWS_SENTIMENT"
           },
           "config": {
-            "api_key": ""
+            "api_key": "8LOI149VLAXKFQ08"
           }
         }
       ]
@@ -156,6 +156,6 @@
     "auto_fallback": true,
     "health_monitoring": true,
     "cost_tracking": true,
-    "last_updated": "2025-09-30T10:20:41.610438"
+    "last_updated": "2025-09-30T10:40:27.728270"
   }
 }
