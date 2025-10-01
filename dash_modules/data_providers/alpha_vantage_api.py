@@ -126,8 +126,8 @@ class AlphaVantageAPI:
             print(f"🔑 API Key: {self.api_key[:8]}...")
         
         if not self.api_key:
-            print("⚠️ No API key, using fallback news")
-            return self._create_fallback_news()
+            print("❌ No API key, no data available")
+            return []
         
         params = {
             "function": "NEWS_SENTIMENT",
@@ -139,13 +139,13 @@ class AlphaVantageAPI:
         data = self._make_request(params)
         
         if not data or "feed" not in data:
-            print("⚠️ Alpha Vantage news unavailable, using fallback")
+            print("❌ Alpha Vantage news unavailable, no data returned")
             print(f"📊 Response keys: {list(data.keys()) if data else 'No data'}")
             if data and 'Information' in data:
                 print(f"ℹ️ Alpha Vantage Information: {data['Information']}")
             elif data and 'Note' in data:
                 print(f"ℹ️ Alpha Vantage Note: {data['Note']}")
-            return self._create_fallback_news()
+            return []
         
         print(f"✅ Received {len(data.get('feed', []))} news articles from Alpha Vantage")
         return self._parse_news_data(data)
@@ -304,42 +304,7 @@ class AlphaVantageAPI:
         df.index = df['timestamp']
         return df
     
-    def _create_fallback_news(self) -> List[Dict]:
-        """Create fallback news data when API unavailable"""
-        fallback_news = [
-            {
-                'title': 'Federal Reserve Maintains Interest Rates',
-                'summary': 'The Federal Reserve decided to keep interest rates unchanged at 5.25-5.5% range.',
-                'url': '#',
-                'time_published': datetime.now().strftime('%Y%m%dT%H%M%S'),
-                'sentiment_score': 0.1,
-                'sentiment_label': 'Neutral',
-                'source': 'Economic Calendar',
-                'topics': ['monetary_policy', 'federal_reserve']
-            },
-            {
-                'title': 'US GDP Growth Exceeds Expectations',
-                'summary': 'Q3 GDP growth reached 2.4%, surpassing economist predictions of 2.1%.',
-                'url': '#',
-                'time_published': (datetime.now() - timedelta(hours=2)).strftime('%Y%m%dT%H%M%S'),
-                'sentiment_score': 0.3,
-                'sentiment_label': 'Positive',
-                'source': 'Economic Data',
-                'topics': ['gdp', 'economic_growth']
-            },
-            {
-                'title': 'Inflation Data Shows Continued Decline',
-                'summary': 'Core PCE inflation dropped to 3.2%, indicating progress towards Fed targets.',
-                'url': '#',
-                'time_published': (datetime.now() - timedelta(hours=5)).strftime('%Y%m%dT%H%M%S'),
-                'sentiment_score': 0.2,
-                'sentiment_label': 'Positive',
-                'source': 'Bureau of Labor Statistics',
-                'topics': ['inflation', 'economic_indicators']
-            }
-        ]
-        
-        return fallback_news
+
     
     def test_connection(self) -> Dict[str, bool]:
         """Test API connection and return status"""

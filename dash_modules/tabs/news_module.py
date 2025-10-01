@@ -10,7 +10,7 @@ import pandas as pd
 from typing import List, Dict
 from datetime import datetime, timedelta
 import dash
-from dash import dcc, html, callback, Input, Output, State
+from dash import dcc, html, callback, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 import json
 
@@ -49,6 +49,150 @@ class NewsModule(BaseMarketModule):
             'All News', 'Market News', 'Economic Indicators', 'Central Banks',
             'Earnings', 'Commodities', 'Technology', 'Financial', 'Energy'
         ]
+        
+        # Ajout pour compatibilité avec la nouvelle architecture
+        self.translator = None
+        if TRANSLATION_AVAILABLE:
+            try:
+                self.translator = Translator()
+            except Exception as e:
+                print(f"⚠️ Erreur initialisation traducteur: {e}")
+    
+    def get_layout(self):
+        """Layout complet pour le module News"""
+        return html.Div([
+            
+            # Header du module News
+            dbc.Row([
+                dbc.Col([
+                    html.H2([
+                        html.I(className="fas fa-newspaper me-3"),
+                        "📰 News & Economic Intelligence"
+                    ], className="text-light mb-4")
+                ])
+            ]),
+            
+            # Contrôles de filtrage
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("Catégorie", className="text-light"),
+                    dcc.Dropdown(
+                        id='news-category-dropdown',
+                        options=[{'label': cat, 'value': cat} for cat in self.news_categories],
+                        value='All News',
+                        className="mb-3"
+                    )
+                ], width=3),
+                
+                dbc.Col([
+                    dbc.Label("Période", className="text-light"),
+                    dcc.Dropdown(
+                        id='news-time-range',
+                        options=[
+                            {'label': 'Dernières 6 heures', 'value': '6h'},
+                            {'label': 'Dernières 24 heures', 'value': '24h'},
+                            {'label': 'Derniers 3 jours', 'value': '3d'},
+                            {'label': 'Dernière semaine', 'value': '7d'}
+                        ],
+                        value='24h',
+                        className="mb-3"
+                    )
+                ], width=3),
+                
+                dbc.Col([
+                    dbc.Label("Sentiment", className="text-light"),
+                    dcc.Dropdown(
+                        id='sentiment-filter',
+                        options=[
+                            {'label': 'Tous', 'value': 'all'},
+                            {'label': 'Positif', 'value': 'positive'},
+                            {'label': 'Neutre', 'value': 'neutral'},
+                            {'label': 'Négatif', 'value': 'negative'}
+                        ],
+                        value='all',
+                        className="mb-3"
+                    )
+                ], width=3),
+                
+                dbc.Col([
+                    dbc.Button([
+                        html.I(className="fas fa-sync-alt me-2"),
+                        "Actualiser"
+                    ], color="primary", id="refresh-news-btn", className="mt-4")
+                ], width=3)
+            ], className="mb-4"),
+            
+            # Layout principal avec 3 colonnes
+            dbc.Row([
+                
+                # Colonne 1: Feed d'actualités
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-rss me-2"),
+                            "Feed d'Actualités"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id='news-feed-content', children=[
+                                html.Div("Chargement des actualités...", className="text-center p-4")
+                            ])
+                        ])
+                    ], className="h-100")
+                ], width=5),
+                
+                # Colonne 2: Impact Marché
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-chart-line me-2"),
+                            "Impact Marché"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id='market-impact-content', children=[
+                                html.Div("Chargement de l'analyse d'impact...", className="text-center p-4")
+                            ])
+                        ])
+                    ], className="h-100")
+                ], width=3),
+                
+                # Colonne 3: Calendrier Économique
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-calendar-alt me-2"),
+                            "Calendrier Économique"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id='economic-calendar-content', children=[
+                                html.Div("Chargement du calendrier...", className="text-center p-4")
+                            ])
+                        ])
+                    ], className="h-100")
+                ], width=4)
+                
+            ], style={'minHeight': '600px'}),
+            
+            # Modal pour affichage des articles complets
+            dbc.Modal([
+                dbc.ModalHeader([
+                    dbc.ModalTitle(id="news-modal-title")
+                ]),
+                dbc.ModalBody([
+                    html.Div(id="news-modal-content")
+                ]),
+                dbc.ModalFooter([
+                    dbc.Button([
+                        html.I(className="fas fa-external-link-alt me-2"),
+                        "Lire l'article complet"
+                    ], id="news-modal-source-btn", color="primary", target="_blank"),
+                    dbc.Button("Fermer", id="news-modal-close", color="secondary")
+                ])
+            ], id="news-modal", size="lg", scrollable=True),
+            
+            # Store pour les données des articles
+            dcc.Store(id='news-articles-store', data=[])
+            
+        ], className="p-4")
         
     def fetch_full_article_content(self, url: str) -> str:
         """
@@ -170,24 +314,26 @@ class NewsModule(BaseMarketModule):
                 # Convert list of news items to DataFrame
                 news_data = pd.DataFrame(news_list)
                 
-                # Apply category filtering only if not "All News" and we have real data
-                if category != 'All News' and len(news_data) > 10:  # Only filter if we have many articles (real data)
+                # Apply category filtering only if not "All News"
+                if category != 'All News':
                     original_count = len(news_data)
-                    news_data = self._filter_by_category(news_data, category)
-                    # If filtering removed too many articles, keep original data
-                    if len(news_data) < original_count * 0.1:  # Less than 10% remaining
-                        print(f"⚠️ Category filter too restrictive, keeping all {original_count} articles")
-                        news_data = pd.DataFrame(news_list)  # Reset to original
+                    filtered_data = self._filter_by_category(news_data, category)
+                    # If filtering found articles, use them; otherwise keep original
+                    if len(filtered_data) > 0:
+                        news_data = filtered_data
+                        print(f"✅ Category filter applied: {original_count} → {len(news_data)} articles")
+                    else:
+                        print(f"⚠️ No articles found for category '{category}', showing all articles")
                 
                 print(f"✅ {category}: {len(news_data)} news articles loaded")
                 return news_data
             else:
-                print(f"⚠️ No news data for {category}, using fallback")
-                return self._create_fallback_news_data(category)
+                print(f"❌ No news data available from API for {category}")
+                return pd.DataFrame()  # Return empty DataFrame instead of fallback
                 
         except Exception as e:
             print(f"❌ Error loading news data for {category}: {e}")
-            return self._create_fallback_news_data(category)
+            return pd.DataFrame()  # Return empty DataFrame instead of fallback
     
     def _filter_by_time_range(self, data: pd.DataFrame, time_range: str) -> pd.DataFrame:
         """Filter news data by time range"""
@@ -212,10 +358,12 @@ class NewsModule(BaseMarketModule):
             # Get current time and calculate cutoff
             now = pd.Timestamp.now()
             
-            if time_range == "1h":
-                cutoff = now - pd.Timedelta(hours=1)
+            if time_range == "6h":
+                cutoff = now - pd.Timedelta(hours=6)
             elif time_range == "24h":
                 cutoff = now - pd.Timedelta(hours=24)
+            elif time_range == "3d":
+                cutoff = now - pd.Timedelta(days=3)
             elif time_range == "7d":
                 cutoff = now - pd.Timedelta(days=7)
             elif time_range == "30d":
@@ -282,85 +430,7 @@ class NewsModule(BaseMarketModule):
             print(f"❌ Error filtering by category {category}: {e}")
             return data
     
-    def _create_fallback_news_data(self, category: str) -> pd.DataFrame:
-        """Create fallback news data when API unavailable"""
-        print(f"📰 Creating fallback news data for {category}")
-        
-        # Generate realistic news headlines and content
-        news_templates = {
-            'Market News': [
-                "Market rallies on positive economic data",
-                "Stocks close mixed amid volatility concerns",
-                "Tech sector leads market gains",
-                "Energy stocks surge on oil price increase"
-            ],
-            'Economic Indicators': [
-                "GDP growth exceeds expectations in Q4",
-                "Inflation data shows cooling trend",
-                "Employment numbers beat forecasts",
-                "Consumer confidence index rises"
-            ],
-            'Central Banks': [
-                "Federal Reserve signals rate pause",
-                "ECB maintains monetary policy stance",
-                "Bank of Japan considers policy adjustment",
-                "Central bank coordination on global stability"
-            ],
-            'Earnings': [
-                "Major tech companies report strong earnings",
-                "Banking sector shows resilient profits",
-                "Retail earnings reflect consumer strength",
-                "Energy companies post record revenues"
-            ],
-            'Technology': [
-                "AI breakthrough drives tech innovation",
-                "Semiconductor demand remains strong",
-                "Cloud computing growth accelerates",
-                "Cybersecurity spending increases"
-            ]
-        }
-        
-        # Select templates based on category
-        if category in news_templates:
-            headlines = news_templates[category]
-        else:
-            # Mix all categories for 'All News'
-            headlines = []
-            for cat_headlines in news_templates.values():
-                headlines.extend(cat_headlines[:2])
-        
-        # Generate news data
-        news_data = []
-        for i, headline in enumerate(headlines[:20]):  # Limit to 20 items
-            news_time = datetime.now() - timedelta(hours=i*2)
-            
-            # Generate realistic news data
-            news_item = {
-                'time_published': news_time.strftime('%Y%m%dT%H%M%S'),
-                'title': headline,
-                'url': f'https://example-news.com/article-{i+1}',
-                'summary': f'Detailed analysis of {headline.lower()}. Market impact and expert opinions...',
-                'source': self._get_random_source(),
-                'category_within_source': category,
-                'sentiment_score': round(0.5 + (i % 3 - 1) * 0.3, 2),  # Vary between 0.2 and 0.8
-                'relevance_score': round(0.8 - (i * 0.02), 2)  # Decrease relevance with time
-            }
-            news_data.append(news_item)
-        
-        df = pd.DataFrame(news_data)
-        df['timestamp'] = pd.to_datetime(df['time_published'], format='%Y%m%dT%H%M%S')
-        df.index = df['timestamp']
-        
-        return df
-    
-    def _get_random_source(self) -> str:
-        """Get random news source"""
-        sources = [
-            'Reuters', 'Bloomberg', 'Financial Times', 'Wall Street Journal',
-            'MarketWatch', 'CNBC', 'Yahoo Finance', 'Barrons'
-        ]
-        import random
-        return random.choice(sources)
+
     
     def create_news_layout(self) -> html.Div:
         """Create news-specific layout"""
@@ -462,10 +532,20 @@ class NewsModule(BaseMarketModule):
     def create_news_feed(self, news_data: pd.DataFrame, sentiment_filter: str = 'all') -> tuple:
         """Create news feed component and return HTML + data"""
         if news_data.empty:
-            return html.Div("No news data available", className="text-muted"), []
+            return html.Div([
+                html.Div([
+                    html.I(className="fas fa-exclamation-triangle me-2"),
+                    "Aucune donnée d'actualités disponible"
+                ], className="text-warning text-center p-4"),
+                html.Small("Vérifiez votre configuration API ou vos limites de requêtes", 
+                          className="text-muted d-block text-center")
+            ]), []
         
         # Filter by sentiment if needed
-        if sentiment_filter != 'all':
+        if sentiment_filter != 'all' and 'sentiment_score' in news_data.columns:
+            print(f"🎯 Applying sentiment filter: {sentiment_filter}")
+            original_count = len(news_data)
+            
             if sentiment_filter == 'positive':
                 news_data = news_data[news_data['sentiment_score'] > 0.6]
             elif sentiment_filter == 'negative':
@@ -473,6 +553,10 @@ class NewsModule(BaseMarketModule):
             else:  # neutral
                 news_data = news_data[(news_data['sentiment_score'] >= 0.4) & 
                                      (news_data['sentiment_score'] <= 0.6)]
+            
+            print(f"✅ Sentiment filter applied: {original_count} → {len(news_data)} articles")
+        elif sentiment_filter != 'all':
+            print("⚠️ No sentiment_score column found, skipping sentiment filter")
         
         # Store articles data for modal access
         articles_data = []
@@ -538,7 +622,10 @@ class NewsModule(BaseMarketModule):
     def create_market_impact_widget(self, news_data: pd.DataFrame) -> html.Div:
         """Create market impact analysis widget"""
         if news_data.empty:
-            return html.Div("No impact data", className="text-muted")
+            return html.Div([
+                html.I(className="fas fa-chart-line-down me-2"),
+                "Aucune donnée d'impact disponible"
+            ], className="text-warning text-center p-4")
         
         # Calculate sentiment distribution
         positive_count = len(news_data[news_data['sentiment_score'] > 0.6])
@@ -578,105 +665,27 @@ class NewsModule(BaseMarketModule):
         ])
     
     def create_economic_calendar_widget(self) -> html.Div:
-        """Create economic calendar widget with current dates"""
-        from datetime import datetime, timedelta
-        
-        # Get current date and generate events for the coming weeks
-        today = datetime.now()
-        
-        # Create realistic upcoming economic events with current dates
-        events = [
-            {
-                'date': (today + timedelta(days=1)).strftime('%Y-%m-%d'),
-                'event': 'Unemployment Rate',
-                'impact': 'High',
-                'time': '08:30 EST'
-            },
-            {
-                'date': (today + timedelta(days=3)).strftime('%Y-%m-%d'),
-                'event': 'Consumer Price Index (CPI)',
-                'impact': 'High',
-                'time': '08:30 EST'
-            },
-            {
-                'date': (today + timedelta(days=5)).strftime('%Y-%m-%d'),
-                'event': 'Federal Reserve Meeting',
-                'impact': 'High',
-                'time': '14:00 EST'
-            },
-            {
-                'date': (today + timedelta(days=7)).strftime('%Y-%m-%d'),
-                'event': 'GDP Growth Rate',
-                'impact': 'High',
-                'time': '08:30 EST'
-            },
-            {
-                'date': (today + timedelta(days=10)).strftime('%Y-%m-%d'),
-                'event': 'Producer Price Index (PPI)',
-                'impact': 'Medium',
-                'time': '08:30 EST'
-            },
-            {
-                'date': (today + timedelta(days=12)).strftime('%Y-%m-%d'),
-                'event': 'Retail Sales',
-                'impact': 'Medium',
-                'time': '08:30 EST'
-            },
-            {
-                'date': (today + timedelta(days=14)).strftime('%Y-%m-%d'),
-                'event': 'Industrial Production',
-                'impact': 'Medium',
-                'time': '09:15 EST'
-            },
-            {
-                'date': (today + timedelta(days=17)).strftime('%Y-%m-%d'),
-                'event': 'Consumer Confidence Index',
-                'impact': 'Low',
-                'time': '10:00 EST'
-            }
-        ]
-        
-        event_items = []
-        for event in events:
-            impact_color = {
-                'High': 'danger',
-                'Medium': 'warning',
-                'Low': 'success'
-            }.get(event['impact'], 'secondary')
-            
-            # Calculate days from today
-            event_date = datetime.strptime(event['date'], '%Y-%m-%d')
-            days_diff = (event_date - today).days
-            
-            if days_diff == 0:
-                date_display = "Aujourd'hui"
-            elif days_diff == 1:
-                date_display = "Demain"
-            else:
-                date_display = f"Dans {days_diff} jours"
-            
-            event_item = html.Div([
+        """Create economic calendar widget using real API data only"""
+        try:
+            # Try to get real economic calendar data from API
+            # For now, return a message indicating API-only mode
+            return html.Div([
                 html.Div([
-                    html.Div([
-                        html.Strong(event['event']),
-                        html.Br(),
-                        html.Small(f"{event['time']}", className="text-muted")
-                    ]),
-                    html.Div([
-                        dbc.Badge(event['impact'], color=impact_color, className="mb-1"),
-                        html.Br(),
-                        html.Small(date_display, className="text-info")
-                    ], className="text-end")
-                ], className="d-flex justify-content-between align-items-start"),
-                html.Hr(className="my-2")
-            ], className="mb-2")
-            
-            event_items.append(event_item)
-        
-        return html.Div([
-            html.H6("📅 Événements à venir", className="mb-3"),
-            html.Div(event_items, style={"max-height": "400px", "overflow-y": "auto"})
-        ])
+                    html.I(className="fas fa-calendar-alt me-2"),
+                    "Calendrier économique"
+                ], className="text-info mb-3"),
+                html.Div([
+                    html.I(className="fas fa-info-circle me-2"),
+                    "Mode API uniquement - Aucune donnée simulée"
+                ], className="text-warning text-center p-4"),
+                html.Small("Le calendrier économique nécessite une API dédiée", 
+                          className="text-muted d-block text-center")
+            ])
+        except Exception as e:
+            return html.Div([
+                html.I(className="fas fa-exclamation-triangle me-2"),
+                "Erreur de chargement du calendrier"
+            ], className="text-danger text-center p-4")
     
     def _calculate_time_ago(self, timestamp: datetime) -> str:
         """Calculate human-readable time ago"""
@@ -876,3 +885,109 @@ class NewsModule(BaseMarketModule):
                 ], className="mb-3")
             ])
         ])
+    
+    def setup_callbacks(self, app):
+        """Configurer les callbacks pour le module News"""
+        
+        @app.callback(
+            [Output('news-feed-content', 'children'),
+             Output('news-articles-store', 'data')],
+            [Input('news-category-dropdown', 'value'),
+             Input('news-time-range', 'value'),
+             Input('sentiment-filter', 'value')]
+        )
+        def update_news_feed(category, time_range, sentiment):
+            """Mettre à jour le feed d'actualités avec tous les filtres"""
+            try:
+                print(f"🔄 Updating news feed: category='{category}', time_range='{time_range}', sentiment='{sentiment}'")
+                news_data = self.load_market_data(category, time_range)
+                news_html, articles_data = self.create_news_feed(news_data, sentiment)
+                print(f"✅ News feed updated: {len(articles_data)} articles")
+                return news_html, articles_data
+            except Exception as e:
+                print(f"❌ Erreur callback news: {e}")
+                import traceback
+                traceback.print_exc()
+                return html.Div(f"Erreur de chargement des actualités: {str(e)}", className="text-muted"), []
+        
+        @app.callback(
+            Output('market-impact-content', 'children'),
+            [Input('news-category-dropdown', 'value'),
+             Input('news-time-range', 'value')]
+        )
+        def update_market_impact(category, time_range):
+            """Mettre à jour l'analyse d'impact marché"""
+            try:
+                news_data = self.load_market_data(category, time_range)
+                return self.create_market_impact_widget(news_data)
+            except:
+                return html.Div("Pas de données d'impact", className="text-muted")
+        
+        @app.callback(
+            Output('economic-calendar-content', 'children'),
+            [Input('main-tabs', 'active_tab')]
+        )
+        def update_economic_calendar(active_tab):
+            """Mettre à jour le calendrier économique"""
+            if active_tab == 'news':
+                try:
+                    return self.create_economic_calendar_widget()
+                except:
+                    return html.Div("Calendrier non disponible", className="text-muted")
+            return html.Div()
+        
+        # Callbacks pour la modal d'article
+        @app.callback(
+            [Output("news-modal", "is_open"),
+             Output("news-modal-title", "children"),
+             Output("news-modal-content", "children"),
+             Output("news-modal-source-btn", "href"),
+             Output("news-modal-source-btn", "style")],
+            [Input({"type": "news-read-btn", "index": ALL}, "n_clicks"),
+             Input("news-modal-close", "n_clicks")],
+            [State("news-modal", "is_open"),
+             State("news-articles-store", "data")],
+            prevent_initial_call=True
+        )
+        def handle_news_modal(read_clicks, close_clicks, is_open, articles_data):
+            """Gérer l'ouverture/fermeture de la modal d'article"""
+            ctx = dash.callback_context
+            if not ctx.triggered:
+                return False, "", "", "", {"display": "none"}
+            
+            trigger_id = ctx.triggered[0]["prop_id"]
+            
+            # Fermer la modal
+            if "news-modal-close" in trigger_id:
+                return False, "", "", "", {"display": "none"}
+            
+            # Ouvrir la modal avec un article
+            if "news-read-btn" in trigger_id and any(read_clicks):
+                try:
+                    # Trouver quel bouton a été cliqué
+                    clicked_index = None
+                    for i, clicks in enumerate(read_clicks):
+                        if clicks:
+                            clicked_index = i
+                            break
+                    
+                    if clicked_index is not None and articles_data and clicked_index < len(articles_data):
+                        article = articles_data[clicked_index]
+                        modal_content = self.create_article_modal_content(article, translate=True)
+                        
+                        # Vérifier si l'URL est valide
+                        article_url = article.get('url', '#')
+                        button_style = {"display": "none"} if (not article_url or article_url == '#' or not article_url.startswith(('http://', 'https://'))) else {}
+                        
+                        return (
+                            True,
+                            f"📰 {article.get('title', 'Article')[:60]}{'...' if len(article.get('title', '')) > 60 else ''}",
+                            modal_content,
+                            article_url,
+                            button_style
+                        )
+                except Exception as e:
+                    print(f"❌ Erreur modal: {e}")
+                    return True, "Erreur", html.Div("Impossible de charger l'article"), "", {"display": "none"}
+            
+            return is_open, "", "", "", {"display": "none"}

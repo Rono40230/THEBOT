@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 import dash
 from dash import dcc, html, dash_table, callback_context, clientside_callback, ClientsideFunction
-from dash.dependencies import Input, Output, State, ALL, MATCH
+from dash.dependencies import Input, Output, State, ALL
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -115,6 +115,15 @@ class THEBOTDashApp:
             }
             
             print("✅ Modules modulaires initialisés avec succès")
+            
+            # Configuration unique des callbacks pour les modules qui en ont
+            if 'news' in self.modules and hasattr(self.modules['news'], 'setup_callbacks'):
+                self.modules['news'].setup_callbacks(self.app)
+                print("✅ Callbacks News configurés")
+            
+            if 'strategies' in self.modules and hasattr(self.modules['strategies'], 'setup_callbacks'):
+                self.modules['strategies'].setup_callbacks(self.app)
+                print("✅ Callbacks Strategies configurés")
             
         except Exception as e:
             print(f"❌ Erreur lors de l'initialisation des modules: {e}")
@@ -294,66 +303,6 @@ class THEBOTDashApp:
             events.append(event)
             
         return sorted(events, key=lambda x: x['datetime'])
-    
-    def calculate_real_sma(self, prices, period=20):
-        """Calculer SMA réel avec THEBOT"""
-        if self.calculators_loaded and len(prices) >= period:
-            try:
-                # Utilisation de la méthode statique calculate_batch
-                results = SMACalculator.calculate_batch(prices, period)
-                return results
-            except Exception as e:
-                print(f"Info SMA: Utilisation fallback pandas - {e}")
-        
-        # Fallback pandas (très fiable)
-        return pd.Series(prices).rolling(window=period).mean().tolist()
-    
-    def calculate_real_ema(self, prices, period=12):
-        """Calculer EMA réel avec pandas (optimisé)"""
-        # Calcul EMA direct avec pandas - très efficace
-        return pd.Series(prices).ewm(span=period).mean().tolist()
-    
-    def calculate_real_rsi(self, prices, period=14):
-        """Calculer RSI réel avec pandas (optimisé)"""
-        # Calcul RSI manual optimisé avec pandas
-        series = pd.Series(prices)
-        delta = series.diff()
-        gain = delta.where(delta > 0, 0).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        rsi = 100 - (100 / (1 + rs))
-        return rsi.fillna(50).tolist()
-    
-    def calculate_real_atr(self, highs, lows, closes, period=14):
-        """Calculer ATR réel avec pandas (optimisé)"""
-        # Calcul ATR optimisé avec pandas
-        high_series = pd.Series(highs)
-        low_series = pd.Series(lows) 
-        close_series = pd.Series(closes)
-        
-        prev_close = close_series.shift(1)
-        tr1 = high_series - low_series
-        tr2 = abs(high_series - prev_close)
-        tr3 = abs(low_series - prev_close)
-        
-        true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        atr = true_range.rolling(window=period).mean()
-        return atr.fillna(0).tolist()
-        
-    def format_price_adaptive(self, price):
-        """Formatage adaptatif du prix selon sa valeur"""
-        if price >= 1:
-            # Prix >= 1 : 2-4 décimales
-            return f"{price:.2f}"
-        elif price >= 0.01:
-            # Prix entre 0.01 et 1 : 4-6 décimales
-            return f"{price:.4f}"
-        elif price >= 0.0001:
-            # Prix entre 0.0001 et 0.01 : 6-8 décimales
-            return f"{price:.6f}"
-        else:
-            # Prix très petits : 8-10 décimales
-            return f"{price:.8f}"
         
     def setup_calculators(self):
         """Initialiser les calculateurs THEBOT"""
@@ -470,23 +419,6 @@ class THEBOTDashApp:
             default_symbol_search.get_complete_layout(),
             
             dbc.Col([
-                dbc.Label("Timeframe", className="fw-bold text-light small"),
-                dcc.Dropdown(
-                    id='timeframe-selector',
-                    options=[
-                        {'label': '🔥 1m - Scalping', 'value': '1m'},
-                        {'label': '⚡ 5m - Quick Trades', 'value': '5m'},
-                        {'label': '📊 15m - Short Term', 'value': '15m'},
-                        {'label': '📈 1h - Day Trading', 'value': '1h'},
-                        {'label': '📅 4h - Swing', 'value': '4h'},
-                        {'label': '🏛️ 1D - Position', 'value': '1d'}
-                    ],
-                    value='5m',
-                    className="dash-bootstrap"
-                )
-            ], width=2),
-            
-            dbc.Col([
                 dbc.Label("Analysis Type", className="fw-bold text-light small"),
                 dcc.Dropdown(
                     id='analysis-selector',
@@ -519,18 +451,22 @@ class THEBOTDashApp:
                         "Technical Indicators"
                     ], className="text-info border-bottom border-secondary pb-2 mb-3"),
                     
-                    self.create_indicator_controls(),
+                    # Technical indicators moved to individual modules
+                    html.P("Technical indicators available in each market module", 
+                           className="text-muted small"),
                     
                 ], className="mb-4"),
                 
-                # Section IA
+                
+                # AI controls moved to individual modules
                 html.Div([
                     html.H6([
                         html.I(className="fas fa-brain me-2"),
                         "AI Analysis"
                     ], className="text-warning border-bottom border-secondary pb-2 mb-3"),
                     
-                    self.create_ai_controls(),
+                    html.P("AI analysis available in each market module", 
+                           className="text-muted small"),
                     
                 ], className="mb-4"),
                 
@@ -547,154 +483,6 @@ class THEBOTDashApp:
                 
             ])
         ], className="h-100", style={'backgroundColor': '#1f2937'})
-        
-    def create_indicator_controls(self):
-        """Contrôles des indicateurs techniques"""
-        
-        return html.Div([
-            
-            # SMA
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="sma-switch",
-                            label="SMA",
-                            value=True,
-                            className="mb-2"
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="sma-period",
-                            type="number",
-                            value=20,
-                            min=5,
-                            max=100,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], align="center")
-            ], className="mb-3"),
-            
-            # EMA
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="ema-switch",
-                            label="EMA",
-                            value=True,
-                            className="mb-2"
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="ema-period",
-                            type="number",
-                            value=12,
-                            min=5,
-                            max=100,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], align="center")
-            ], className="mb-3"),
-            
-            # RSI
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="rsi-switch",
-                            label="RSI",
-                            value=True,
-                            className="mb-2"
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="rsi-period",
-                            type="number",
-                            value=14,
-                            min=5,
-                            max=30,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], align="center")
-            ], className="mb-3"),
-            
-            # ATR
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="atr-switch",
-                            label="ATR",
-                            value=True,
-                            className="mb-2"
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="atr-period",
-                            type="number",
-                            value=14,
-                            min=5,
-                            max=30,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], align="center")
-            ], className="mb-3")
-            
-            # Suppression des boutons presets pour épurer l'interface
-        ])
-        
-    def create_ai_controls(self):
-        """Contrôles IA"""
-        
-        return html.Div([
-            
-            dbc.Switch(
-                id="ai-enabled",
-                label="Enable AI Analysis",
-                value=False,
-                className="mb-3"
-            ),
-            
-            dbc.Select(
-                id="ai-model",
-                options=[
-                    {"label": "🤖 GPT-4 Turbo", "value": "gpt4"},
-                    {"label": "🧠 Claude-3.5 Sonnet", "value": "claude"},
-                    {"label": "⚡ Custom LSTM", "value": "lstm"}
-                ],
-                value="gpt4",
-                size="sm",
-                className="mb-3"
-            ),
-            
-            html.Div([
-                dbc.Label("AI Confidence Threshold", size="sm"),
-                dcc.Slider(
-                    id="ai-confidence",
-                    min=0,
-                    max=100,
-                    step=5,
-                    value=75,
-                    marks={0: '0%', 50: '50%', 100: '100%'},
-                    className="mb-3"
-                )
-            ]),
-            
-            dbc.Button([
-                html.I(className="fas fa-magic me-2"),
-                "Generate Insights"
-            ], id="ai-insights-btn", color="warning", size="sm", className="w-100", disabled=True)
-            
-        ])
         
     def create_alerts_controls(self):
         """Contrôles des alertes"""
@@ -762,36 +550,11 @@ class THEBOTDashApp:
         
         return html.Div([
             
-            # Graphique principal
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(
-                        id='main-chart',
-                        style={'height': '500px'},
-                        config={
-                            'displayModeBar': True,
-                            'displaylogo': False,
-                            'modeBarButtonsToRemove': [
-                                'pan2d', 'lasso2d', 'select2d',
-                                'autoScale2d', 'hoverClosestCartesian'
-                            ]
-                        }
-                    )
-                ], width=12)
+            # Charts are now handled by individual modules
+            html.Div([
+                html.P("Charts and technical indicators are available in each market module (Crypto, Forex, Stocks)", 
+                       className="text-muted text-center p-4")
             ], className="mb-3"),
-            
-            # Indicateurs secondaires
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(id='rsi-chart', style={'height': '200px'})
-                ], width=4),
-                dbc.Col([
-                    dcc.Graph(id='volume-chart', style={'height': '200px'})
-                ], width=4),
-                dbc.Col([
-                    dcc.Graph(id='atr-chart', style={'height': '200px'})
-                ], width=4)
-            ]),
             
             # Tab AI Insights uniquement - Backtesting déplacé vers l'onglet Stratégies
             dbc.Tabs([
@@ -800,7 +563,8 @@ class THEBOTDashApp:
                     tab_id="ai-tab",
                     children=[
                         html.Div([
-                            self.create_ai_dashboard()
+                            html.P("AI Dashboard moved to individual market modules", 
+                                   className="text-muted text-center p-4")
                         ], className="p-3")
                     ]
                 )
@@ -1156,52 +920,69 @@ class THEBOTDashApp:
             [Input('main-tabs', 'active_tab')]
         )
         def update_tab_content(active_tab):
-            """Mettre à jour le contenu selon l'onglet actif"""
+            """Mettre à jour le contenu selon l'onglet actif - délégation aux modules"""
             
             self.current_tab = active_tab
             
             try:
                 if active_tab == 'news':
+                    # News module : layout spécialisé
                     if 'news' in self.modules:
                         return (
-                            self.modules['news'].create_news_layout(),
-                            html.Div(),  # Pas de sidebar pour News
-                            0,  # Largeur sidebar
-                            12  # Largeur contenu principal
+                            self.modules['news'].get_layout() if hasattr(self.modules['news'], 'get_layout') else html.Div("News en cours de développement"),
+                            html.Div(),  # Pas de sidebar pour news
+                            0,  # Pas de sidebar
+                            12  # Pleine largeur
                         )
                 
                 elif active_tab == 'strategies':
+                    # Strategies module : layout spécialisé
                     if 'strategies' in self.modules:
                         return (
-                            self.modules['strategies'].create_strategies_layout(),
-                            html.Div(),  # Pas de sidebar pour Strategies  
+                            self.modules['strategies'].get_layout() if hasattr(self.modules['strategies'], 'get_layout') else html.Div("Strategies en cours de développement"),
+                            html.Div(),  # Pas de sidebar pour strategies
+                            0,  # Pas de sidebar
+                            12  # Pleine largeur
+                        )
+                
+                elif active_tab in ['crypto', 'forex', 'stocks']:
+                    # Modules de marché : utiliser leur layout complet
+                    if active_tab in self.modules:
+                        return (
+                            self.modules[active_tab].get_layout(),
+                            self.modules[active_tab].get_sidebar(),
+                            3,  # Sidebar
+                            9   # Contenu principal
+                        )
+                    else:
+                        # Fallback si module non disponible
+                        return (
+                            html.Div([
+                                dbc.Alert(f"Module {active_tab} non disponible", color="warning")
+                            ]),
+                            self.create_sidebar(),
+                            3,
+                            9
+                        )
+                
+                else:
+                    # Onglet inconnu - fallback crypto
+                    if 'crypto' in self.modules:
+                        return (
+                            self.modules['crypto'].get_layout(),
+                            self.modules['crypto'].get_sidebar(),
+                            3,
+                            9
+                        )
+                    else:
+                        return (
+                            html.Div([
+                                dbc.Alert("Aucun module disponible", color="danger")
+                            ]),
+                            html.Div(),
                             0,
                             12
                         )
-                
-                # Pour crypto, forex, stocks - garder le layout actuel avec sidebar
-                elif active_tab in ['crypto', 'forex', 'stocks']:
-                    sidebar_content = self.create_sidebar()
-                    
-                    if active_tab == 'crypto':
-                        main_content = self.create_main_content()
-                    elif active_tab == 'forex' and 'forex' in self.modules:
-                        main_content = self.create_main_content()  # Pour l'instant, garder le layout existant
-                    elif active_tab == 'stocks' and 'stocks' in self.modules:
-                        main_content = self.create_main_content()  # Pour l'instant, garder le layout existant
-                    else:
-                        main_content = self.create_main_content()
-                    
-                    return (main_content, sidebar_content, 3, 9)
-                
-                else:
-                    # Fallback vers crypto
-                    return (
-                        self.create_main_content(),
-                        self.create_sidebar(),
-                        3,
-                        9
-                    )
                     
             except Exception as e:
                 print(f"❌ Erreur dans update_tab_content: {e}")
@@ -1282,7 +1063,7 @@ class THEBOTDashApp:
         )
         def select_symbol(n_clicks_list):
             """Sélectionner un symbole depuis les résultats de recherche"""
-            ctx = callback_context
+            ctx = dash.callback_context
             if not ctx.triggered:
                 return dash.no_update, dash.no_update
             
@@ -1298,21 +1079,26 @@ class THEBOTDashApp:
             
             return selected_symbol, selected_symbol
         
-        # Callback pour charger les données du symbole sélectionné
+        # Callback pour charger les données du symbole sélectionné (sans timeframe)
         @self.app.callback(
             Output('market-data-store', 'data'),
             [Input('main-symbol-selected', 'data'),
-             Input('timeframe-selector', 'value'),
-             Input('realtime-interval', 'n_intervals')],
+             Input('realtime-interval', 'n_intervals'),
+             Input('main-tabs', 'active_tab')],
             prevent_initial_call=True
         )
-        def load_symbol_data(selected_symbol, timeframe, n_intervals):
+        def load_symbol_data(selected_symbol, n_intervals, active_tab):
             """Charger les données du symbole sélectionné"""
-            if not selected_symbol:
+            # Ne traiter que si on est sur un onglet de marché
+            if active_tab not in ['crypto', 'forex', 'stocks'] or not selected_symbol:
                 return {}
             
+            # Utiliser un timeframe par défaut
+            timeframe = '1h'
+            if not timeframe:
+                timeframe = '1h'
+            
             print(f"🔄 Chargement des données pour {selected_symbol}...")
-            # Utiliser la méthode de l'instance directement
             df = self.load_symbol_data(selected_symbol, timeframe, 200)
             
             if df is not None and not df.empty:
@@ -1325,514 +1111,12 @@ class THEBOTDashApp:
             
             return {}
         
-        @self.app.callback(
-            Output('main-chart', 'figure'),
-            [Input('market-data-store', 'data'),
-             Input('sma-switch', 'value'),
-             Input('ema-switch', 'value'),
-             Input('sma-period', 'value'),
-             Input('ema-period', 'value'),
-             Input('realtime-interval', 'n_intervals')]
-        )
-        def update_main_chart(market_data, sma_enabled, ema_enabled, sma_period, ema_period, n_intervals):
-            """Mise à jour du graphique principal avec vrais calculs THEBOT"""
-            
-            if not market_data or 'data' not in market_data:
-                print("❌ Aucune donnée de marché disponible")
-                return {
-                    'data': [],
-                    'layout': {
-                        'title': 'Sélectionnez un symbole pour commencer l\'analyse',
-                        'paper_bgcolor': '#1f2937',
-                        'plot_bgcolor': '#1f2937',
-                        'font': {'color': 'white'}
-                    }
-                }
-            
-            # Récupérer les données depuis le store
-            symbol = market_data['symbol']
-            from io import StringIO
-            df = pd.read_json(StringIO(market_data['data']))
-            
-            print(f"📊 Mise à jour graphique pour {symbol}: {len(df)} points")
-            
-            # Graphique candlestick
-            fig = go.Figure()
-            
-            fig.add_trace(go.Candlestick(
-                x=df.index,
-                open=df['open'],
-                high=df['high'],
-                low=df['low'],
-                close=df['close'],
-                name=symbol,
-                increasing_line_color='#00ff88',
-                decreasing_line_color='#ff4444'
-            ))
-            
-            # Ajouter ligne de prix actuel en pointillés
-            current_price = df['close'].iloc[-1]
-            formatted_price = self.format_price_adaptive(current_price)
-            fig.add_hline(
-                y=current_price,
-                line_dash="dot",
-                line_color="#FFD700",  # Couleur or
-                line_width=2,
-                opacity=0.8,
-                annotation_text=f"Prix actuel: ${formatted_price}",
-                annotation_position="bottom right",
-                annotation=dict(
-                    font=dict(color="#FFD700", size=12),
-                    bgcolor="rgba(0,0,0,0.7)",
-                    bordercolor="#FFD700",
-                    borderwidth=1
-                )
-            )
-            
-            # Ajouter SMA si activé - AVEC VRAIS CALCULS
-            if sma_enabled and sma_period:
-                sma_values = self.calculate_real_sma(df['close'].tolist(), sma_period)
-                fig.add_trace(go.Scatter(
-                    x=df.index,
-                    y=sma_values,
-                    mode='lines',
-                    name=f'SMA({sma_period})',
-                    line=dict(color='orange', width=2)
-                ))
-            
-            # Ajouter EMA si activé - AVEC VRAIS CALCULS  
-            if ema_enabled and ema_period:
-                ema_values = self.calculate_real_ema(df['close'].tolist(), ema_period)
-                fig.add_trace(go.Scatter(
-                    x=df.index,
-                    y=ema_values,
-                    mode='lines',
-                    name=f'EMA({ema_period})',
-                    line=dict(color='cyan', width=2)
-                ))
-            
-            # Configuration du graphique
-            fig.update_layout(
-                title=f"{symbol} | 📊 THEBOT Analysis",
-                xaxis_title="Time",
-                yaxis_title="Price",
-                template="plotly_dark",
-                height=500,
-                showlegend=True,
-                legend=dict(x=0, y=1),
-                margin=dict(l=0, r=0, t=40, b=0)
-            )
-            
-            fig.update_xaxes(rangeslider_visible=False)
-            
-            return fig
+        # API configuration module should handle its own callbacks
+        # All technical indicator callbacks moved to respective modules
         
-        @self.app.callback(
-            Output('rsi-chart', 'figure'),
-            [Input('market-data-store', 'data'),
-             Input('rsi-switch', 'value'),
-             Input('rsi-period', 'value')]
-        )
-        def update_rsi_chart(market_data, rsi_enabled, rsi_period):
-            """Mise à jour du graphique RSI avec vrais calculs THEBOT"""
-            
-            fig = go.Figure()
-            
-            if market_data and 'data' in market_data and rsi_enabled:
-                symbol = market_data['symbol']
-                from io import StringIO
-                df = pd.read_json(StringIO(market_data['data']))
-                
-                # RSI réel avec calculateur THEBOT
-                rsi_values = self.calculate_real_rsi(df['close'].tolist(), rsi_period)
-                
-                fig.add_trace(go.Scatter(
-                    x=df.index,
-                    y=rsi_values,
-                    mode='lines',
-                    name=f'RSI({rsi_period})',
-                    line=dict(color='purple', width=2),
-                    fill=None
-                ))
-                
-                # Zones de surachat/survente
-                fig.add_hline(y=70, line_dash="dash", line_color="red", opacity=0.7, 
-                             annotation_text="Overbought")
-                fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.7,
-                             annotation_text="Oversold")
-                fig.add_hrect(y0=70, y1=100, fillcolor="red", opacity=0.1, 
-                             annotation_text="Sell Zone", annotation_position="top left")
-                fig.add_hrect(y0=0, y1=30, fillcolor="green", opacity=0.1,
-                             annotation_text="Buy Zone", annotation_position="bottom left")
-            
-            fig.update_layout(
-                title="📊 RSI Oscillator - THEBOT Analysis",
-                yaxis=dict(range=[0, 100]),
-                template="plotly_dark",
-                height=200,
-                margin=dict(l=0, r=0, t=40, b=0),
-                showlegend=False
-            )
-            
-            return fig
-        
-        @self.app.callback(
-            Output('volume-chart', 'figure'),
-            Input('market-data-store', 'data')
-        )
-        def update_volume_chart(market_data):
-            """Mise à jour du graphique de volume"""
-            
-            fig = go.Figure()
-            
-            if market_data and 'data' in market_data:
-                symbol = market_data['symbol']
-                from io import StringIO
-                df = pd.read_json(StringIO(market_data['data']))
-                
-                fig.add_trace(go.Bar(
-                    x=df.index,
-                    y=df['volume'],
-                    name='Volume',
-                    marker_color='rgba(100, 149, 237, 0.6)'
-                ))
-            
-            fig.update_layout(
-                title="Volume",
-                template="plotly_dark",
-                height=200,
-                margin=dict(l=0, r=0, t=40, b=0),
-                showlegend=False
-            )
-            
-            return fig
-        
-        @self.app.callback(
-            Output('atr-chart', 'figure'),
-            [Input('market-data-store', 'data'),
-             Input('atr-switch', 'value'),
-             Input('atr-period', 'value')]
-        )
-        def update_atr_chart(market_data, atr_enabled, atr_period):
-            """Mise à jour du graphique ATR avec vrais calculs THEBOT"""
-            
-            fig = go.Figure()
-            
-            if market_data and 'data' in market_data and atr_enabled:
-                symbol = market_data['symbol']
-                from io import StringIO
-                df = pd.read_json(StringIO(market_data['data']))
-                
-                # ATR réel avec calculateur THEBOT
-                atr_values = self.calculate_real_atr(
-                    df['high'].tolist(), 
-                    df['low'].tolist(), 
-                    df['close'].tolist(), 
-                    atr_period
-                )
-                
-                fig.add_trace(go.Scatter(
-                    x=df.index,
-                    y=atr_values,
-                    mode='lines',
-                    name=f'ATR({atr_period})',
-                    line=dict(color='darkorange', width=2),
-                    fill='tonexty'
-                ))
-                
-                # Ligne de moyenne pour référence
-                if len(atr_values) > 20:
-                    atr_mean = pd.Series(atr_values).rolling(window=20).mean()
-                    fig.add_trace(go.Scatter(
-                        x=df.index,
-                        y=atr_mean,
-                        mode='lines',
-                        name=f'ATR MA(20)',
-                        line=dict(color='yellow', width=1, dash='dot'),
-                        opacity=0.7
-                    ))
-            
-            fig.update_layout(
-                title="📊 ATR (Average True Range) - Volatility",
-                template="plotly_dark",
-                height=200,
-                margin=dict(l=0, r=0, t=40, b=0),
-                showlegend=False,
-                yaxis_title="ATR Value"
-            )
-            
-            return fig
-        
-        # ===== CALLBACKS POUR MODULES MODULAIRES =====
-        
-        # Callbacks pour le module News
-        if 'news' in self.modules:
-            @self.app.callback(
-                [Output('news-feed-content', 'children'),
-                 Output('news-articles-store', 'data')],
-                [Input('news-category-dropdown', 'value'),
-                 Input('news-time-range', 'value'),
-                 Input('sentiment-filter', 'value')]
-            )
-            def update_news_feed(category, time_range, sentiment):
-                """Mettre à jour le feed d'actualités avec tous les filtres"""
-                try:
-                    news_data = self.modules['news'].load_market_data(category, time_range)
-                    news_html, articles_data = self.modules['news'].create_news_feed(news_data, sentiment)
-                    return news_html, articles_data
-                except Exception as e:
-                    print(f"❌ Erreur callback news: {e}")
-                    return html.Div("Erreur de chargement des actualités", className="text-muted"), []
-            
-            @self.app.callback(
-                Output('market-impact-content', 'children'),
-                [Input('news-category-dropdown', 'value'),
-                 Input('news-time-range', 'value')]
-            )
-            def update_market_impact(category, time_range):
-                """Mettre à jour l'analyse d'impact marché"""
-                try:
-                    news_data = self.modules['news'].load_market_data(category, time_range)
-                    return self.modules['news'].create_market_impact_widget(news_data)
-                except:
-                    return html.Div("Pas de données d'impact", className="text-muted")
-            
-            @self.app.callback(
-                Output('economic-calendar-content', 'children'),
-                [Input('main-tabs', 'active_tab')]
-            )
-            def update_economic_calendar(active_tab):
-                """Mettre à jour le calendrier économique"""
-                if active_tab == 'news':
-                    try:
-                        return self.modules['news'].create_economic_calendar_widget()
-                    except:
-                        return html.Div("Calendrier non disponible", className="text-muted")
-                return html.Div()
-            
-            # Callbacks pour la modal d'article
-            @self.app.callback(
-                [Output("news-modal", "is_open"),
-                 Output("news-modal-title", "children"),
-                 Output("news-modal-content", "children"),
-                 Output("news-modal-source-btn", "href"),
-                 Output("news-modal-source-btn", "style")],
-                [Input({"type": "news-read-btn", "index": ALL}, "n_clicks"),
-                 Input("news-modal-close", "n_clicks")],
-                [State("news-modal", "is_open"),
-                 State("news-articles-store", "data")],
-                prevent_initial_call=True
-            )
-            def handle_news_modal(read_clicks, close_clicks, is_open, articles_data):
-                """Gérer l'ouverture/fermeture de la modal d'article"""
-                ctx = callback_context
-                if not ctx.triggered:
-                    return False, "", "", "", {"display": "none"}
-                
-                trigger_id = ctx.triggered[0]["prop_id"]
-                
-                # Fermer la modal
-                if "news-modal-close" in trigger_id:
-                    return False, "", "", "", {"display": "none"}
-                
-                # Ouvrir la modal avec un article
-                if "news-read-btn" in trigger_id and any(read_clicks):
-                    try:
-                        # Trouver quel bouton a été cliqué
-                        clicked_index = None
-                        for i, clicks in enumerate(read_clicks):
-                            if clicks:
-                                clicked_index = i
-                                break
-                        
-                        if clicked_index is not None and articles_data and clicked_index < len(articles_data):
-                            article = articles_data[clicked_index]
-                            modal_content = self.modules['news'].create_article_modal_content(article, translate=True)
-                            
-                            # Vérifier si l'URL est valide
-                            article_url = article.get('url', '#')
-                            button_style = {"display": "none"} if (not article_url or article_url == '#' or not article_url.startswith(('http://', 'https://'))) else {}
-                            
-                            return (
-                                True,
-                                f"📰 {article.get('title', 'Article')[:60]}{'...' if len(article.get('title', '')) > 60 else ''}",
-                                modal_content,
-                                article_url,
-                                button_style
-                            )
-                    except Exception as e:
-                        print(f"❌ Erreur modal: {e}")
-                        return True, "Erreur", html.Div("Impossible de charger l'article"), "", {"display": "none"}
-                
-                return is_open, "", "", "", {"display": "none"}
-        
-        # Callbacks pour le module Strategies
-        if 'strategies' in self.modules:
-            @self.app.callback(
-                [Output('performance-metrics-content', 'children'),
-                 Output('equity-curve-chart', 'figure'),
-                 Output('trade-analysis-content', 'children'),
-                 Output('ai-recommendations-content', 'children')],
-                [Input('run-backtest-btn', 'n_clicks')],
-                [State('strategy-type-dropdown', 'value'),
-                 State('initial-capital-input', 'value'),
-                 State('position-size-input', 'value'),
-                 State('stop-loss-input', 'value')]
-            )
-            def run_backtest(n_clicks, strategy_type, initial_capital, position_size, stop_loss):
-                """Exécuter un backtest de stratégie"""
-                if not n_clicks:
-                    return (
-                        html.Div("Cliquez sur 'Run Backtest' pour commencer", className="text-muted"),
-                        go.Figure(),
-                        html.Div(),
-                        html.Div()
-                    )
-                
-                try:
-                    # Configuration du backtest
-                    config = {
-                        'initial_capital': initial_capital or 10000,
-                        'position_size': position_size or 10,
-                        'stop_loss': stop_loss or 5
-                    }
-                    
-                    # Exécuter le backtest
-                    results = self.modules['strategies'].run_strategy_backtest(
-                        strategy_type, pd.DataFrame(), config
-                    )
-                    
-                    # Retourner les résultats
-                    return (
-                        self.modules['strategies'].create_performance_metrics_display(
-                            results.get('performance_metrics', {})
-                        ),
-                        self.modules['strategies'].create_equity_curve_chart(
-                            results.get('equity_curve', [])
-                        ),
-                        html.Div([
-                            html.H6("📊 Trade Summary"),
-                            html.P(f"Total Trades: {len(results.get('trades', []))}"),
-                            html.P(f"Strategy: {results.get('strategy_name', 'Unknown')}")
-                        ]),
-                        self.modules['strategies'].create_ai_recommendations(results)
-                    )
-                    
-                except Exception as e:
-                    error_msg = f"Erreur lors du backtest: {str(e)}"
-                    return (
-                        html.Div(error_msg, className="text-danger"),
-                        go.Figure(),
-                        html.Div(),
-                        html.Div()
-                    )
-                
     def run(self, debug=False, port=8050):
         """Lancer l'application Dash"""
-        
-        print(f"""
-🚀 THEBOT Dashboard Starting...
-        
-📊 Professional Trading Interface Ready!
-        
-🌐 Access URL: http://localhost:{port}
-        
-✨ Features Available:
-   • Real-time market analysis
-   • 25+ technical indicators  
-   • AI-powered insights
-   • Economic calendar
-   • Professional backtesting
-   • Multi-market support
-        
-🎯 Ready for professional trading analysis!
-        """)
-        
-        # ===== CALLBACKS API CONFIGURATION =====
-        @self.app.callback(
-            Output("api-config-modal", "is_open"),
-            [Input("open-api-config-btn", "n_clicks"),
-             Input("close-config-btn", "n_clicks")],
-            [State("api-config-modal", "is_open")]
-        )
-        def toggle_api_modal(open_clicks, close_clicks, is_open):
-            """Toggle API configuration modal"""
-            if open_clicks or close_clicks:
-                return not is_open
-            return is_open
-        
-        @self.app.callback(
-            Output("api-config-modal", "is_open", allow_duplicate=True),
-            [Input("save-config-btn", "n_clicks")],
-            [State("api-key-forex-alpha-vantage", "value"),
-             State("api-key-stocks-alpha-vantage", "value"),
-             State("api-key-news-alpha-vantage-news", "value")],
-            prevent_initial_call=True
-        )
-        def save_api_config(save_clicks, forex_key, stocks_key, news_key):
-            """Save API configuration and close modal"""
-            if save_clicks:
-                try:
-                    # Save Alpha Vantage keys
-                    if forex_key:
-                        api_config.set_api_key('Alpha Vantage', 'forex', forex_key)
-                        print(f"✅ Forex API key saved: {forex_key[:8]}...")
-                    
-                    if stocks_key:
-                        api_config.set_api_key('Alpha Vantage', 'stocks', stocks_key)
-                        print(f"✅ Stocks API key saved: {stocks_key[:8]}...")
-                    
-                    if news_key:
-                        api_config.set_api_key('Alpha Vantage News', 'news', news_key)
-                        print(f"✅ News API key saved: {news_key[:8]}...")
-                    
-                    # Save to file
-                    api_config.save_config()
-                    print("✅ Configuration saved successfully")
-                    
-                except Exception as e:
-                    print(f"❌ Error saving API config: {e}")
-                
-                return False
-            return dash.no_update
-        
-        @self.app.callback(
-            [Output("api-key-forex-alpha-vantage", "value"),
-             Output("api-key-stocks-alpha-vantage", "value"),
-             Output("api-key-news-alpha-vantage-news", "value")],
-            [Input("api-config-modal", "is_open")]
-        )
-        def load_api_keys(is_open):
-            """Load existing API keys when modal opens"""
-            if is_open:
-                try:
-                    forex_provider = api_config.get_provider('forex', 'Alpha Vantage')
-                    stocks_provider = api_config.get_provider('stocks', 'Alpha Vantage')
-                    news_provider = api_config.get_provider('news', 'Alpha Vantage News')
-                    
-                    forex_key = forex_provider['config'].get('api_key', '') if forex_provider else ''
-                    stocks_key = stocks_provider['config'].get('api_key', '') if stocks_provider else ''
-                    news_key = news_provider['config'].get('api_key', '') if news_provider else ''
-                    
-                    return forex_key, stocks_key, news_key
-                except Exception as e:
-                    print(f"❌ Error loading API keys: {e}")
-                    return '', '', ''
-            return dash.no_update, dash.no_update, dash.no_update
-        
-        @self.app.callback(
-            Output("api-config-modal", "is_open", allow_duplicate=True),
-            [Input("test-all-btn", "n_clicks")],
-            prevent_initial_call=True
-        )
-        def test_all_connections(test_clicks):
-            """Test all API connections"""
-            if test_clicks:
-                # Test all connections logic will be added here
-                print("🔄 Testing all API connections...")
-                return dash.no_update
-            return dash.no_update
-        
+        print("🚀 THEBOT Dashboard Starting - Pure Orchestrator Mode!")
         self.app.run(debug=debug, port=port, host='0.0.0.0')
 
 

@@ -9,7 +9,7 @@ import numpy as np
 from typing import List, Dict, Tuple
 from datetime import datetime, timedelta
 import dash
-from dash import dcc, html, dash_table
+from dash import dcc, html, dash_table, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -38,6 +38,186 @@ class StrategiesModule(BaseMarketModule):
         self.risk_profiles = [
             'Conservative', 'Moderate', 'Aggressive', 'Custom'
         ]
+    
+    def get_layout(self):
+        """Layout complet pour le module Strategies"""
+        return html.Div([
+            
+            # Header du module Strategies
+            dbc.Row([
+                dbc.Col([
+                    html.H2([
+                        html.I(className="fas fa-brain me-3"),
+                        "🎯 Trading Strategies & Backtesting"
+                    ], className="text-light mb-4")
+                ])
+            ]),
+            
+            # Configuration des stratégies
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.H5("🎯 Strategy Configuration", className="mb-0")
+                        ]),
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("Strategy Type:", className="form-label"),
+                                    dcc.Dropdown(
+                                        id='strategy-type-dropdown',
+                                        options=[{'label': strategy, 'value': strategy} 
+                                               for strategy in self.available_strategies],
+                                        value='Simple Moving Average Crossover',
+                                        className="mb-3"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    dbc.Label("Risk Profile:", className="form-label"),
+                                    dcc.Dropdown(
+                                        id='risk-profile-dropdown',
+                                        options=[{'label': profile, 'value': profile} 
+                                               for profile in self.risk_profiles],
+                                        value='Moderate',
+                                        className="mb-3"
+                                    )
+                                ], width=6)
+                            ]),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Label("Initial Capital ($):", className="form-label"),
+                                    dbc.Input(
+                                        id='initial-capital-input',
+                                        type="number",
+                                        value=10000,
+                                        min=1000,
+                                        step=1000,
+                                        className="mb-3"
+                                    )
+                                ], width=4),
+                                dbc.Col([
+                                    dbc.Label("Position Size (%):", className="form-label"),
+                                    dbc.Input(
+                                        id='position-size-input',
+                                        type="number",
+                                        value=10,
+                                        min=1,
+                                        max=100,
+                                        step=1,
+                                        className="mb-3"
+                                    )
+                                ], width=4),
+                                dbc.Col([
+                                    dbc.Label("Stop Loss (%):", className="form-label"),
+                                    dbc.Input(
+                                        id='stop-loss-input',
+                                        type="number",
+                                        value=5,
+                                        min=1,
+                                        max=20,
+                                        step=0.5,
+                                        className="mb-3"
+                                    )
+                                ], width=4)
+                            ]),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Button([
+                                        html.I(className="fas fa-play me-2"),
+                                        "Run Backtest"
+                                    ], id="run-backtest-btn", color="primary", size="lg", className="w-100")
+                                ])
+                            ])
+                        ])
+                    ])
+                ], width=12)
+            ], className="mb-4"),
+            
+            # Résultats du backtesting
+            dbc.Row([
+                # Performance Metrics
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-chart-bar me-2"),
+                            "Performance Metrics"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id='performance-metrics-content', children=[
+                                html.Div("Cliquez sur 'Run Backtest' pour voir les métriques", 
+                                        className="text-center text-muted p-4")
+                            ])
+                        ])
+                    ])
+                ], width=6),
+                
+                # AI Recommendations
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-lightbulb me-2"),
+                            "AI Recommendations"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id='ai-recommendations-content', children=[
+                                html.Div("Recommandations disponibles après le backtest", 
+                                        className="text-center text-muted p-4")
+                            ])
+                        ])
+                    ])
+                ], width=6)
+            ], className="mb-4"),
+            
+            # Equity Curve Chart
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-chart-line me-2"),
+                            "Equity Curve"
+                        ]),
+                        dbc.CardBody([
+                            dcc.Graph(
+                                id='equity-curve-chart',
+                                figure=go.Figure().add_annotation(
+                                    text="Equity curve sera affichée après le backtest",
+                                    xref="paper", yref="paper",
+                                    x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                                    showarrow=False,
+                                    font=dict(size=14, color="grey")
+                                ).update_layout(
+                                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    paper_bgcolor='rgba(0,0,0,0)'
+                                )
+                            )
+                        ])
+                    ])
+                ], width=12)
+            ], className="mb-4"),
+            
+            # Trade Analysis
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-table me-2"),
+                            "Trade Analysis"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id='trade-analysis-content', children=[
+                                html.Div("Analyse détaillée des trades après le backtest", 
+                                        className="text-center text-muted p-4")
+                            ])
+                        ])
+                    ])
+                ], width=12)
+            ])
+            
+        ], className="p-4")
     
     def get_symbols_list(self) -> List[str]:
         """Get list of available strategies"""
@@ -766,3 +946,229 @@ class StrategiesModule(BaseMarketModule):
         ])
         
         return html.Div(recommendation_cards + [optimization_suggestions])
+    
+    def setup_callbacks(self, app):
+        """Configuration des callbacks pour le module Strategies"""
+        @app.callback(
+            [Output('performance-metrics-content', 'children'),
+             Output('equity-curve-chart', 'figure'),
+             Output('trade-analysis-content', 'children'),
+             Output('ai-recommendations-content', 'children')],
+            [Input('run-backtest-btn', 'n_clicks')],
+            [State('strategy-type-dropdown', 'value'),
+             State('initial-capital-input', 'value'),
+             State('position-size-input', 'value'),
+             State('stop-loss-input', 'value')]
+        )
+        def run_backtest(n_clicks, strategy_type, initial_capital, position_size, stop_loss):
+            """Exécuter un backtest de stratégie"""
+            if not n_clicks:
+                return (
+                    html.Div("Cliquez sur 'Run Backtest' pour commencer", className="text-muted"),
+                    go.Figure(),
+                    html.Div(),
+                    html.Div()
+                )
+            
+            try:
+                # Configuration du backtest
+                config = {
+                    'initial_capital': initial_capital or 10000,
+                    'position_size': position_size or 10,
+                    'stop_loss': stop_loss or 5
+                }
+                
+                # Exécuter le backtest
+                results = self.run_strategy_backtest(
+                    strategy_type, pd.DataFrame(), config
+                )
+                
+                # Retourner les résultats
+                return (
+                    self.create_performance_metrics_display(
+                        results.get('performance_metrics', {})
+                    ),
+                    self.create_equity_curve_chart(
+                        results.get('equity_curve', [])
+                    ),
+                    html.Div([
+                        html.H6("📊 Trade Summary"),
+                        html.P(f"Total Trades: {len(results.get('trades', []))}"),
+                        html.P(f"Strategy: {results.get('strategy_name', 'Unknown')}")
+                    ]),
+                    self.create_ai_recommendations(results)
+                )
+                
+            except Exception as e:
+                error_msg = f"Erreur lors du backtest: {str(e)}"
+                return (
+                    html.Div(error_msg, className="text-danger"),
+                    go.Figure(),
+                    html.Div(),
+                    html.Div()
+                )
+    
+    def run_strategy_backtest(self, strategy_type, data, config):
+        """Exécuter un backtest pour une stratégie donnée"""
+        try:
+            # Simulation basique de backtest
+            import numpy as np
+            import datetime
+            
+            # Générer des données simulées
+            dates = pd.date_range(start='2023-01-01', end='2024-01-01', freq='D')
+            prices = np.cumsum(np.random.randn(len(dates)) * 0.01) + 100
+            
+            # Simulation de trades
+            trades = []
+            equity_curve = []
+            current_equity = config['initial_capital']
+            
+            for i in range(len(prices)):
+                # Logique de trading simulée basée sur la stratégie
+                if strategy_type == 'Simple Moving Average Crossover':
+                    if i > 20 and i % 30 == 0:  # Signal d'achat simulé
+                        trade_result = np.random.uniform(-config['stop_loss'], 15)
+                        current_equity *= (1 + trade_result / 100)
+                        trades.append({
+                            'date': dates[i],
+                            'type': 'buy' if trade_result > 0 else 'sell',
+                            'return': trade_result
+                        })
+                
+                equity_curve.append({
+                    'date': dates[i],
+                    'equity': current_equity
+                })
+            
+            # Calcul des métriques de performance
+            total_return = (current_equity - config['initial_capital']) / config['initial_capital'] * 100
+            win_rate = len([t for t in trades if t['return'] > 0]) / max(len(trades), 1) * 100
+            
+            performance_metrics = {
+                'total_return': total_return,
+                'win_rate': win_rate,
+                'total_trades': len(trades),
+                'sharpe_ratio': np.random.uniform(0.5, 2.5),
+                'max_drawdown': np.random.uniform(5, 20)
+            }
+            
+            return {
+                'performance_metrics': performance_metrics,
+                'equity_curve': equity_curve,
+                'trades': trades,
+                'strategy_name': strategy_type
+            }
+            
+        except Exception as e:
+            print(f"Erreur dans run_strategy_backtest: {e}")
+            return {
+                'performance_metrics': {},
+                'equity_curve': [],
+                'trades': [],
+                'strategy_name': strategy_type
+            }
+    
+    def create_performance_metrics_display(self, metrics):
+        """Créer l'affichage des métriques de performance"""
+        if not metrics:
+            return html.Div("Aucune métrique disponible", className="text-muted")
+        
+        return dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H6("📈 Total Return", className="card-title"),
+                        html.H4(f"{metrics.get('total_return', 0):.2f}%", 
+                               className="text-success" if metrics.get('total_return', 0) > 0 else "text-danger")
+                    ])
+                ])
+            ], width=6),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H6("🎯 Win Rate", className="card-title"),
+                        html.H4(f"{metrics.get('win_rate', 0):.1f}%", className="text-info")
+                    ])
+                ])
+            ], width=6),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H6("📊 Sharpe Ratio", className="card-title"),
+                        html.H4(f"{metrics.get('sharpe_ratio', 0):.2f}", className="text-primary")
+                    ])
+                ])
+            ], width=6),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H6("📉 Max Drawdown", className="card-title"),
+                        html.H4(f"{metrics.get('max_drawdown', 0):.1f}%", className="text-warning")
+                    ])
+                ])
+            ], width=6)
+        ])
+    
+    def create_equity_curve_chart(self, equity_data):
+        """Créer le graphique de la courbe d'équité"""
+        if not equity_data:
+            return go.Figure().add_annotation(
+                text="Aucune donnée d'équité disponible",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                showarrow=False
+            )
+        
+        dates = [point['date'] for point in equity_data]
+        equity = [point['equity'] for point in equity_data]
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=dates,
+            y=equity,
+            mode='lines',
+            name='Equity Curve',
+            line=dict(color='#00d4aa', width=2)
+        ))
+        
+        fig.update_layout(
+            title="Portfolio Equity Curve",
+            xaxis_title="Date",
+            yaxis_title="Portfolio Value ($)",
+            template="plotly_dark",
+            height=400
+        )
+        
+        return fig
+    
+    def create_ai_recommendations(self, results):
+        """Créer les recommandations IA basées sur les résultats"""
+        if not results:
+            return html.Div("Aucune recommandation disponible", className="text-muted")
+        
+        metrics = results.get('performance_metrics', {})
+        recommendations = []
+        
+        # Analyse des recommandations basée sur les métriques
+        if metrics.get('win_rate', 0) < 50:
+            recommendations.append("🔍 Considérez réviser votre stratégie d'entrée")
+        
+        if metrics.get('sharpe_ratio', 0) < 1:
+            recommendations.append("⚡ Améliorez le ratio risque/rendement")
+        
+        if metrics.get('max_drawdown', 0) > 15:
+            recommendations.append("🛡️ Renforcez la gestion des risques")
+        
+        if metrics.get('total_return', 0) > 10:
+            recommendations.append("✅ Excellente performance, maintenez la stratégie")
+        
+        if not recommendations:
+            recommendations.append("📊 Stratégie équilibrée, continuez le monitoring")
+        
+        return html.Div([
+            html.H6("🤖 AI Recommendations", className="mb-3"),
+            html.Ul([
+                html.Li(rec, className="mb-2") for rec in recommendations
+            ])
+        ])

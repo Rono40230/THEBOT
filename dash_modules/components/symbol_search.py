@@ -5,7 +5,7 @@ Architecture modulaire THEBOT
 """
 
 import dash
-from dash import dcc, html, Input, Output, State, callback_context, ALL
+from dash import dcc, html, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
 from typing import List, Optional
 
