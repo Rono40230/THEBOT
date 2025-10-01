@@ -1,10 +1,10 @@
 """
 News Module for THEBOT
-Handles economic news and market events using Alpha Vantage API
+Handles economic news and market events using multiple data providers
 """
 
 from .base_market_module import BaseMarketModule
-from ..data_providers.alpha_vantage_api import AlphaVantageAPI
+from ..data_providers.real_data_manager import real_data_manager
 from ..core.api_config import api_config
 import pandas as pd
 from typing import List, Dict
@@ -32,16 +32,12 @@ except ImportError:
     print("⚠️ Web scraping non disponible: requests ou beautifulsoup4 non installés")
 
 class NewsModule(BaseMarketModule):
-    """News module using Alpha Vantage API for economic news and events"""
+    """News module using multiple data providers for comprehensive news coverage"""
     
     def __init__(self, calculators: Dict = None):
-        # Get Alpha Vantage API key from config
-        news_provider = api_config.get_provider('news', 'Alpha Vantage News')
-        api_key = news_provider['config'].get('api_key', '') if news_provider else ''
-        
         super().__init__(
             market_type='news',
-            data_provider=AlphaVantageAPI(api_key),
+            data_provider=real_data_manager,
             calculators=calculators
         )
         
@@ -62,65 +58,10 @@ class NewsModule(BaseMarketModule):
         """Layout complet pour le module News"""
         return html.Div([
             
-            # Header du module News
-            dbc.Row([
-                dbc.Col([
-                    html.H2([
-                        html.I(className="fas fa-newspaper me-3"),
-                        "📰 News & Economic Intelligence"
-                    ], className="text-light mb-4")
-                ])
-            ]),
-            
-            # Contrôles de filtrage
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("Catégorie", className="text-light"),
-                    dcc.Dropdown(
-                        id='news-category-dropdown',
-                        options=[{'label': cat, 'value': cat} for cat in self.news_categories],
-                        value='All News',
-                        className="mb-3"
-                    )
-                ], width=3),
-                
-                dbc.Col([
-                    dbc.Label("Période", className="text-light"),
-                    dcc.Dropdown(
-                        id='news-time-range',
-                        options=[
-                            {'label': 'Dernières 6 heures', 'value': '6h'},
-                            {'label': 'Dernières 24 heures', 'value': '24h'},
-                            {'label': 'Derniers 3 jours', 'value': '3d'},
-                            {'label': 'Dernière semaine', 'value': '7d'}
-                        ],
-                        value='24h',
-                        className="mb-3"
-                    )
-                ], width=3),
-                
-                dbc.Col([
-                    dbc.Label("Sentiment", className="text-light"),
-                    dcc.Dropdown(
-                        id='sentiment-filter',
-                        options=[
-                            {'label': 'Tous', 'value': 'all'},
-                            {'label': 'Positif', 'value': 'positive'},
-                            {'label': 'Neutre', 'value': 'neutral'},
-                            {'label': 'Négatif', 'value': 'negative'}
-                        ],
-                        value='all',
-                        className="mb-3"
-                    )
-                ], width=3),
-                
-                dbc.Col([
-                    dbc.Button([
-                        html.I(className="fas fa-sync-alt me-2"),
-                        "Actualiser"
-                    ], color="primary", id="refresh-news-btn", className="mt-4")
-                ], width=3)
-            ], className="mb-4"),
+            # Hidden inputs to keep callbacks working
+            dcc.Store(id='news-category-dropdown', data='All News'),
+            dcc.Store(id='news-time-range', data='24h'),
+            dcc.Store(id='sentiment-filter', data='all'),
             
             # Layout principal avec 3 colonnes
             dbc.Row([
@@ -302,13 +243,12 @@ class NewsModule(BaseMarketModule):
         return news_data
     
     def load_news_data(self, category: str = 'All News', limit: int = 50) -> pd.DataFrame:
-        """Load economic news data from Alpha Vantage"""
+        """Load economic news data from multiple providers via real_data_manager"""
         try:
-            # Refresh API configuration to get latest API key
-            self.refresh_api_config()
-            
             print(f"🔄 Loading news data for category: {category}...")
-            news_list = self.data_provider.get_economic_news(limit=limit)
+            
+            # Utiliser real_data_manager pour récupérer les news de tous les providers
+            news_list = self.data_provider.get_news_data(limit=limit)
             
             if news_list and len(news_list) > 0:
                 # Convert list of news items to DataFrame
@@ -325,14 +265,16 @@ class NewsModule(BaseMarketModule):
                     else:
                         print(f"⚠️ No articles found for category '{category}', showing all articles")
                 
-                print(f"✅ {category}: {len(news_data)} news articles loaded")
+                print(f"✅ {category}: {len(news_data)} news articles loaded from multiple providers")
                 return news_data
             else:
-                print(f"❌ No news data available from API for {category}")
+                print(f"❌ No news data available from providers for {category}")
                 return pd.DataFrame()  # Return empty DataFrame instead of fallback
                 
         except Exception as e:
             print(f"❌ Error loading news data for {category}: {e}")
+            import traceback
+            traceback.print_exc()
             return pd.DataFrame()  # Return empty DataFrame instead of fallback
     
     def _filter_by_time_range(self, data: pd.DataFrame, time_range: str) -> pd.DataFrame:
@@ -567,7 +509,7 @@ class NewsModule(BaseMarketModule):
             # Store article data
             articles_data.append({
                 'title': article.get('title', ''),
-                'summary': article.get('summary', ''),
+                'summary': article.get('description', article.get('summary', '')),
                 'url': article.get('url', ''),
                 'source': article.get('source', 'Unknown'),
                 'time_published': article.get('time_published', ''),
@@ -595,7 +537,7 @@ class NewsModule(BaseMarketModule):
                 dbc.CardBody([
                     html.Div([
                         html.H6(article['title'], className="card-title mb-2"),
-                        html.P(article['summary'][:200] + "...", className="card-text text-muted small"),
+                        html.P(article.get('description', article.get('summary', ''))[:200] + "...", className="card-text text-muted small"),
                         html.Div([
                             sentiment_badge,
                             dbc.Badge(article.get('source', 'Unknown'), color="light", text_color="dark", className="me-2"),
@@ -607,9 +549,17 @@ class NewsModule(BaseMarketModule):
                                      id={"type": "news-read-btn", "index": idx}, className="me-2"),
                             # Afficher le bouton Source seulement si l'URL est valide
                             *([dbc.Button("🔗 Source", size="sm", color="outline-secondary", 
-                                        href=article.get('url', '#'), target="_blank")] 
+                                        href=article.get('url', '#'), target="_blank", className="me-2")] 
                               if article.get('url') and article.get('url') != '#' and article.get('url').startswith(('http://', 'https://'))
-                              else [])
+                              else []),
+                            # Bouton avec source et date
+                            dbc.Button(
+                                f"{article.get('source', 'Unknown')} • {time_ago}",
+                                size="sm", 
+                                color="light", 
+                                className="text-muted",
+                                style={"cursor": "default", "pointer-events": "none"}
+                            )
                         ])
                     ])
                 ])
@@ -892,13 +842,18 @@ class NewsModule(BaseMarketModule):
         @app.callback(
             [Output('news-feed-content', 'children'),
              Output('news-articles-store', 'data')],
-            [Input('news-category-dropdown', 'value'),
-             Input('news-time-range', 'value'),
-             Input('sentiment-filter', 'value')]
+            [Input('news-category-dropdown', 'data'),
+             Input('news-time-range', 'data'),
+             Input('sentiment-filter', 'data')]
         )
         def update_news_feed(category, time_range, sentiment):
             """Mettre à jour le feed d'actualités avec tous les filtres"""
             try:
+                # Utiliser les valeurs par défaut si elles sont None
+                category = category or 'All News'
+                time_range = time_range or '24h'
+                sentiment = sentiment or 'all'
+                
                 print(f"🔄 Updating news feed: category='{category}', time_range='{time_range}', sentiment='{sentiment}'")
                 news_data = self.load_market_data(category, time_range)
                 news_html, articles_data = self.create_news_feed(news_data, sentiment)
@@ -912,12 +867,16 @@ class NewsModule(BaseMarketModule):
         
         @app.callback(
             Output('market-impact-content', 'children'),
-            [Input('news-category-dropdown', 'value'),
-             Input('news-time-range', 'value')]
+            [Input('news-category-dropdown', 'data'),
+             Input('news-time-range', 'data')]
         )
         def update_market_impact(category, time_range):
             """Mettre à jour l'analyse d'impact marché"""
             try:
+                # Utiliser les valeurs par défaut si elles sont None
+                category = category or 'All News'
+                time_range = time_range or '24h'
+                
                 news_data = self.load_market_data(category, time_range)
                 return self.create_market_impact_widget(news_data)
             except:

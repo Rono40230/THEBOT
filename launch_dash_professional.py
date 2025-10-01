@@ -33,7 +33,8 @@ from dash_modules.data_providers.alpha_vantage_api import AlphaVantageAPI
 from dash_modules.tabs.crypto_module import CryptoModule
 from dash_modules.tabs.forex_module import ForexModule
 from dash_modules.tabs.stocks_module import StocksModule
-from dash_modules.tabs.news_module import NewsModule
+from dash_modules.tabs.economic_news_module import EconomicNewsModule
+from dash_modules.tabs.crypto_news_module import CryptoNewsModule
 from dash_modules.tabs.strategies_module import StrategiesModule
 
 # Import calculateurs THEBOT
@@ -110,20 +111,30 @@ class THEBOTDashApp:
                 'crypto': CryptoModule(calculators=shared_calculators),
                 'forex': ForexModule(calculators=shared_calculators),
                 'stocks': StocksModule(calculators=shared_calculators),
-                'news': NewsModule(calculators=shared_calculators),
+                'economic_news': EconomicNewsModule(calculators=shared_calculators),
+                'crypto_news': CryptoNewsModule(calculators=shared_calculators),
                 'strategies': StrategiesModule(calculators=shared_calculators)
             }
             
             print("✅ Modules modulaires initialisés avec succès")
             
             # Configuration unique des callbacks pour les modules qui en ont
-            if 'news' in self.modules and hasattr(self.modules['news'], 'setup_callbacks'):
-                self.modules['news'].setup_callbacks(self.app)
-                print("✅ Callbacks News configurés")
+            if 'economic_news' in self.modules and hasattr(self.modules['economic_news'], 'setup_callbacks'):
+                self.modules['economic_news'].setup_callbacks(self.app)
+                print("✅ Callbacks Economic News configurés")
+            
+            if 'crypto_news' in self.modules and hasattr(self.modules['crypto_news'], 'setup_callbacks'):
+                self.modules['crypto_news'].setup_callbacks(self.app)
+                print("✅ Callbacks Crypto News configurés")
             
             if 'strategies' in self.modules and hasattr(self.modules['strategies'], 'setup_callbacks'):
                 self.modules['strategies'].setup_callbacks(self.app)
                 print("✅ Callbacks Strategies configurés")
+            
+            # Setup API configuration callbacks
+            if hasattr(api_config, 'setup_callbacks'):
+                api_config.setup_callbacks(self.app)
+                print("✅ Callbacks API Config configurés")
             
         except Exception as e:
             print(f"❌ Erreur lors de l'initialisation des modules: {e}")
@@ -384,12 +395,13 @@ class THEBOTDashApp:
             # Navigation principale - Onglets modulaires
             dbc.Col([
                 dbc.Tabs([
-                    dbc.Tab(label="📰 News", tab_id="news"),
+                    dbc.Tab(label="� News Éco", tab_id="economic_news"),
+                    dbc.Tab(label="🪙 News Crypto", tab_id="crypto_news"),
                     dbc.Tab(label="₿ Crypto", tab_id="crypto"),
                     dbc.Tab(label="💱 Forex", tab_id="forex"),
                     dbc.Tab(label="📈 Stocks", tab_id="stocks"),
                     dbc.Tab(label="🎯 Strategies", tab_id="strategies")
-                ], id="main-tabs", active_tab="news", className="mb-0")
+                ], id="main-tabs", active_tab="economic_news", className="mb-0")
             ], width=7),
             
             # Indicateurs de marchés globaux et API Keys
@@ -925,11 +937,21 @@ class THEBOTDashApp:
             self.current_tab = active_tab
             
             try:
-                if active_tab == 'news':
-                    # News module : layout spécialisé
-                    if 'news' in self.modules:
+                if active_tab == 'economic_news':
+                    # Economic News module : layout spécialisé
+                    if 'economic_news' in self.modules:
                         return (
-                            self.modules['news'].get_layout() if hasattr(self.modules['news'], 'get_layout') else html.Div("News en cours de développement"),
+                            self.modules['economic_news'].get_layout() if hasattr(self.modules['economic_news'], 'get_layout') else html.Div("Economic News en cours de développement"),
+                            html.Div(),  # Pas de sidebar pour news
+                            0,  # Pas de sidebar
+                            12  # Pleine largeur
+                        )
+                
+                elif active_tab == 'crypto_news':
+                    # Crypto News module : layout spécialisé
+                    if 'crypto_news' in self.modules:
+                        return (
+                            self.modules['crypto_news'].get_layout() if hasattr(self.modules['crypto_news'], 'get_layout') else html.Div("Crypto News en cours de développement"),
                             html.Div(),  # Pas de sidebar pour news
                             0,  # Pas de sidebar
                             12  # Pleine largeur
@@ -1111,8 +1133,105 @@ class THEBOTDashApp:
             
             return {}
         
+        # ===== API CONFIGURATION CALLBACKS =====
+        # Note: API Config modal callbacks are handled in api_config.py module
+        
+        @self.app.callback(
+            Output("api-config-modal", "is_open"),
+            [Input("open-api-config-btn", "n_clicks"), 
+             Input("close-config-btn", "n_clicks")],
+            [State("api-config-modal", "is_open")],
+            prevent_initial_call=True
+        )
+        def toggle_api_config_modal(open_clicks, close_clicks, is_open):
+            """Toggle API configuration modal"""
+            ctx = dash.callback_context
+            if not ctx.triggered:
+                return False
+            
+            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+            
+            if button_id == "open-api-config-btn":
+                return True
+            elif button_id == "close-config-btn":
+                return False
+            
+            return is_open
+        
+        @self.app.callback(
+            [Output("api-config-modal", "children", allow_duplicate=True),
+             Output("api-config-modal", "is_open", allow_duplicate=True)],
+            [Input("save-config-btn", "n_clicks")],
+            [State("api-key-alpha-vantage", "value"),
+             State("api-key-cryptopanic", "value"), 
+             State("api-key-coingecko", "value"),
+             State("api-key-fmp", "value"),
+             State("api-config-modal", "is_open")],
+            prevent_initial_call=True
+        )
+        def save_api_config(save_clicks, alpha_key, crypto_key, coin_key, fmp_key, is_open):
+            """Save API configuration"""
+            if save_clicks and is_open:
+                try:
+                    # Sauvegarder les clés API
+                    saved_count = 0
+                    
+                    # Alpha Vantage
+                    if alpha_key and alpha_key.strip():
+                        for section in api_config.config["providers"]["data_sources"].values():
+                            for provider in section:
+                                if provider["name"] == "Alpha Vantage":
+                                    provider["config"]["api_key"] = alpha_key.strip()
+                                    provider["status"] = "active"
+                                    saved_count += 1
+                                    break
+                    
+                    # CryptoPanic
+                    if crypto_key and crypto_key.strip():
+                        for section in api_config.config["providers"]["data_sources"].values():
+                            for provider in section:
+                                if provider["name"] == "CryptoPanic":
+                                    provider["config"]["api_key"] = crypto_key.strip()
+                                    provider["status"] = "active"
+                                    saved_count += 1
+                                    break
+                    
+                    # CoinGecko 
+                    if coin_key and coin_key.strip():
+                        for section in api_config.config["providers"]["data_sources"].values():
+                            for provider in section:
+                                if provider["name"] == "CoinGecko":
+                                    provider["config"]["api_key"] = coin_key.strip()
+                                    provider["status"] = "active"
+                                    saved_count += 1
+                                    break
+                    
+                    # FMP
+                    if fmp_key and fmp_key.strip():
+                        for section in api_config.config["providers"]["data_sources"].values():
+                            for provider in section:
+                                if provider["name"] == "FMP":
+                                    provider["config"]["api_key"] = fmp_key.strip()
+                                    provider["status"] = "active"
+                                    saved_count += 1
+                                    break
+                    
+                    # Sauvegarder la configuration
+                    api_config.save_config()
+                    print(f"✅ API Configuration saved - {saved_count} clés mises à jour")
+                    
+                    # Fermer la modal et rafraîchir
+                    return api_config.get_api_config_modal().children, False
+                    
+                except Exception as e:
+                    print(f"❌ Error saving API config: {e}")
+                    return api_config.get_api_config_modal().children, is_open
+            
+            return dash.no_update, dash.no_update
+
         # API configuration module should handle its own callbacks
         # All technical indicator callbacks moved to respective modules
+        # Note: News modal callbacks are handled in their respective modules
         
     def run(self, debug=False, port=8050):
         """Lancer l'application Dash"""

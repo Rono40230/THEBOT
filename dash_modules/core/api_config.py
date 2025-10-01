@@ -42,62 +42,94 @@ class APIConfig:
                             "config": {}
                         }
                     ],
-                    "forex": [
+                    "forex": [],
+                    "stocks": [],
+                    "news": [
                         {
                             "name": "Alpha Vantage",
-                            "type": "forex",
+                            "type": "multi",
                             "status": "inactive",
                             "api_key_required": True,
-                            "description": "Professional forex and currency data",
-                            "data_types": ["fx_rates", "historical", "intraday"],
+                            "description": "Professional financial data provider - Forex, Stocks, News & Analysis",
+                            "data_types": ["fx_rates", "stocks", "etfs", "news", "sentiment", "historical", "real_time"],
                             "rate_limit": "5 calls/minute (free)",
                             "cost": "Free tier: 5 calls/min, Pro: $49.99/month",
                             "priority": 1,
                             "endpoints": {
                                 "base_url": "https://www.alphavantage.co/query",
                                 "fx_daily": "function=FX_DAILY",
-                                "fx_intraday": "function=FX_INTRADAY"
+                                "stocks_daily": "function=TIME_SERIES_DAILY",
+                                "news": "function=NEWS_SENTIMENT"
                             },
                             "config": {
                                 "api_key": ""
                             }
-                        }
-                    ],
-                    "stocks": [
+                        },
                         {
-                            "name": "Alpha Vantage",
-                            "type": "stocks",
-                            "status": "inactive",
+                            "name": "CryptoPanic",
+                            "type": "news",
+                            "status": "active",
                             "api_key_required": True,
-                            "description": "Global equity market data",
-                            "data_types": ["stocks", "etfs", "historical", "real_time"],
-                            "rate_limit": "5 calls/minute (free)",
-                            "cost": "Free tier: 5 calls/min, Pro: $49.99/month",
-                            "priority": 1,
+                            "description": "Cryptocurrency and blockchain news aggregator",
+                            "data_types": ["crypto_news", "sentiment", "social_media"],
+                            "rate_limit": "1000 calls/day (free)",
+                            "cost": "Free: 1000 calls/day, Pro: $7/month",
+                            "priority": 2,
                             "endpoints": {
-                                "base_url": "https://www.alphavantage.co/query",
-                                "daily": "function=TIME_SERIES_DAILY",
-                                "intraday": "function=TIME_SERIES_INTRADAY"
+                                "base_url": "https://cryptopanic.com/api/v1",
+                                "posts": "/posts/"
                             },
                             "config": {
                                 "api_key": ""
                             }
-                        }
-                    ],
-                    "news": [
+                        },
                         {
-                            "name": "Alpha Vantage News",
+                            "name": "CoinGecko",
+                            "type": "news",
+                            "status": "active", 
+                            "api_key_required": True,
+                            "description": "Cryptocurrency data and news provider",
+                            "data_types": ["crypto_prices", "market_data", "news"],
+                            "rate_limit": "30 calls/minute (free)",
+                            "cost": "Free: 30 calls/min, Pro: $199/month",
+                            "priority": 3,
+                            "endpoints": {
+                                "base_url": "https://api.coingecko.com/api/v3",
+                                "news": "/news"
+                            },
+                            "config": {
+                                "api_key": ""
+                            }
+                        },
+                        {
+                            "name": "Yahoo Finance",
+                            "type": "news",
+                            "status": "active",
+                            "api_key_required": False,
+                            "description": "Free financial news and market data",
+                            "data_types": ["financial_news", "market_data", "earnings"],
+                            "rate_limit": "Variable (rate limited)",
+                            "cost": "Free",
+                            "priority": 4,
+                            "endpoints": {
+                                "base_url": "https://feeds.finance.yahoo.com",
+                                "rss": "/rss/2.0/headline"
+                            },
+                            "config": {}
+                        },
+                        {
+                            "name": "FMP",
                             "type": "news",
                             "status": "inactive",
                             "api_key_required": True,
-                            "description": "Economic news and sentiment analysis",
-                            "data_types": ["news", "sentiment", "economic_events"],
-                            "rate_limit": "5 calls/minute (free)",
-                            "cost": "Free tier: 5 calls/min, Pro: $49.99/month",
-                            "priority": 1,
+                            "description": "Financial Modeling Prep - Professional financial data",
+                            "data_types": ["financial_news", "company_news", "market_analysis"],
+                            "rate_limit": "250 calls/day (free)",
+                            "cost": "Free: 250 calls/day, Pro: $14/month",
+                            "priority": 5,
                             "endpoints": {
-                                "base_url": "https://www.alphavantage.co/query",
-                                "news": "function=NEWS_SENTIMENT"
+                                "base_url": "https://financialmodelingprep.com/api/v3",
+                                "news": "/stock_news"
                             },
                             "config": {
                                 "api_key": ""
@@ -242,65 +274,156 @@ class APIConfig:
         return self.save_config()
     
     def get_api_config_modal(self) -> html.Div:
-        """Create the API configuration modal"""
+        """Create the simplified API configuration modal"""
         return html.Div([
             dbc.Modal([
                 dbc.ModalHeader(dbc.ModalTitle([
                     html.I(className="fas fa-key me-2"),
-                    "🔑 API Keys Configuration"
+                    "🔑 Configuration des Fournisseurs de Données"
                 ])),
                 dbc.ModalBody([
-                    dbc.Tabs([
-                        dbc.Tab(
-                            label="📊 Data Sources",
-                            tab_id="data-sources-tab",
-                            children=[self._create_data_sources_panel()]
-                        ),
-                        dbc.Tab(
-                            label="🧠 AI Providers", 
-                            tab_id="ai-providers-tab",
-                            children=[self._create_ai_providers_panel()]
-                        ),
-                        dbc.Tab(
-                            label="⚙️ Advanced",
-                            tab_id="advanced-tab", 
-                            children=[self._create_advanced_panel()]
-                        ),
-                        dbc.Tab(
-                            label="📋 Presets",
-                            tab_id="presets-tab",
-                            children=[self._create_presets_panel()]
-                        )
-                    ], id="api-config-tabs", active_tab="data-sources-tab")
+                    self._create_unified_providers_panel()
                 ]),
                 dbc.ModalFooter([
-                    dbc.Button("Test All Connections", color="info", className="me-2", id="test-all-btn"),
-                    dbc.Button("Save Configuration", color="success", className="me-2", id="save-config-btn"),
-                    dbc.Button("Close", color="secondary", id="close-config-btn")
+                    dbc.Button("Tester les Connexions", color="info", className="me-2", id="test-all-btn"),
+                    dbc.Button("Enregistrer", color="success", className="me-2", id="save-config-btn"),
+                    dbc.Button("Fermer", color="secondary", id="close-config-btn")
                 ])
             ], id="api-config-modal", size="xl", is_open=False)
         ])
     
-    def _create_data_sources_panel(self) -> html.Div:
-        """Create data sources configuration panel"""
+    def _create_unified_providers_panel(self) -> html.Div:
+        """Create unified providers configuration panel"""
+        
+        # Récupérer tous les providers de toutes les catégories
+        all_providers = []
+        categories = {
+            "crypto": {"icon": "💰", "name": "Crypto"},
+            "forex": {"icon": "💱", "name": "Forex"}, 
+            "stocks": {"icon": "📊", "name": "Actions"},
+            "news": {"icon": "📰", "name": "News"}
+        }
+        
+        for data_type, type_info in categories.items():
+            providers = self.config["providers"]["data_sources"].get(data_type, [])
+            for provider in providers:
+                provider_copy = provider.copy()
+                provider_copy["data_type"] = data_type
+                provider_copy["type_info"] = type_info
+                all_providers.append(provider_copy)
+        
+        # Supprimer les doublons basés sur le nom
+        unique_providers = {}
+        for provider in all_providers:
+            name = provider["name"]
+            if name not in unique_providers:
+                unique_providers[name] = provider
+            else:
+                # Fusionner les types de données
+                existing = unique_providers[name]
+                existing["data_types"] = list(set(existing["data_types"] + provider["data_types"]))
+        
+        provider_cards = []
+        for provider_name, provider in unique_providers.items():
+            status_color = "success" if provider["status"] == "active" else "secondary"
+            status_icon = "🟢" if provider["status"] == "active" else "🔴"
+            status_text = "ACTIF" if provider["status"] == "active" else "INACTIF"
+            
+            # Déterminer si une API key est requise
+            needs_api_key = provider.get("api_key_required", False)
+            
+            card = dbc.Card([
+                dbc.CardHeader([
+                    dbc.Row([
+                        dbc.Col([
+                            html.H6([
+                                f"{provider['type_info']['icon']} {provider_name}",
+                            ], className="mb-0")
+                        ], width=8),
+                        dbc.Col([
+                            dbc.Badge(
+                                f"{status_icon} {status_text}",
+                                color=status_color,
+                                className="float-end"
+                            )
+                        ], width=4)
+                    ])
+                ]),
+                dbc.CardBody([
+                    # Description
+                    html.P(provider["description"], className="text-muted small mb-2"),
+                    
+                    # Informations techniques en ligne
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div([
+                                html.Strong("Types: ", className="small"),
+                                html.Span(", ".join(provider["data_types"]), className="small")
+                            ])
+                        ], width=6),
+                        dbc.Col([
+                            html.Div([
+                                html.Strong("Limites: ", className="small"),
+                                html.Span(provider["rate_limit"], className="small")
+                            ])
+                        ], width=6)
+                    ], className="mb-2"),
+                    
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div([
+                                html.Strong("Coût: ", className="small"),
+                                html.Span(provider["cost"], className="small")
+                            ])
+                        ], width=12)
+                    ], className="mb-3"),
+                    
+                    # Champ API Key seulement pour CryptoPanic et CoinGecko
+                    html.Div([
+                        dbc.Label("Clé API:", className="small fw-bold"),
+                        dbc.InputGroup([
+                            dbc.Input(
+                                type="password",
+                                placeholder="Entrez votre clé API...",
+                                value=provider["config"].get("api_key", ""),
+                                id=f"api-key-{provider_name.lower().replace(' ', '-')}"
+                            ),
+                            dbc.Button(
+                                "Tester",
+                                color="outline-primary",
+                                size="sm",
+                                id=f"test-{provider_name.lower().replace(' ', '-')}"
+                            )
+                        ])
+                    ], className="mb-3") if needs_api_key else html.Div(),
+                    
+                    # Boutons d'action (sans bouton supprimer)
+                    dbc.ButtonGroup([
+                        dbc.Button(
+                            "Activer" if provider["status"] == "inactive" else "Désactiver",
+                            size="sm", 
+                            color="success" if provider["status"] == "inactive" else "warning",
+                            outline=True,
+                            id=f"toggle-{provider_name.lower().replace(' ', '-')}"
+                        ),
+                        dbc.Button("Configurer", size="sm", color="primary", outline=True)
+                    ], size="sm")
+                ])
+            ], className="mb-3")
+            
+            provider_cards.append(card)
+        
         return html.Div([
-            html.H5("Data Sources Configuration", className="mb-3"),
-            
-            # Crypto Section
-            self._create_provider_section("crypto", "💰 Cryptocurrency Data", "crypto-providers"),
-            html.Hr(),
-            
-            # Forex Section  
-            self._create_provider_section("forex", "💱 Forex Data", "forex-providers"),
-            html.Hr(),
-            
-            # Stocks Section
-            self._create_provider_section("stocks", "📊 Stocks Data", "stocks-providers"),
-            html.Hr(),
-            
-            # News Section
-            self._create_provider_section("news", "📰 Economic News", "news-providers")
+            html.Div([
+                html.H5("🔧 Fournisseurs de Données", className="text-primary mb-3"),
+                html.P("Configuration des sources de données et clés API", className="text-muted small mb-4")
+            ]),
+            html.Div(provider_cards)
         ])
+
+    def _create_data_sources_panel(self) -> html.Div:
+        """Legacy method - redirects to unified panel"""
+        return self._create_unified_providers_panel()
     
     def _create_provider_section(self, data_type: str, title: str, section_id: str) -> html.Div:
         """Create a section for specific provider type"""
