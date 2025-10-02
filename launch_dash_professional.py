@@ -118,6 +118,10 @@ class THEBOTDashApp:
             print("✅ Modules modulaires initialisés avec succès")
             
             # Configuration unique des callbacks pour les modules qui en ont
+            if 'crypto' in self.modules and hasattr(self.modules['crypto'], 'setup_callbacks'):
+                self.modules['crypto'].setup_callbacks(self.app)
+                print("✅ Callbacks Crypto configurés")
+            
             if 'economic_news' in self.modules and hasattr(self.modules['economic_news'], 'setup_callbacks'):
                 self.modules['economic_news'].setup_callbacks(self.app)
                 print("✅ Callbacks Economic News configurés")

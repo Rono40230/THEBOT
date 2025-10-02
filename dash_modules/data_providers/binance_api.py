@@ -41,7 +41,7 @@ class BinanceProvider:
             if current_time - self.last_request_time < self.request_delay:
                 time.sleep(self.request_delay - (current_time - self.last_request_time))
             
-            url = f"{self.base_url}{endpoint}"
+            url = f"{self.base_url}/{endpoint}"
             logger.debug(f"🌐 Requête Binance: {url}")
             
             response = requests.get(url, params=params, timeout=10)
