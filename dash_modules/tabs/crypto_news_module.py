@@ -60,20 +60,59 @@ class CryptoNewsModule:
         
         print("✅ Crypto News Module initialisé (RSS exclusif)")
     
+    def translate_article_title(self, title: str) -> str:
+        """Traduire titre d'article crypto en français"""
+        try:
+            if AI_AVAILABLE:
+                translated = smart_ai_manager.translate_to_french(title)
+                return translated if translated and len(translated) > 3 else title
+            return title
+        except Exception as e:
+            print(f"⚠️ Erreur traduction titre crypto: {e}")
+            return title
+    
+    def translate_article_summary(self, summary: str) -> str:
+        """Traduire résumé d'article crypto en français"""
+        try:
+            if AI_AVAILABLE and len(summary) > 10:
+                translated = smart_ai_manager.translate_to_french(summary)
+                return translated if translated and len(translated) > 5 else summary
+            return summary
+        except Exception as e:
+            print(f"⚠️ Erreur traduction résumé crypto: {e}")
+            return summary
+
     def get_rss_news(self) -> List[Dict]:
-        """Récupérer les news depuis RSS Manager exclusivement"""
+        """Récupérer les news depuis RSS Manager avec traduction"""
         if not RSS_AVAILABLE:
             return self._get_fallback_news()
         
         try:
             # Récupérer toutes les news RSS
-            all_news = rss_news_manager.get_news(limit=100)
+            rss_result = rss_news_manager.get_news(limit=100)
+            all_news = rss_result if isinstance(rss_result, list) else rss_result.get('articles', [])
             
-            # Filtrer pour crypto seulement
+            # Filtrer pour crypto seulement et traduire
             crypto_news = []
             for article in all_news:
                 if self._is_crypto_news(article):
-                    crypto_news.append(article)
+                    # Traduire titre et résumé
+                    original_title = article.get('title', 'No Title')
+                    original_summary = article.get('summary', article.get('description', 'No summary'))
+                    
+                    translated_title = self.translate_article_title(original_title)
+                    translated_summary = self.translate_article_summary(original_summary)
+                    
+                    # Créer article enrichi avec traduction
+                    enriched_article = {
+                        **article,
+                        'title': translated_title,
+                        'original_title': original_title,
+                        'summary': translated_summary,
+                        'original_summary': original_summary
+                    }
+                    
+                    crypto_news.append(enriched_article)
             
             # Limiter et trier par date
             crypto_news = sorted(crypto_news, 
@@ -83,7 +122,7 @@ class CryptoNewsModule:
             self.news_cache = crypto_news
             self.last_update = datetime.now()
             
-            print(f"✅ {len(crypto_news)} news crypto RSS récupérées")
+            print(f"✅ {len(crypto_news)} news crypto RSS récupérées (traduites)")
             return crypto_news
             
         except Exception as e:
@@ -397,23 +436,23 @@ class CryptoNewsModule:
         )
         def update_crypto_news_data(refresh_clicks, interval_clicks):
             """Mettre à jour les données RSS crypto"""
-            # Récupérer news RSS
-            news = self.get_rss_news()
+            # Récupérer news RSS (retourne une liste d'articles)
+            articles = self.get_rss_news()
             
-            # Analyser sentiment crypto
-            sentiment = self.analyze_crypto_sentiment(news)
+            # Analyser sentiment crypto avec la liste
+            sentiment = self.analyze_crypto_sentiment(articles)
             
-            # Extraire trending coins
-            trending = self.extract_crypto_trending(news)
+            # Extraire trending coins avec la liste
+            trending = self.extract_crypto_trending(articles)
             
-            # Calculer Fear & Greed crypto
-            fear_greed = self.calculate_crypto_fear_greed(news, sentiment)
+            # Calculer Fear & Greed crypto avec la liste
+            fear_greed = self.calculate_crypto_fear_greed(articles, sentiment)
             
-            # Analyser impact prix
-            price_impact = self.analyze_price_impact(news)
+            # Analyser impact prix avec la liste
+            price_impact = self.analyze_price_impact(articles)
             
             return {
-                'news': news,
+                'news': articles,
                 'trending': trending,
                 'fear_greed': fear_greed,
                 'price_impact': price_impact,
@@ -469,8 +508,19 @@ class CryptoNewsModule:
                                         html.Small([
                                             html.I(className="fas fa-clock me-1"),
                                             str(article.get('published_time', 'N/A'))
-                                        ], className="text-muted")
-                                    ])
+                                        ], className="text-muted me-3"),
+                                        dbc.Button([
+                                            html.I(className="fas fa-external-link-alt me-1"),
+                                            "Lire l'article"
+                                        ], 
+                                        href=article.get('url', '#'),
+                                        target="_blank",
+                                        color="success",
+                                        size="sm",
+                                        outline=True,
+                                        className="ms-2"
+                                        )
+                                    ], className="d-flex align-items-center")
                                 ], width=10),
                                 dbc.Col([
                                     html.I(className=f"{icon} {icon_color}", style={'fontSize': '1.5rem'})

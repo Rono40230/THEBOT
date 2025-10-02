@@ -248,7 +248,92 @@ class LocalAIEngine:
             
         except Exception as e:
             logger.error(f"Erreur analyse technique: {e}")
-            return {'pattern': 'unknown', 'confidence': 0, 'score': 50}
+            return {'pattern': 'unknown', 'confidence': 50, 'signals': []}
+    
+    def translate_text(self, text: str, target_lang: str = 'fr') -> Dict:
+        """Traduire texte en français via dictionnaire local simple"""
+        try:
+            if not text or not text.strip():
+                return {'translated_text': text, 'confidence': 0}
+            
+            # Dictionnaire de traduction simple anglais -> français
+            translations = {
+                # Mots économiques/financiers courants
+                'stock': 'action', 'stocks': 'actions', 'market': 'marché', 'markets': 'marchés',
+                'price': 'prix', 'prices': 'prix', 'trading': 'trading', 'trader': 'trader',
+                'investment': 'investissement', 'investor': 'investisseur', 'buy': 'acheter',
+                'sell': 'vendre', 'growth': 'croissance', 'profit': 'profit', 'loss': 'perte',
+                'earnings': 'bénéfices', 'revenue': 'revenus', 'company': 'entreprise',
+                'economic': 'économique', 'economy': 'économie', 'bank': 'banque',
+                'interest': 'intérêt', 'rate': 'taux', 'federal': 'fédéral', 'central': 'central',
+                'inflation': 'inflation', 'recession': 'récession', 'recovery': 'reprise',
+                'currency': 'devise', 'dollar': 'dollar', 'euro': 'euro', 'bitcoin': 'bitcoin',
+                'crypto': 'crypto', 'cryptocurrency': 'cryptomonnaie', 'blockchain': 'blockchain',
+                'technology': 'technologie', 'tech': 'tech', 'artificial': 'artificiel',
+                'intelligence': 'intelligence', 'data': 'données', 'analysis': 'analyse',
+                'report': 'rapport', 'news': 'nouvelles', 'update': 'mise à jour',
+                'forecast': 'prévision', 'outlook': 'perspectives', 'target': 'objectif',
+                
+                # Mots de liaison et temps
+                'and': 'et', 'or': 'ou', 'but': 'mais', 'with': 'avec', 'from': 'de',
+                'to': 'à', 'for': 'pour', 'in': 'dans', 'on': 'sur', 'at': 'à',
+                'up': 'hausse', 'down': 'baisse', 'higher': 'plus haut', 'lower': 'plus bas',
+                'increase': 'augmentation', 'decrease': 'diminution', 'rise': 'hausse',
+                'fall': 'chute', 'strong': 'fort', 'weak': 'faible', 'stable': 'stable',
+                'volatile': 'volatil', 'risk': 'risque', 'opportunity': 'opportunité',
+                
+                # Temps
+                'today': "aujourd'hui", 'yesterday': 'hier', 'tomorrow': 'demain',
+                'week': 'semaine', 'month': 'mois', 'year': 'année', 'quarter': 'trimestre',
+                'morning': 'matin', 'afternoon': 'après-midi', 'evening': 'soir',
+                
+                # Adjectifs courants
+                'good': 'bon', 'bad': 'mauvais', 'new': 'nouveau', 'old': 'ancien',
+                'big': 'grand', 'small': 'petit', 'high': 'élevé', 'low': 'bas',
+                'positive': 'positif', 'negative': 'négatif', 'neutral': 'neutre'
+            }
+            
+            # Traduction mot par mot (simple)
+            words = text.split()
+            translated_words = []
+            
+            for word in words:
+                # Nettoyer le mot (enlever ponctuation)
+                clean_word = word.lower().strip('.,!?;:"()[]{}')
+                
+                # Chercher traduction
+                if clean_word in translations:
+                    # Garder la casse originale
+                    if word[0].isupper() and len(word) > 1:
+                        translated = translations[clean_word].capitalize()
+                    else:
+                        translated = translations[clean_word]
+                    
+                    # Rajouter ponctuation
+                    punctuation = ''.join(c for c in word if not c.isalnum())
+                    translated_words.append(translated + punctuation)
+                else:
+                    # Garder mot original si pas de traduction
+                    translated_words.append(word)
+            
+            translated_text = ' '.join(translated_words)
+            
+            # Calculer confiance basée sur % de mots traduits
+            translated_count = sum(1 for word in words 
+                                 if word.lower().strip('.,!?;:"()[]{}') in translations)
+            confidence = min(90, (translated_count / len(words)) * 100) if words else 0
+            
+            return {
+                'translated_text': translated_text,
+                'confidence': round(confidence, 1),
+                'original_text': text,
+                'words_translated': translated_count,
+                'total_words': len(words)
+            }
+            
+        except Exception as e:
+            logger.error(f"Erreur traduction: {e}")
+            return {'translated_text': text, 'confidence': 0}
     
     def generate_trading_insight(self, symbol: str, market_data: Dict, news_sentiment: Dict, market_type: str = "general") -> Dict:
         """Générer insight trading combiné technique + sentiment"""

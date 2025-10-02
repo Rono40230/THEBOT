@@ -194,8 +194,37 @@ class SmartAIManager:
                 data.get('price_data', []), 
                 data.get('indicators', {})
             )
+        elif task_type == "translation":
+            return self.local_ai.translate_text(data.get('text', ''), target_lang=data.get('target_lang', 'fr'))
         else:
             return {'error': 'Type de tâche non supporté'}
+    
+    def translate_to_french(self, text: str) -> str:
+        """Traduire un texte en français avec IA locale"""
+        try:
+            if not text or not text.strip():
+                return text
+            
+            # Détecter si déjà en français (heuristique simple)
+            french_indicators = ['le ', 'la ', 'les ', 'un ', 'une ', 'des ', 'du ', 'de ', 'et ', 'ou ', 'que ', 'qui ']
+            text_lower = text.lower()
+            french_count = sum(1 for indicator in french_indicators if indicator in text_lower)
+            
+            # Si déjà probablement en français, ne pas traduire
+            if french_count >= 3:
+                return text
+            
+            # Utiliser IA locale pour traduction
+            result = self.analyze_with_best_ai({
+                'text': text,
+                'target_lang': 'fr'
+            }, task_type="translation")
+            
+            return result.get('translated_text', text)
+            
+        except Exception as e:
+            logger.warning(f"Erreur traduction: {e}")
+            return text  # Retourner texte original en cas d'erreur
     
     def get_ai_status(self) -> Dict:
         """Obtenir status de tous les moteurs IA"""

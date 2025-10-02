@@ -63,35 +63,119 @@ class EconomicNewsModule:
         
         print("✅ Economic News Module initialisé (RSS exclusif)")
     
-    def get_rss_news(self) -> List[Dict]:
-        """Récupérer les news depuis RSS Manager exclusivement"""
-        if not RSS_AVAILABLE:
-            return self._get_fallback_news()
-        
+    def translate_article_title(self, title: str) -> str:
+        """Traduire titre d'article en français"""
         try:
-            # Récupérer toutes les news RSS
-            all_news = rss_news_manager.get_news(limit=100)
+            if AI_AVAILABLE:
+                translated = smart_ai_manager.translate_to_french(title)
+                return translated if translated and len(translated) > 3 else title
+            return title
+        except Exception as e:
+            print(f"⚠️ Erreur traduction titre: {e}")
+            return title
+    
+    def translate_article_summary(self, summary: str) -> str:
+        """Traduire résumé d'article en français"""
+        try:
+            if AI_AVAILABLE and len(summary) > 10:
+                translated = smart_ai_manager.translate_to_french(summary)
+                return translated if translated and len(translated) > 5 else summary
+            return summary
+        except Exception as e:
+            print(f"⚠️ Erreur traduction résumé: {e}")
+            return summary
+
+    def get_rss_news(self, limit: int = 20) -> Dict:
+        """Récupérer les news RSS économiques avec traduction"""
+        try:
+            if not RSS_AVAILABLE:
+                return {'news': [], 'total': 0, 'source': 'RSS indisponible'}
             
-            # Filtrer pour économie seulement
+            # Récupérer news RSS (utiliser toutes les catégories disponibles)
+            rss_news = rss_news_manager.get_news(
+                categories=None,  # Toutes les catégories
+                limit=limit
+            )
+            
+            if not rss_news:
+                return {'news': [], 'total': 0, 'source': 'RSS'}
+            
+            # Normaliser le résultat RSS (peut être une liste ou un dict)
+            if isinstance(rss_news, list):
+                all_news = rss_news
+            else:
+                all_news = rss_news.get('articles', [])
+            
+            # Filtrer et enrichir pour économie
             economic_news = []
+            
             for article in all_news:
-                if self._is_economic_news(article):
-                    economic_news.append(article)
+                # Vérifier si pertinent pour économie
+                title = (article.get('title', '') or '').lower()
+                description = (article.get('description', '') or '').lower()
+                content = f"{title} {description}"
+                
+                # Score de pertinence économique
+                relevance_score = sum(1 for keyword in self.economic_keywords 
+                                   if keyword in content)
+                
+                if relevance_score >= 1:  # Au moins 1 keyword économique
+                    # Traduire titre et résumé
+                    original_title = article.get('title', 'No Title')
+                    original_summary = article.get('description', 'No summary')[:300]
+                    
+                    translated_title = self.translate_article_title(original_title)
+                    translated_summary = self.translate_article_summary(original_summary)
+                    
+                    # Enrichir article
+                    enriched_article = {
+                        'title': translated_title,
+                        'original_title': original_title,
+                        'summary': translated_summary,
+                        'original_summary': original_summary,
+                        'source': article.get('source', 'RSS'),
+                        'published_time': article.get('published_time', 'N/A'),
+                        'url': article.get('url', '#'),
+                        'relevance_score': relevance_score,
+                        'category': 'economy'
+                    }
+                    
+                    # Analyser sentiment avec IA si disponible
+                    if AI_AVAILABLE:
+                        sentiment_result = smart_ai_manager.analyze_with_best_ai({
+                            'news_articles': [original_title + ' ' + original_summary]
+                        }, task_type="sentiment")
+                        
+                        sentiment = sentiment_result.get('sentiment', 'neutral')
+                        if sentiment == 'bullish':
+                            enriched_article['sentiment'] = 'positive'
+                        elif sentiment == 'bearish':
+                            enriched_article['sentiment'] = 'negative'
+                        else:
+                            enriched_article['sentiment'] = 'neutral'
+                        
+                        enriched_article['sentiment_confidence'] = sentiment_result.get('confidence', 50)
+                    else:
+                        enriched_article['sentiment'] = 'neutral'
+                        enriched_article['sentiment_confidence'] = 50
+                    
+                    economic_news.append(enriched_article)
             
-            # Limiter et trier par date
-            economic_news = sorted(economic_news, 
-                                 key=lambda x: x.get('published_time', datetime.now()), 
-                                 reverse=True)[:30]
+            # Trier par pertinence puis par temps
+            economic_news.sort(key=lambda x: (x['relevance_score'], x['published_time']), reverse=True)
             
-            self.news_cache = economic_news
-            self.last_update = datetime.now()
+            print(f"✅ {len(economic_news)} news économiques RSS récupérées (traduites)")
             
-            print(f"✅ {len(economic_news)} news économiques RSS récupérées")
-            return economic_news
+            return {
+                'news': economic_news[:limit],
+                'total': len(economic_news),
+                'source': 'RSS',
+                'categories': ['economy', 'business', 'finance']
+            }
             
         except Exception as e:
-            print(f"❌ Erreur RSS Economic News: {e}")
-            return self._get_fallback_news()
+            print(f"❌ Erreur récupération RSS économique: {e}")
+            return {'news': [], 'total': 0, 'source': 'RSS Error'}
     
     def _is_economic_news(self, article: Dict) -> bool:
         """Déterminer si un article est économique"""
@@ -336,19 +420,20 @@ class EconomicNewsModule:
         def update_economic_news_data(refresh_clicks, interval_clicks):
             """Mettre à jour les données RSS économiques"""
             # Récupérer news RSS
-            news = self.get_rss_news()
+            news_result = self.get_rss_news()
+            articles = news_result.get('news', []) if isinstance(news_result, dict) else []
             
-            # Analyser sentiment
-            sentiment = self.analyze_sentiment(news)
+            # Analyser sentiment avec la liste d'articles
+            sentiment = self.analyze_sentiment(articles)
             
-            # Extraire trending topics
-            trending = self.extract_trending_topics(news)
+            # Extraire trending topics avec la liste d'articles
+            trending = self.extract_trending_topics(articles)
             
-            # Calculer Fear & Greed
-            fear_greed = self.calculate_fear_greed_index(news, sentiment)
+            # Calculer Fear & Greed avec la liste d'articles
+            fear_greed = self.calculate_fear_greed_index(articles, sentiment)
             
             return {
-                'news': news,
+                'news': articles,
                 'trending': trending,
                 'fear_greed': fear_greed,
                 'timestamp': datetime.now().isoformat()
@@ -393,8 +478,19 @@ class EconomicNewsModule:
                                         html.Small([
                                             html.I(className="fas fa-clock me-1"),
                                             str(article.get('published_time', 'N/A'))
-                                        ], className="text-muted")
-                                    ])
+                                        ], className="text-muted me-3"),
+                                        dbc.Button([
+                                            html.I(className="fas fa-external-link-alt me-1"),
+                                            "Lire l'article"
+                                        ], 
+                                        href=article.get('url', '#'),
+                                        target="_blank",
+                                        color="primary",
+                                        size="sm",
+                                        outline=True,
+                                        className="ms-2"
+                                        )
+                                    ], className="d-flex align-items-center")
                                 ], width=10),
                                 dbc.Col([
                                     html.I(className=f"{icon} {icon_color}", style={'fontSize': '1.5rem'})
