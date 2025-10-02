@@ -11,8 +11,6 @@ from typing import Dict, List, Optional, Any
 import logging
 
 # Import des providers (APIs restantes après Phase 1)
-# CryptoPanic News (DISABLED - DEPRECATED - Coûte 7€/mois)
-# Ne plus utiliser CryptoPanic, utiliser RSS à la place
 from .binance_api import binance_provider
 from .coin_gecko_api import coin_gecko_api
 from .twelve_data_api import twelve_data_api
@@ -23,12 +21,10 @@ try:
 except ImportError:
     yahoo_finance_api = None
 
-# FMP API Import désactivé (déprécié)
-# try:
-#     from .fmp_api import fmp_api
-# except ImportError:
-#     fmp_api = None
-fmp_api = None  # FMP déprécié pour éviter erreurs d'import
+try:
+    from .fmp_api import fmp_api
+except ImportError:
+    fmp_api = None
 
 # RSS Infrastructure (Phase 1)
 try:
@@ -36,47 +32,30 @@ try:
 except ImportError:
     rss_news_manager = None
 
-# Phase 2 Optimizations
-try:
-    from ..core.intelligent_cache import get_global_cache
-    from ..core.specialized_api_manager import specialized_api_manager
-except ImportError:
-    get_global_cache = None
-    specialized_api_manager = None
-
 # Configuration du logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class RealDataManager:
-    """Gestionnaire central des données réelles - Multi-providers avec optimisations Phase 2"""
+    """Gestionnaire central des données réelles - Multi-providers"""
     
     def __init__(self):
-        # Phase 2: Cache intelligent
-        self.cache = get_global_cache() if get_global_cache else {}
+        self.cache = {}
         self.binance_provider = binance_provider
         
         # Configure API keys for providers
         self._configure_api_keys()
         
-        # Providers disponibles (post-Phase 1 RSS)
+        # Providers disponibles
         self.providers = {
             'binance': self.binance_provider,
+            'crypto_panic': crypto_panic_api,
             'coin_gecko': coin_gecko_api,
             'twelve_data': twelve_data_api,
-            # APIs dépréciées supprimées:
-            # 'crypto_panic': crypto_panic_api,  # Déprécié (-7€/mois)
             # 'yahoo': yahoo_finance_api,  # TODO: À implémenter
-            # 'fmp': fmp_api  # Déprécié (-14€/mois)
+            # 'fmp': fmp_api  # TODO: À implémenter
         }
-        
-        # Phase 2: Gestionnaire spécialisé des APIs
-        if specialized_api_manager:
-            specialized_api_manager.set_providers(self.providers)
-            if rss_news_manager:
-                self.providers['rss_news_manager'] = rss_news_manager
-                specialized_api_manager.set_providers(self.providers)
         
         # Marchés supportés par provider
         self.supported_markets = {
@@ -122,7 +101,7 @@ class RealDataManager:
         }
         
         logger.info(f"✅ RealDataManager initialisé - {len(self.supported_markets)} marchés disponibles")
-        logger.info(f"📊 Providers: Binance (actif), RSS News (actif), Yahoo Finance (en attente)")
+        logger.info(f"📊 Providers: Binance (actif), CryptoPanic (actif), CoinGecko (actif), Yahoo Finance (en attente), FMP (en attente)")
     
     def _configure_api_keys(self):
         """Configure API keys for all providers from configuration"""
@@ -130,23 +109,22 @@ class RealDataManager:
             from ..core.api_config import APIConfig
             config = APIConfig()
             
-            # Configure CryptoPanic API key (DEPRECATED - Phase 1)
+            # Configure CryptoPanic API key
             for provider in config.config['providers']['data_sources']['news']:
                 if provider['name'] == 'CryptoPanic' and provider.get('config', {}).get('api_key'):
-                    # crypto_panic_api.api_key = provider['config']['api_key']  # DEPRECATED
-                    logger.info(f"⚠️ CryptoPanic API deprecated - using RSS instead")
+                    crypto_panic_api.api_key = provider['config']['api_key']
+                    logger.info(f"✅ CryptoPanic API key configured")
                 elif provider['name'] == 'FMP' and provider.get('config', {}).get('api_key'):
-                    # FMP API configuration désactivée (déprécié)
-                    # from .fmp_api import fmp_api
-                    # fmp_api.api_key = provider['config']['api_key']
-                    logger.info(f"⚠️ FMP API deprecated - skipping configuration")
+                    # Import and configure FMP
+                    from .fmp_api import fmp_api
+                    fmp_api.api_key = provider['config']['api_key']
+                    logger.info(f"✅ FMP API key configured")
                 elif provider['name'] == 'CoinGecko' and provider.get('config', {}).get('api_key'):
                     coin_gecko_api.api_key = provider['config']['api_key']
                     logger.info(f"✅ CoinGecko API key configured")
                 elif provider['name'] == 'Twelve Data' and provider.get('config', {}).get('api_key'):
                     twelve_data_api.api_key = provider['config']['api_key']
-                    logger.info(f"✅ Twelve Data API key configured: {provider['config']['api_key'][:8]}...")
-                    logger.info(f"✅ Twelve Data ready - 800 calls/day available")
+                    logger.info(f"✅ Twelve Data API key configured")
                     
         except Exception as e:
             logger.warning(f"⚠️ Erreur configuration API keys: {e}")
@@ -169,14 +147,9 @@ class RealDataManager:
             if provider_name == 'binance':
                 return self._get_binance_data(symbol, timeframe, limit)
             elif provider_name == 'coin_gecko':
-                try:
-                    return self._get_coingecko_data(symbol, timeframe, limit)
-                except Exception as e:
-                    logger.warning(f"⚠️ CoinGecko temporairement indisponible pour {symbol}: {e}")
-                    # Fallback vers données simulées si besoin
-                    return None
+                return self._get_coingecko_data(symbol, timeframe, limit)
             elif provider_name == 'crypto_panic':
-                logger.warning(f"Provider RSS utilisé pour les news seulement, pas de données OHLCV pour {symbol}")
+                logger.warning(f"CryptoPanic utilisé principalement pour les news, pas de données OHLCV pour {symbol}")
                 return None
             elif provider_name == 'yahoo':
                 logger.warning(f"Yahoo Finance provider pas encore implémenté pour {symbol}")
@@ -307,10 +280,9 @@ class RealDataManager:
             }
     
     def get_news_data(self, sources: List[str] = None, limit: int = 20) -> List[Dict]:
-        """Récupérer données de news depuis tous les providers disponibles (Phase 1: RSS Migration)"""
+        """Récupérer données de news depuis tous les providers disponibles"""
         if sources is None:
-            # Sources post-Phase 1 (APIs payantes supprimées)
-            sources = ['binance', 'coin_gecko', 'twelve_data', 'rss']  # RSS ajouté
+            sources = ['binance', 'crypto_panic', 'coin_gecko', 'yahoo', 'fmp', 'twelve_data']
         
         all_news = []
         
@@ -325,32 +297,23 @@ class RealDataManager:
                 except Exception as e:
                     logger.error(f"❌ Erreur news Binance: {e}")
             
-            # CryptoPanic News (DEPRECATED - Phase 1)
+            # CryptoPanic News
             if 'crypto_panic' in sources:
-                logger.warning("⚠️ CryptoPanic déprécié (-7€/mois) - utilisez RSS à la place")
-                # Ancien code déprécié:
-                # crypto_panic_news = crypto_panic_api.get_news(limit=limit//6)
-                # all_news.extend(crypto_panic_news)
-            
-            # RSS News (NOUVEAU - Phase 1)
-            if 'rss' in sources:
                 try:
-                    from .rss_news_manager import rss_news_manager
-                    rss_news = rss_news_manager.get_news(limit=limit//3)
-                    all_news.extend(rss_news)
-                    logger.info(f"✅ Récupéré {len(rss_news)} news RSS (0€/mois)")
+                    crypto_panic_news = crypto_panic_api.get_news(limit=limit//6)
+                    all_news.extend(crypto_panic_news)
+                    logger.info(f"✅ Récupéré {len(crypto_panic_news)} news de CryptoPanic")
                 except Exception as e:
-                    logger.error(f"❌ Erreur news RSS: {e}")
+                    logger.error(f"❌ Erreur news CryptoPanic: {e}")
             
-            # CoinGecko Market Updates (DISABLED temporairement - erreurs API)
-            # if 'coingecko' in sources and coin_gecko_api:
-            #     try:
-            #         coin_gecko_news = coin_gecko_api.get_market_updates(category)
-            #         if coin_gecko_news:
-            #             all_news.extend(coin_gecko_news)
-            #             logger.info(f"✅ Récupéré {len(coin_gecko_news)} updates de CoinGecko")
-            #     except Exception as e:
-            #         logger.error(f"❌ Erreur updates CoinGecko: {e}")
+            # CoinGecko Market Updates
+            if 'coin_gecko' in sources:
+                try:
+                    coin_gecko_news = coin_gecko_api.get_news(limit=limit//6)
+                    all_news.extend(coin_gecko_news)
+                    logger.info(f"✅ Récupéré {len(coin_gecko_news)} updates de CoinGecko")
+                except Exception as e:
+                    logger.error(f"❌ Erreur updates CoinGecko: {e}")
             
             # Yahoo Finance News
             if 'yahoo' in sources:
@@ -362,18 +325,18 @@ class RealDataManager:
                 except Exception as e:
                     logger.error(f"❌ Erreur news Yahoo Finance: {e}")
             
-            # FMP News (DÉPRÉCIÉ - supprimé pour éviter erreurs d'import)
-            # if 'fmp' in sources:
-            #     try:
-            #         from .fmp_api import fmp_api
-            #         if fmp_api.api_key:
-            #             fmp_news = fmp_api.get_economic_news(limit=limit//4)
-            #             all_news.extend(fmp_news)
-            #             logger.info(f"✅ Récupéré {len(fmp_news)} news de FMP")
-            #         else:
-            #             logger.warning("⚠️ FMP API key manquante pour les news")
-            #     except Exception as e:
-            #         logger.error(f"❌ Erreur news FMP: {e}")
+            # FMP News
+            if 'fmp' in sources:
+                try:
+                    from .fmp_api import fmp_api
+                    if fmp_api.api_key:
+                        fmp_news = fmp_api.get_economic_news(limit=limit//4)
+                        all_news.extend(fmp_news)
+                        logger.info(f"✅ Récupéré {len(fmp_news)} news de FMP")
+                    else:
+                        logger.warning("⚠️ FMP API key manquante pour les news")
+                except Exception as e:
+                    logger.error(f"❌ Erreur news FMP: {e}")
             
             # Twelve Data News
             if 'twelve_data' in sources:

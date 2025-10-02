@@ -1,0 +1,9 @@
+{
+  "ai_mode": "auto",
+  "max_cost_per_month": 5,
+  "priority_speed": true,
+  "priority_accuracy": false,
+  "huggingface_enabled": true,
+  "premium_enabled": false,
+  "fallback_always_local": true
+}

@@ -8,7 +8,7 @@ import os
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import dash_bootstrap_components as dbc
-from dash import html, dcc, Input, Output, State, callback
+from dash import html, dcc, Input, Output, State, callback, dash
 import hashlib
 
 class APIConfig:
@@ -134,6 +134,28 @@ class APIConfig:
                             "config": {
                                 "api_key": ""
                             }
+                        },
+                        {
+                            "name": "Twelve Data",
+                            "type": "multi",
+                            "status": "active",
+                            "api_key_required": True,
+                            "description": "Comprehensive financial data provider - Stocks, Forex, Crypto, News",
+                            "data_types": ["stocks", "forex", "crypto", "etf", "indices", "financial_news", "real_time", "historical", "fundamentals"],
+                            "rate_limit": "800 calls/day (free)",
+                            "cost": "Free: 800 calls/day, Basic: $8/month, Pro: $24/month",
+                            "priority": 3,
+                            "endpoints": {
+                                "base_url": "https://api.twelvedata.com",
+                                "time_series": "/time_series",
+                                "real_time": "/price",
+                                "news": "/news",
+                                "forex": "/forex_pairs",
+                                "crypto": "/cryptocurrencies"
+                            },
+                            "config": {
+                                "api_key": ""
+                            }
                         }
                     ]
                 },
@@ -171,6 +193,22 @@ class APIConfig:
                             "api_key": "",
                             "model": "claude-3-sonnet",
                             "max_tokens": 1000
+                        }
+                    },
+                    {
+                        "name": "HuggingFace",
+                        "type": "ai",
+                        "status": "active",
+                        "api_key_required": True,
+                        "description": "HuggingFace Transformers - Free AI models for sentiment analysis",
+                        "capabilities": ["sentiment_analysis", "text_classification", "embeddings"],
+                        "models": ["cardiffnlp/twitter-roberta-base-sentiment-latest", "ProsusAI/finbert"],
+                        "rate_limit": "1000 calls/hour (free)",
+                        "cost": "Free: 1000 calls/hour, Pro: $9/month",
+                        "priority": 3,
+                        "config": {
+                            "api_key": "",
+                            "model": "cardiffnlp/twitter-roberta-base-sentiment-latest"
                         }
                     }
                 ]
@@ -220,7 +258,11 @@ class APIConfig:
     
     def get_provider(self, data_type: str, provider_name: str) -> Optional[Dict]:
         """Get specific provider configuration"""
-        providers = self.config["providers"]["data_sources"].get(data_type, [])
+        if data_type == "ai":
+            providers = self.config["providers"].get("ai_providers", [])
+        else:
+            providers = self.config["providers"]["data_sources"].get(data_type, [])
+        
         for provider in providers:
             if provider["name"] == provider_name:
                 return provider
@@ -228,7 +270,10 @@ class APIConfig:
     
     def get_active_providers(self, data_type: str) -> List[Dict]:
         """Get active providers for a data type"""
-        providers = self.config["providers"]["data_sources"].get(data_type, [])
+        if data_type == "ai":
+            providers = self.config["providers"].get("ai_providers", [])
+        else:
+            providers = self.config["providers"]["data_sources"].get(data_type, [])
         return [p for p in providers if p["status"] == "active"]
     
     def set_api_key(self, provider_name: str, data_type: str, api_key: str) -> bool:
@@ -247,9 +292,8 @@ class APIConfig:
             return {"success": False, "error": "Provider not found"}
         
         if provider["name"] == "Alpha Vantage":
-            from .alpha_vantage_api import AlphaVantageAPI
-            api = AlphaVantageAPI(provider["config"].get("api_key"))
-            return api.test_connection()
+            # AlphaVantage API complètement supprimé
+            return {"success": False, "message": "AlphaVantage API removed - use Yahoo Finance, Binance, or RSS"}
         elif provider["name"] == "Binance":
             # Binance doesn't require API key for public data
             return {"success": True, "message": "Binance public API available"}
@@ -301,27 +345,40 @@ class APIConfig:
             "crypto": {"icon": "💰", "name": "Crypto"},
             "forex": {"icon": "💱", "name": "Forex"}, 
             "stocks": {"icon": "📊", "name": "Actions"},
-            "news": {"icon": "📰", "name": "News"}
+            "news": {"icon": "📰", "name": "News"},
+            "ai": {"icon": "🤖", "name": "AI"}
         }
         
         for data_type, type_info in categories.items():
-            providers = self.config["providers"]["data_sources"].get(data_type, [])
+            if data_type == "ai":
+                # Gérer ai_providers séparément
+                providers = self.config["providers"].get("ai_providers", [])
+            else:
+                providers = self.config["providers"]["data_sources"].get(data_type, [])
+            
             for provider in providers:
                 provider_copy = provider.copy()
                 provider_copy["data_type"] = data_type
                 provider_copy["type_info"] = type_info
                 all_providers.append(provider_copy)
         
-        # Supprimer les doublons basés sur le nom
+        # Traiter les providers pour éviter les doublons
         unique_providers = {}
         for provider in all_providers:
             name = provider["name"]
             if name not in unique_providers:
                 unique_providers[name] = provider
+                # Assurer que data_types existe
+                if "data_types" not in provider:
+                    if provider["data_type"] == "ai":
+                        provider["data_types"] = ["ai"]
+                    else:
+                        provider["data_types"] = [provider["data_type"]]
             else:
                 # Fusionner les types de données
                 existing = unique_providers[name]
-                existing["data_types"] = list(set(existing["data_types"] + provider["data_types"]))
+                new_types = provider.get("data_types", [provider["data_type"]])
+                existing["data_types"] = list(set(existing.get("data_types", []) + new_types))
         
         provider_cards = []
         for provider_name, provider in unique_providers.items():
@@ -612,6 +669,30 @@ class APIConfig:
                 ], width=4)
             ])
         ])
+
+
+    def save_huggingface_key(self, api_key: str) -> bool:
+        """Save HuggingFace API key specifically"""
+        try:
+            ai_providers = self.config["providers"].get("ai_providers", [])
+            
+            for provider in ai_providers:
+                if provider.get("name") == "HuggingFace":
+                    provider["config"]["api_key"] = api_key.strip() if api_key else ""
+                    provider["status"] = "active" if api_key and api_key.strip() else "inactive"
+                    self.save_config()
+                    print(f"✅ HuggingFace API key {'saved' if api_key else 'removed'}")
+                    return True
+            
+            return False
+        except Exception as e:
+            print(f"❌ Error saving HuggingFace API key: {e}")
+            return False
+
+    def setup_callbacks(self, app):
+        """Setup callbacks for API configuration"""
+        # Note: Callbacks moved to launch_dash_professional.py to avoid conflicts
+        pass
 
 
 # Global instance

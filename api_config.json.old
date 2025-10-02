@@ -1,0 +1,232 @@
+{
+  "providers": {
+    "data_sources": {
+      "crypto": [
+        {
+          "name": "Binance",
+          "type": "crypto",
+          "status": "active",
+          "api_key_required": false,
+          "description": "Real-time cryptocurrency data - SPECIALIZED for crypto markets",
+          "data_types": [
+            "spot_prices",
+            "futures_prices",
+            "options_data",
+            "volume",
+            "historical",
+            "market_depth",
+            "trading_pairs",
+            "defi_data"
+          ],
+          "rate_limit": "1200 calls/minute",
+          "cost": "Free",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "https://api.binance.com",
+            "klines": "/api/v3/klines",
+            "ticker": "/api/v3/ticker/24hr",
+            "depth": "/api/v3/depth",
+            "trades": "/api/v3/trades"
+          },
+          "config": {}
+        }
+      ],
+      "forex": [
+        {
+          "name": "Twelve Data",
+          "type": "forex",
+          "status": "active",
+          "api_key_required": true,
+          "description": "SPECIALIZED for Forex, indices, commodities - Free 800 calls/day",
+          "data_types": [
+            "forex_pairs",
+            "indices",
+            "commodities",
+            "real_time",
+            "historical",
+            "fundamentals"
+          ],
+          "rate_limit": "800 calls/day (free)",
+          "cost": "Free: 800 calls/day",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "https://api.twelvedata.com",
+            "time_series": "/time_series",
+            "real_time": "/price",
+            "forex": "/forex_pairs"
+          },
+          "config": {
+            "api_key": "1f192cc6b3634b6bbb6777b8ef708b08"
+          }
+        }
+      ],
+      "stocks": [
+        {
+          "name": "Yahoo Finance",
+          "type": "stocks",
+          "status": "active",
+          "api_key_required": false,
+          "description": "SPECIALIZED for stocks, ETFs, bonds - Free unlimited via yfinance",
+          "data_types": [
+            "stock_prices",
+            "etf_data",
+            "bonds",
+            "earnings",
+            "fundamentals",
+            "sector_analysis",
+            "market_indices"
+          ],
+          "rate_limit": "Conservative (via yfinance)",
+          "cost": "Free",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "yfinance library",
+            "method": "direct_data_access"
+          },
+          "config": {}
+        }
+      ],
+      "news": [
+        {
+          "name": "RSS Aggregator",
+          "type": "news",
+          "status": "active",
+          "api_key_required": false,
+          "description": "Multi-source RSS news aggregator - ZERO COST, unlimited access",
+          "data_types": [
+            "economic_news",
+            "crypto_news",
+            "market_news",
+            "forex_news",
+            "financial_analysis"
+          ],
+          "rate_limit": "Unlimited (RSS feeds)",
+          "cost": "Free",
+          "priority": 1,
+          "endpoints": {
+            "type": "rss_feeds",
+            "sources": "Multiple RSS providers"
+          },
+          "config": {
+            "categories": [
+              "economic",
+              "crypto",
+              "market",
+              "forex",
+              "general"
+            ],
+            "update_interval": 300,
+            "max_articles_per_source": 20
+          }
+        },
+        {
+          "name": "CoinGecko",
+          "type": "news",
+          "status": "active",
+          "api_key_required": true,
+          "description": "Cryptocurrency market data (retained for trending coins)",
+          "data_types": [
+            "crypto_prices",
+            "market_data",
+            "trending_coins"
+          ],
+          "rate_limit": "30 calls/minute (free)",
+          "cost": "Free: 30 calls/minute",
+          "priority": 3,
+          "endpoints": {
+            "base_url": "https://api.coingecko.com/api/v3",
+            "trending": "/search/trending"
+          },
+          "config": {
+            "api_key": "CG-ZsGBbqJGVzNS8nSFmH7jyEh4"
+          }
+        }
+      ]
+    },
+    "ai_providers": [
+      {
+        "name": "OpenAI GPT",
+        "type": "ai",
+        "status": "inactive",
+        "api_key_required": true,
+        "description": "Advanced AI analysis and insights",
+        "capabilities": [
+          "analysis",
+          "predictions",
+          "explanations"
+        ],
+        "models": [
+          "gpt-4",
+          "gpt-3.5-turbo"
+        ],
+        "rate_limit": "3000 tokens/minute",
+        "cost": "$0.03/1K tokens (GPT-4)",
+        "priority": 1,
+        "config": {
+          "api_key": "",
+          "model": "gpt-4",
+          "max_tokens": 1000,
+          "temperature": 0.7
+        }
+      },
+      {
+        "name": "Anthropic Claude",
+        "type": "ai",
+        "status": "inactive",
+        "api_key_required": true,
+        "description": "Claude AI for market analysis",
+        "capabilities": [
+          "analysis",
+          "reasoning",
+          "explanations"
+        ],
+        "models": [
+          "claude-3-opus",
+          "claude-3-sonnet"
+        ],
+        "rate_limit": "4000 tokens/minute",
+        "cost": "$15/million tokens",
+        "priority": 2,
+        "config": {
+          "api_key": "",
+          "model": "claude-3-sonnet",
+          "max_tokens": 1000
+        }
+      }
+    ]
+  },
+  "settings": {
+    "auto_fallback": true,
+    "health_monitoring": true,
+    "cost_tracking": true,
+    "last_updated": "2025-10-02T15:34:23.145589",
+    "rss_config": {
+      "enabled": true,
+      "default_cache_duration": 300,
+      "max_articles_per_source": 20,
+      "parallel_workers": 5,
+      "categories": [
+        "economic",
+        "crypto",
+        "market",
+        "forex",
+        "general"
+      ]
+    },
+    "migration_info": {
+      "phase": "RSS_INFRASTRUCTURE_DEPLOYED",
+      "apis_removed": [
+        "Alpha Vantage",
+        "CryptoPanic",
+        "FMP"
+      ],
+      "cost_savings_monthly": 221,
+      "specialization": {
+        "crypto": "Binance (comprehensive)",
+        "forex": "Twelve Data (specialized)",
+        "stocks": "Yahoo Finance (specialized)",
+        "news": "RSS Aggregator (unlimited)"
+      }
+    }
+  }
+}

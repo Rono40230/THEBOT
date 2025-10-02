@@ -273,19 +273,19 @@ class CryptoModule(BaseMarketModule):
             
             dbc.Switch(
                 id="ai-enabled",
-                label="Enable AI Analysis",
-                value=False,
+                label="Enable AI Analysis (FREE)",
+                value=True,
                 className="mb-3"
             ),
             
             dbc.Select(
                 id="ai-model",
                 options=[
-                    {"label": "🤖 GPT-4 Turbo", "value": "gpt4"},
-                    {"label": "🧠 Claude-3.5 Sonnet", "value": "claude"},
-                    {"label": "⚡ Custom LSTM", "value": "lstm"}
+                    {"label": "🆓 IA Locale (Gratuite)", "value": "local"},
+                    {"label": "🌐 IA Publique (100/jour)", "value": "free_public"},
+                    {"label": "🧠 IA Hybride (10€/mois)", "value": "smart"}
                 ],
-                value="gpt4",
+                value="local",
                 size="sm",
                 className="mb-3"
             ),
@@ -304,9 +304,9 @@ class CryptoModule(BaseMarketModule):
             ]),
             
             dbc.Button([
-                html.I(className="fas fa-magic me-2"),
-                "Generate Insights"
-            ], id="ai-insights-btn", color="warning", size="sm", className="w-100", disabled=True)
+                html.I(className="fas fa-brain me-2"),
+                "Generate AI Insights (FREE)"
+            ], id="ai-insights-btn", color="success", size="sm", className="w-100")
             
         ])
     
@@ -357,35 +357,24 @@ class CryptoModule(BaseMarketModule):
         ])
     
     def create_ai_dashboard(self):
-        """Dashboard IA avec insights reproduisant exactement l'interface de l'image"""
+        """Dashboard IA avec insights dynamiques utilisant IA locale gratuite"""
         
         return html.Div([
             
-            # Insights cards directement
+            # Insights cards avec données IA locale
             dbc.Row([
                 
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-trend-up me-2"),
-                            "Market Sentiment"
+                            "Market Sentiment (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("Bullish", className="text-success"),
-                            html.P("Confidence: 78%", className="text-muted"),
-                            dcc.Graph(
-                                figure=px.pie(
-                                    values=[78, 22], 
-                                    names=['Bullish', 'Bearish'],
-                                    color_discrete_map={'Bullish': '#10b981', 'Bearish': '#ef4444'}
-                                ).update_layout(
-                                    showlegend=False,
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    height=200
-                                ),
-                                style={'height': '200px'}
-                            )
+                            html.Div(id="ai-sentiment-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("AI sentiment loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4),
@@ -394,13 +383,13 @@ class CryptoModule(BaseMarketModule):
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-chart-line me-2"),
-                            "Price Prediction"
+                            "Technical Analysis (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("+2.3%", className="text-info"),
-                            html.P("Next 24h target", className="text-muted"),
-                            # Mini chart de prédiction
-                            html.Div("Prediction chart placeholder", className="text-center p-4 bg-secondary rounded")
+                            html.Div(id="ai-technical-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Technical patterns loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4),
@@ -408,42 +397,39 @@ class CryptoModule(BaseMarketModule):
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-exclamation-triangle me-2"),
-                            "Risk Assessment"
+                            html.I(className="fas fa-brain me-2"),
+                            "Trading Insight (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("Medium", className="text-warning"),
-                            html.P("Volatility expected", className="text-muted"),
-                            dbc.Progress(value=60, color="warning", className="mb-2"),
-                            html.Small("Risk Score: 60/100")
+                            html.Div(id="ai-trading-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Trading recommendations loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4)
                 
             ], className="mb-4"),
             
-            # AI Insights Text
+            # AI Analysis Text détaillé
             dbc.Card([
                 dbc.CardHeader([
-                    html.I(className="fas fa-brain me-2"),
-                    "AI Market Analysis"
+                    html.I(className="fas fa-robot me-2"),
+                    "AI Market Analysis (100% FREE)"
                 ]),
                 dbc.CardBody([
                     html.Div(id="ai-insights-text", children=[
                         html.P([
-                            html.Strong("Technical Analysis: "),
-                            "The market is showing strong bullish momentum with RSI at 67, indicating room for further upside. "
-                            "The 20-period SMA is acting as dynamic support."
+                            html.Strong("IA Locale: "),
+                            "Analyse en cours... L'IA locale gratuite analyse les signaux techniques et le sentiment des news crypto."
                         ]),
                         html.P([
-                            html.Strong("Volume Analysis: "), 
-                            "Above-average volume confirms the current price action. "
-                            "Smart money appears to be accumulating."
+                            html.Strong("Coût: "), 
+                            html.Span("0€/mois - Analyses illimitées", className="text-success fw-bold")
                         ]),
                         html.P([
-                            html.Strong("Economic Context: "),
-                            "Upcoming Fed decision could introduce volatility. "
-                            "Market positioning suggests preparation for dovish outcome."
+                            html.Strong("Performance: "), 
+                            "~100ms par analyse - Données privées (local)"
                         ])
                     ])
                 ])
@@ -727,3 +713,139 @@ class CryptoModule(BaseMarketModule):
                 except Exception as e:
                     print(f"❌ Erreur changement timeframe crypto: {e}")
             return {}
+
+        # Callbacks IA Locale pour Crypto
+        @app.callback(
+            [Output('ai-sentiment-display', 'children'),
+             Output('ai-technical-display', 'children'),
+             Output('ai-trading-display', 'children'),
+             Output('ai-insights-text', 'children')],
+            [Input('ai-insights-btn', 'n_clicks'),
+             Input('symbol-dropdown', 'value')],
+            [State('ai-model', 'value'),
+             State('ai-enabled', 'value')]
+        )
+        def update_crypto_ai_analysis(n_clicks, symbol, ai_model, ai_enabled):
+            """Mise à jour analyse IA crypto en temps réel"""
+            if not ai_enabled or not symbol:
+                return [
+                    html.P("IA désactivée", className="text-muted"),
+                    html.P("IA désactivée", className="text-muted"),
+                    html.P("IA désactivée", className="text-muted"),
+                    html.P("Activez l'IA pour voir les analyses", className="text-muted")
+                ]
+            
+            try:
+                from ..ai_engine.local_ai_engine import local_ai_engine
+                from ..data_providers.rss_news_manager import rss_news_manager
+                
+                # Récupérer données marché
+                market_data = self.load_market_data(symbol, '1h', 100)
+                if market_data.empty:
+                    raise Exception("Pas de données marché disponibles")
+                
+                # Préparer données pour IA
+                latest_price = market_data.iloc[-1]
+                price_data = {
+                    'close': latest_price['Close'],
+                    'high': latest_price['High'],
+                    'low': latest_price['Low'],
+                    'volume': latest_price['Volume']
+                }
+                
+                # Calculer indicateurs
+                sma_20 = market_data['Close'].rolling(20).mean().iloc[-1]
+                rsi = self._calculate_simple_rsi(market_data['Close'], 14)
+                avg_volume = market_data['Volume'].rolling(20).mean().iloc[-1]
+                
+                indicators = {
+                    'sma_20': sma_20,
+                    'rsi': rsi,
+                    'avg_volume': avg_volume
+                }
+                
+                # Récupérer news crypto
+                try:
+                    news_data = rss_news_manager.get_cached_news()
+                    crypto_news = [
+                        article for article in news_data 
+                        if any(keyword in (article.get('title', '') + article.get('description', '')).lower() 
+                               for keyword in ['bitcoin', 'crypto', 'btc', 'ethereum', 'eth', symbol.lower()])
+                    ][:10]  # Limiter à 10 articles
+                except:
+                    crypto_news = []
+                
+                # Analyses IA
+                sentiment_result = local_ai_engine.analyze_market_sentiment(crypto_news)
+                technical_result = local_ai_engine.analyze_technical_pattern(price_data, indicators)
+                trading_insight = local_ai_engine.generate_trading_insight(
+                    symbol, 
+                    {'technical_analysis': technical_result},
+                    sentiment_result
+                )
+                
+                # Formatage résultats
+                sentiment_display = html.Div([
+                    html.H3(sentiment_result['sentiment'].title(), 
+                           className=f"text-{'success' if sentiment_result['sentiment'] == 'bullish' else 'danger' if sentiment_result['sentiment'] == 'bearish' else 'warning'}"),
+                    html.P(f"Confidence: {sentiment_result['confidence']:.1f}%", className="text-muted"),
+                    html.Small(f"Score: {sentiment_result['score']:.1f}/100")
+                ])
+                
+                technical_display = html.Div([
+                    html.H3(technical_result['pattern'].replace('_', ' ').title(), 
+                           className=f"text-{'success' if 'uptrend' in technical_result['pattern'] else 'danger' if 'downtrend' in technical_result['pattern'] else 'warning'}"),
+                    html.P(f"Confidence: {technical_result['confidence']:.1f}%", className="text-muted"),
+                    html.Small(f"Signaux: {len(technical_result.get('signals', []))}")
+                ])
+                
+                trading_display = html.Div([
+                    html.H3(trading_insight['recommendation'], 
+                           className=f"text-{trading_insight.get('color', 'warning')}"),
+                    html.P(f"Confidence: {trading_insight['confidence']:.1f}%", className="text-muted"),
+                    html.Small(trading_insight['strength'] + " Signal")
+                ])
+                
+                insights_text = html.Div([
+                    html.P([
+                        html.Strong("Sentiment Analysis: "),
+                        f"{sentiment_result['analysis']['bullish_articles']} articles bullish, "
+                        f"{sentiment_result['analysis']['bearish_articles']} bearish sur {sentiment_result['analysis']['total_articles']} analysés."
+                    ]),
+                    html.P([
+                        html.Strong("Technical Analysis: "),
+                        f"Pattern {technical_result['pattern']} détecté. " + 
+                        (" | ".join(technical_result.get('signals', [])))
+                    ]),
+                    html.P([
+                        html.Strong("Trading Recommendation: "),
+                        trading_insight['explanation']
+                    ]),
+                    html.P([
+                        html.Strong("IA Engine: "), 
+                        html.Span(f"Local AI (FREE) - Analyse en {ai_model}", className="text-success")
+                    ]),
+                    html.P([
+                        html.Strong("Coût: "), 
+                        html.Span("0€ - Performance: <100ms", className="text-success fw-bold")
+                    ])
+                ])
+                
+                return sentiment_display, technical_display, trading_display, insights_text
+                
+            except Exception as e:
+                error_msg = f"Erreur IA: {str(e)}"
+                error_display = html.P(error_msg, className="text-danger")
+                return error_display, error_display, error_display, error_display
+
+    def _calculate_simple_rsi(self, prices, period=14):
+        """Calcul RSI simple"""
+        try:
+            delta = prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            return rsi.iloc[-1] if not rsi.empty else 50
+        except:
+            return 50

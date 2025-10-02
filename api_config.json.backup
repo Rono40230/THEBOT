@@ -30,7 +30,7 @@
         {
           "name": "Alpha Vantage",
           "type": "multi",
-          "status": "inactive",
+          "status": "active",
           "api_key_required": true,
           "description": "Professional financial data provider - Forex, Stocks, News & Analysis",
           "data_types": [
@@ -52,7 +52,7 @@
             "news": "function=NEWS_SENTIMENT"
           },
           "config": {
-            "api_key": ""
+            "api_key": "Alpha vantage : 8LOI149VLAXKFQ08"
           }
         },
         {
@@ -74,7 +74,7 @@
             "posts": "/posts/"
           },
           "config": {
-            "api_key": ""
+            "api_key": "91832388c7822be37d13b66bc51ca20fb50fcdcd"
           }
         },
         {
@@ -96,7 +96,7 @@
             "news": "/news"
           },
           "config": {
-            "api_key": ""
+            "api_key": "CG-ZsGBbqJGVzNS8nSFmH7jyEh4"
           }
         },
         {
@@ -104,25 +104,27 @@
           "type": "news",
           "status": "active",
           "api_key_required": false,
-          "description": "Free financial news and market data",
+          "description": "Financial news via yfinance library - market analysis and data-driven insights",
           "data_types": [
             "financial_news",
             "market_data",
-            "earnings"
+            "earnings",
+            "sector_analysis",
+            "market_indices"
           ],
-          "rate_limit": "Variable (rate limited)",
+          "rate_limit": "Conservative (via yfinance)",
           "cost": "Free",
           "priority": 4,
           "endpoints": {
-            "base_url": "https://feeds.finance.yahoo.com",
-            "rss": "/rss/2.0/headline"
+            "base_url": "yfinance library",
+            "method": "market_data_analysis"
           },
           "config": {}
         },
         {
           "name": "FMP",
           "type": "news",
-          "status": "inactive",
+          "status": "active",
           "api_key_required": true,
           "description": "Financial Modeling Prep - Professional financial data",
           "data_types": [
@@ -138,7 +140,7 @@
             "news": "/stock_news"
           },
           "config": {
-            "api_key": ""
+            "api_key": "YIEzJJDM1epIwAGtvoqHXobXzPH012E8"
           }
         },
         {
@@ -170,7 +172,7 @@
             "crypto": "/cryptocurrencies"
           },
           "config": {
-            "api_key": ""
+            "api_key": "1f192cc6b3634b6bbb6777b8ef708b08"
           }
         }
       ]
@@ -224,29 +226,6 @@
           "model": "claude-3-sonnet",
           "max_tokens": 1000
         }
-      },
-      {
-        "name": "HuggingFace",
-        "type": "ai",
-        "status": "active",
-        "api_key_required": true,
-        "description": "HuggingFace Transformers - Free AI models for sentiment analysis",
-        "capabilities": [
-          "sentiment_analysis",
-          "text_classification",
-          "embeddings"
-        ],
-        "models": [
-          "cardiffnlp/twitter-roberta-base-sentiment-latest",
-          "ProsusAI/finbert"
-        ],
-        "rate_limit": "1000 calls/hour (free)",
-        "cost": "Free: 1000 calls/hour, Pro: $9/month",
-        "priority": 3,
-        "config": {
-          "api_key": "",
-          "model": "cardiffnlp/twitter-roberta-base-sentiment-latest"
-        }
       }
     ]
   },
@@ -254,6 +233,6 @@
     "auto_fallback": true,
     "health_monitoring": true,
     "cost_tracking": true,
-    "last_updated": "2025-10-02T15:36:28.584378"
+    "last_updated": "2025-10-01T20:54:06.196025"
   }
 }

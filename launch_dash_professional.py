@@ -27,7 +27,6 @@ from decimal import Decimal
 from dash_modules.data_providers.binance_api import binance_provider
 from dash_modules.components.symbol_search import default_symbol_search
 from dash_modules.core.api_config import api_config
-from dash_modules.data_providers.alpha_vantage_api import AlphaVantageAPI
 
 # Import modules modulaires
 from dash_modules.tabs.crypto_module import CryptoModule
@@ -1166,10 +1165,12 @@ class THEBOTDashApp:
              State("api-key-cryptopanic", "value"), 
              State("api-key-coingecko", "value"),
              State("api-key-fmp", "value"),
+             State("api-key-twelve-data", "value"),
+             State("api-key-huggingface", "value"),
              State("api-config-modal", "is_open")],
             prevent_initial_call=True
         )
-        def save_api_config(save_clicks, alpha_key, crypto_key, coin_key, fmp_key, is_open):
+        def save_api_config(save_clicks, alpha_key, crypto_key, coin_key, fmp_key, twelve_key, hf_key, is_open):
             """Save API configuration"""
             if save_clicks and is_open:
                 try:
@@ -1216,6 +1217,21 @@ class THEBOTDashApp:
                                     saved_count += 1
                                     break
                     
+                    # Twelve Data
+                    if twelve_key and twelve_key.strip():
+                        for section in api_config.config["providers"]["data_sources"].values():
+                            for provider in section:
+                                if provider["name"] == "Twelve Data":
+                                    provider["config"]["api_key"] = twelve_key.strip()
+                                    provider["status"] = "active"
+                                    saved_count += 1
+                                    break
+                    
+                    # HuggingFace (AI Provider)
+                    if hf_key and hf_key.strip():
+                        if api_config.save_huggingface_key(hf_key.strip()):
+                            saved_count += 1
+                    
                     # Sauvegarder la configuration
                     api_config.save_config()
                     print(f"✅ API Configuration saved - {saved_count} clés mises à jour")
@@ -1243,6 +1259,11 @@ def main():
     """Point d'entrée principal"""
     app = THEBOTDashApp()
     app.run(debug=True, port=8050)
+
+
+def create_dash_app(debug=False, port=8050):
+    """Factory function for creating THEBOT Dash app (for testing)"""
+    return THEBOTDashApp()
 
 
 if __name__ == '__main__':

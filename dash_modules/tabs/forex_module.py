@@ -4,7 +4,7 @@ Handles forex data using Alpha Vantage API
 """
 
 from .base_market_module import BaseMarketModule
-from ..data_providers.alpha_vantage_api import AlphaVantageAPI
+# AlphaVantage API supprimé - utilisation de Yahoo Finance et Binance
 from ..core.api_config import api_config
 from ..components.symbol_search import default_symbol_search
 import pandas as pd
@@ -30,7 +30,7 @@ class ForexModule(BaseMarketModule):
         
         super().__init__(
             market_type='forex',
-            data_provider=AlphaVantageAPI(api_key),
+            data_provider=None,  # Utiliser Twelve Data ou Yahoo Finance
             calculators=calculators
         )
         
@@ -423,19 +423,19 @@ class ForexModule(BaseMarketModule):
             
             dbc.Switch(
                 id="ai-enabled",
-                label="Enable AI Analysis",
-                value=False,
+                label="Enable AI Analysis (FREE)",
+                value=True,
                 className="mb-3"
             ),
             
             dbc.Select(
                 id="ai-model",
                 options=[
-                    {"label": "🤖 GPT-4 Turbo", "value": "gpt4"},
-                    {"label": "🧠 Claude-3.5 Sonnet", "value": "claude"},
-                    {"label": "⚡ Custom LSTM", "value": "lstm"}
+                    {"label": "🆓 IA Locale (Gratuite)", "value": "local"},
+                    {"label": "🌐 IA Publique (100/jour)", "value": "free_public"},
+                    {"label": "🧠 IA Hybride (10€/mois)", "value": "smart"}
                 ],
-                value="gpt4",
+                value="local",
                 size="sm",
                 className="mb-3"
             ),
@@ -454,9 +454,9 @@ class ForexModule(BaseMarketModule):
             ]),
             
             dbc.Button([
-                html.I(className="fas fa-magic me-2"),
-                "Generate Insights"
-            ], id="ai-insights-btn", color="warning", size="sm", className="w-100", disabled=True)
+                html.I(className="fas fa-brain me-2"),
+                "Generate AI Insights (FREE)"
+            ], id="ai-insights-btn", color="success", size="sm", className="w-100")
             
         ])
     
@@ -507,35 +507,24 @@ class ForexModule(BaseMarketModule):
         ])
     
     def create_ai_dashboard(self):
-        """Dashboard IA avec insights reproduisant exactement l'interface de l'image"""
+        """Dashboard IA avec insights dynamiques forex utilisant IA locale gratuite"""
         
         return html.Div([
             
-            # Insights cards directement
+            # Insights cards avec données IA locale pour forex
             dbc.Row([
                 
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-trend-up me-2"),
-                            "Market Sentiment"
+                            html.I(className="fas fa-globe me-2"),
+                            "Economic Sentiment (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("Bullish", className="text-success"),
-                            html.P("Confidence: 78%", className="text-muted"),
-                            dcc.Graph(
-                                figure=px.pie(
-                                    values=[78, 22], 
-                                    names=['Bullish', 'Bearish'],
-                                    color_discrete_map={'Bullish': '#10b981', 'Bearish': '#ef4444'}
-                                ).update_layout(
-                                    showlegend=False,
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    height=200
-                                ),
-                                style={'height': '200px'}
-                            )
+                            html.Div(id="ai-sentiment-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Economic sentiment loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4),
@@ -543,14 +532,14 @@ class ForexModule(BaseMarketModule):
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-chart-line me-2"),
-                            "Price Prediction"
+                            html.I(className="fas fa-chart-area me-2"),
+                            "Forex Technical (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("+2.3%", className="text-info"),
-                            html.P("Next 24h target", className="text-muted"),
-                            # Mini chart de prédiction
-                            html.Div("Prediction chart placeholder", className="text-center p-4 bg-secondary rounded")
+                            html.Div(id="ai-technical-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Forex patterns loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4),
@@ -558,42 +547,39 @@ class ForexModule(BaseMarketModule):
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-exclamation-triangle me-2"),
-                            "Risk Assessment"
+                            html.I(className="fas fa-exchange-alt me-2"),
+                            "Forex Strategy (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("Medium", className="text-warning"),
-                            html.P("Volatility expected", className="text-muted"),
-                            dbc.Progress(value=60, color="warning", className="mb-2"),
-                            html.Small("Risk Score: 60/100")
+                            html.Div(id="ai-trading-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Currency strategy loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4)
                 
             ], className="mb-4"),
             
-            # AI Insights Text
+            # AI Analysis Text détaillé pour forex
             dbc.Card([
                 dbc.CardHeader([
-                    html.I(className="fas fa-brain me-2"),
-                    "AI Market Analysis"
+                    html.I(className="fas fa-robot me-2"),
+                    "AI Forex Analysis (100% FREE)"
                 ]),
                 dbc.CardBody([
                     html.Div(id="ai-insights-text", children=[
                         html.P([
-                            html.Strong("Technical Analysis: "),
-                            "The market is showing strong bullish momentum with RSI at 67, indicating room for further upside. "
-                            "The 20-period SMA is acting as dynamic support."
+                            html.Strong("IA Forex: "),
+                            "Analyse en cours... L'IA locale gratuite analyse les tendances forex, événements économiques et corrélations."
                         ]),
                         html.P([
-                            html.Strong("Volume Analysis: "), 
-                            "Above-average volume confirms the current price action. "
-                            "Smart money appears to be accumulating."
+                            html.Strong("Facteurs économiques: "), 
+                            "Surveillance automatique des calendriers économiques et impacts sur paires de devises."
                         ]),
                         html.P([
-                            html.Strong("Economic Context: "),
-                            "Upcoming Fed decision could introduce volatility. "
-                            "Market positioning suggests preparation for dovish outcome."
+                            html.Strong("Coût: "), 
+                            html.Span("0€/mois - Analyses forex illimitées", className="text-success fw-bold")
                         ])
                     ])
                 ])

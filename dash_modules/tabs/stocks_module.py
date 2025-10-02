@@ -4,7 +4,7 @@ Handles stock data using Alpha Vantage API
 """
 
 from .base_market_module import BaseMarketModule
-from ..data_providers.alpha_vantage_api import AlphaVantageAPI
+# AlphaVantage API supprimé - utilisation de Yahoo Finance
 from ..core.api_config import api_config
 from ..components.symbol_search import default_symbol_search
 import pandas as pd
@@ -30,7 +30,7 @@ class StocksModule(BaseMarketModule):
         
         super().__init__(
             market_type='stocks',
-            data_provider=AlphaVantageAPI(api_key),
+            data_provider=None,  # Utiliser Yahoo Finance ou Twelve Data
             calculators=calculators
         )
         
@@ -528,25 +528,25 @@ class StocksModule(BaseMarketModule):
         ])
     
     def create_ai_controls(self):
-        """Contrôles IA"""
+        """Contrôles IA avec options gratuites identiques aux modules crypto/forex"""
         
         return html.Div([
             
             dbc.Switch(
                 id="ai-enabled",
-                label="Enable AI Analysis",
-                value=False,
+                label="Enable AI Analysis (FREE)",
+                value=True,
                 className="mb-3"
             ),
             
             dbc.Select(
                 id="ai-model",
                 options=[
-                    {"label": "🤖 GPT-4 Turbo", "value": "gpt4"},
-                    {"label": "🧠 Claude-3.5 Sonnet", "value": "claude"},
-                    {"label": "⚡ Custom LSTM", "value": "lstm"}
+                    {"label": "🆓 IA Locale (Gratuite)", "value": "local"},
+                    {"label": "🌐 IA Publique (100/jour)", "value": "free_public"},
+                    {"label": "🧠 IA Hybride (10€/mois)", "value": "smart"}
                 ],
-                value="gpt4",
+                value="local",
                 size="sm",
                 className="mb-3"
             ),
@@ -565,9 +565,9 @@ class StocksModule(BaseMarketModule):
             ]),
             
             dbc.Button([
-                html.I(className="fas fa-magic me-2"),
-                "Generate Insights"
-            ], id="ai-insights-btn", color="warning", size="sm", className="w-100", disabled=True)
+                html.I(className="fas fa-brain me-2"),
+                "Generate AI Insights (FREE)"
+            ], id="ai-insights-btn", color="success", size="sm", className="w-100")
             
         ])
     
@@ -618,35 +618,24 @@ class StocksModule(BaseMarketModule):
         ])
     
     def create_ai_dashboard(self):
-        """Dashboard IA avec insights reproduisant exactement l'interface de l'image"""
+        """Dashboard IA avec insights dynamiques utilisant IA locale gratuite pour stocks"""
         
         return html.Div([
             
-            # Insights cards directement
+            # Insights cards avec données IA locale pour stocks
             dbc.Row([
                 
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-trend-up me-2"),
-                            "Market Sentiment"
+                            html.I(className="fas fa-chart-bar me-2"),
+                            "Earnings Sentiment (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("Bullish", className="text-success"),
-                            html.P("Confidence: 78%", className="text-muted"),
-                            dcc.Graph(
-                                figure=px.pie(
-                                    values=[78, 22], 
-                                    names=['Bullish', 'Bearish'],
-                                    color_discrete_map={'Bullish': '#10b981', 'Bearish': '#ef4444'}
-                                ).update_layout(
-                                    showlegend=False,
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    height=200
-                                ),
-                                style={'height': '200px'}
-                            )
+                            html.Div(id="ai-sentiment-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Earnings sentiment loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4),
@@ -655,13 +644,13 @@ class StocksModule(BaseMarketModule):
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-chart-line me-2"),
-                            "Price Prediction"
+                            "Technical Analysis (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("+2.3%", className="text-info"),
-                            html.P("Next 24h target", className="text-muted"),
-                            # Mini chart de prédiction
-                            html.Div("Prediction chart placeholder", className="text-center p-4 bg-secondary rounded")
+                            html.Div(id="ai-technical-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Technical patterns loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4),
@@ -669,43 +658,31 @@ class StocksModule(BaseMarketModule):
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-exclamation-triangle me-2"),
-                            "Risk Assessment"
+                            html.I(className="fas fa-brain me-2"),
+                            "Trading Insight (AI)"
                         ]),
                         dbc.CardBody([
-                            html.H3("Medium", className="text-warning"),
-                            html.P("Volatility expected", className="text-muted"),
-                            dbc.Progress(value=60, color="warning", className="mb-2"),
-                            html.Small("Risk Score: 60/100")
+                            html.Div(id="ai-trading-display", children=[
+                                html.H3("Analyzing...", className="text-info"),
+                                html.P("Investment recommendations loading...", className="text-muted")
+                            ])
                         ])
                     ])
                 ], width=4)
                 
             ], className="mb-4"),
             
-            # AI Insights Text
+            # AI Analysis Text détaillé
             dbc.Card([
                 dbc.CardHeader([
-                    html.I(className="fas fa-brain me-2"),
-                    "AI Market Analysis"
+                    html.I(className="fas fa-robot me-2"),
+                    "AI Stock Analysis (100% FREE)"
                 ]),
                 dbc.CardBody([
                     html.Div(id="ai-insights-text", children=[
-                        html.P([
-                            html.Strong("Technical Analysis: "),
-                            "The market is showing strong bullish momentum with RSI at 67, indicating room for further upside. "
-                            "The 20-period SMA is acting as dynamic support."
-                        ]),
-                        html.P([
-                            html.Strong("Volume Analysis: "), 
-                            "Above-average volume confirms the current price action. "
-                            "Smart money appears to be accumulating."
-                        ]),
-                        html.P([
-                            html.Strong("Economic Context: "),
-                            "Upcoming Fed decision could introduce volatility. "
-                            "Market positioning suggests preparation for dovish outcome."
-                        ])
+                        html.P("🔮 L'IA locale analyse le marché des actions...", className="text-info"),
+                        html.P("📊 Analyse des tendances en cours...", className="text-muted"),
+                        html.P("💡 Recommandations de trading en génération...", className="text-warning")
                     ])
                 ])
             ])
@@ -748,3 +725,145 @@ class StocksModule(BaseMarketModule):
     def format_price_adaptive(self, price):
         """Formatage adaptatif du prix selon sa valeur"""
         return f"${price:.2f}"  # Stocks typically use 2 decimal places
+
+    def setup_callbacks(self, app):
+        """Setup callbacks pour les interactions IA stocks"""
+        from dash.dependencies import Input, Output, State
+        import time
+        from ..ai_engine.local_ai_engine import LocalAIEngine
+        
+        local_ai_engine = LocalAIEngine()
+        
+        @app.callback(
+            [Output('ai-sentiment-display', 'children'),
+             Output('ai-technical-display', 'children'),
+             Output('ai-trading-display', 'children'),
+             Output('ai-insights-text', 'children')],
+            [Input('ai-insights-btn', 'n_clicks'),
+             Input('symbol-dropdown', 'value')],
+            [State('ai-model', 'value'),
+             State('ai-enabled', 'value')]
+        )
+        def update_stocks_ai_analysis(n_clicks, symbol, ai_model, ai_enabled):
+            """Callback pour l'analyse IA en temps réel des stocks"""
+            
+            if not ai_enabled or not symbol:
+                return (
+                    html.P("IA désactivée", className="text-muted"),
+                    html.P("IA désactivée", className="text-muted"),
+                    html.P("IA désactivée", className="text-muted"),
+                    html.P("💤 IA locale en veille. Activez l'analyse IA pour obtenir des insights.", className="text-info")
+                )
+            
+            try:
+                # Données de test adaptées aux stocks
+                price_data = [175.20, 174.85, 176.30, 177.15, 175.90, 178.25, 179.40, 177.80, 180.15, 181.25]
+                indicators = {
+                    'rsi': 68.5,
+                    'sma_20': 176.85,
+                    'ema_12': 177.90,
+                    'volume_ratio': 1.35,
+                    'atr': 2.45
+                }
+                
+                # Articles de test pour sentiment stocks
+                news_articles = [
+                    "Strong Q4 earnings beat expectations for tech sector",
+                    "Federal Reserve maintains dovish stance on interest rates",
+                    "Growth stocks showing renewed momentum after consolidation",
+                    "Institutional buying increases in large-cap equities",
+                    "Market volatility decreases as investor confidence returns"
+                ]
+                
+                start_time = time.time()
+                
+                # Analyse IA locale spécialisée stocks
+                sentiment_result = local_ai_engine.analyze_sentiment(news_articles, market_type="stocks")
+                technical_result = local_ai_engine.analyze_technical_pattern_simple(price_data, indicators)
+                trading_insight = local_ai_engine.generate_trading_insight_enhanced(
+                    symbol, 
+                    {'technical_analysis': technical_result},
+                    sentiment_result,
+                    market_type="stocks"
+                )
+                
+                # Formatage résultats spécifiques stocks
+                sentiment_display = html.Div([
+                    html.H3(sentiment_result['sentiment'].title(), 
+                           className=f"text-{'success' if sentiment_result['sentiment'] == 'bullish' else 'danger' if sentiment_result['sentiment'] == 'bearish' else 'warning'}"),
+                    html.P(f"Confiance: {sentiment_result['confidence']:.1f}%", className="text-muted"),
+                    html.Small(f"Earnings focus: {sentiment_result['analysis']['bullish_articles']} positifs")
+                ])
+                
+                technical_display = html.Div([
+                    html.H4(technical_result['pattern'], className="text-info"),
+                    html.P(f"RSI: {indicators['rsi']:.1f}", className="small"),
+                    html.P(f"Support: ${price_data[-1]:.2f}", className="small text-success"),
+                    html.Small(" | ".join(technical_result.get('signals', ['Analyse en cours'])))
+                ])
+                
+                trading_display = html.Div([
+                    html.H4(trading_insight['action'], className=f"text-{'success' if trading_insight['action'] == 'BUY' else 'danger' if trading_insight['action'] == 'SELL' else 'warning'}"),
+                    html.P(trading_insight['explanation'][:50] + "...", className="small"),
+                    html.Small(trading_insight['strength'] + " Signal")
+                ])
+                
+                execution_time = (time.time() - start_time) * 1000
+                
+                insights_text = html.Div([
+                    html.P([
+                        html.Strong("Earnings Sentiment: "),
+                        f"{sentiment_result['analysis']['bullish_articles']} rapports positifs, "
+                        f"{sentiment_result['analysis']['bearish_articles']} négatifs sur {sentiment_result['analysis']['total_articles']} analysés."
+                    ]),
+                    html.P([
+                        html.Strong("Technical Analysis: "),
+                        f"Pattern {technical_result['pattern']} détecté. " + 
+                        (" | ".join(technical_result.get('signals', [])))
+                    ]),
+                    html.P([
+                        html.Strong("Investment Recommendation: "),
+                        trading_insight['explanation']
+                    ]),
+                    html.P([
+                        html.Strong("IA Engine: "), 
+                        f"🆓 Local AI (FREE) | ⚡ {execution_time:.0f}ms | Model: Stocks-optimized"
+                    ], className="text-success small")
+                ])
+                
+                return sentiment_display, technical_display, trading_display, insights_text
+                
+            except Exception as e:
+                error_msg = html.P(f"❌ Erreur IA: {str(e)}", className="text-danger")
+                return error_msg, error_msg, error_msg, error_msg
+
+        def _calculate_simple_rsi(self, prices, period=14):
+            """Helper pour RSI simplifié"""
+            if len(prices) < period + 1:
+                return 50.0
+            
+            gains = []
+            losses = []
+            
+            for i in range(1, len(prices)):
+                change = prices[i] - prices[i-1]
+                if change > 0:
+                    gains.append(change)
+                    losses.append(0)
+                else:
+                    gains.append(0)
+                    losses.append(-change)
+            
+            if len(gains) < period:
+                return 50.0
+                
+            avg_gain = sum(gains[-period:]) / period
+            avg_loss = sum(losses[-period:]) / period
+            
+            if avg_loss == 0:
+                return 100.0
+                
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            
+            return rsi

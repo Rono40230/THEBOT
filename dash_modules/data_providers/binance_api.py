@@ -33,7 +33,32 @@ class BinanceProvider:
             'AVAXUSDT', 'MATICUSDT', 'ATOMUSDT', 'XRPUSDT'
         ]
         
-    def _make_request(self, endpoint: str, params: Dict[str, Any] = None) -> Optional[Any]:
+    def _make_request(self, endpoint: str, params: Dict = None) -> Optional[Any]:
+        """Effectue une requête HTTP vers l'API Binance avec gestion d'erreurs"""
+        try:
+            # Respecter le rate limit
+            current_time = time.time()
+            if current_time - self.last_request_time < self.request_delay:
+                time.sleep(self.request_delay - (current_time - self.last_request_time))
+            
+            url = f"{self.base_url}{endpoint}"
+            logger.debug(f"🌐 Requête Binance: {url}")
+            
+            response = requests.get(url, params=params, timeout=10)
+            self.last_request_time = time.time()
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Erreur HTTP Binance: {response.status_code} - {response.text}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erreur requête Binance: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Erreur inattendue Binance: {e}")
+            return None
         """Effectuer une requête API Binance (GRATUITE)"""
         try:
             # Rate limiting très léger (Binance est généreux)
@@ -346,6 +371,166 @@ class BinanceProvider:
         except Exception as e:
             logger.error(f"❌ Erreur récupération news Binance: {e}")
             return []
+    
+    def get_24hr_ticker(self, symbol: str = None) -> Dict:
+        """Récupère les statistiques 24h pour un symbole ou tous"""
+        try:
+            endpoint = "/ticker/24hr"
+            params = {}
+            if symbol:
+                params['symbol'] = symbol
+            
+            response = self._make_request(endpoint, params)
+            
+            if response is None:
+                return {} if symbol else []
+            
+            if symbol:
+                # Un seul ticker
+                return {
+                    'symbol': response.get('symbol'),
+                    'price': float(response.get('lastPrice', 0)),
+                    'priceChange': float(response.get('priceChange', 0)),
+                    'priceChangePercent': float(response.get('priceChangePercent', 0)),
+                    'volume': float(response.get('volume', 0)),
+                    'quoteVolume': float(response.get('quoteVolume', 0)),
+                    'high': float(response.get('highPrice', 0)),
+                    'low': float(response.get('lowPrice', 0)),
+                    'count': int(response.get('count', 0))
+                }
+            else:
+                # Tous les tickers
+                if not isinstance(response, list):
+                    return []
+                    
+                return [
+                    {
+                        'symbol': ticker.get('symbol'),
+                        'price': float(ticker.get('lastPrice', 0)),
+                        'priceChange': float(ticker.get('priceChange', 0)),
+                        'priceChangePercent': float(ticker.get('priceChangePercent', 0)),
+                        'volume': float(ticker.get('volume', 0)),
+                        'quoteVolume': float(ticker.get('quoteVolume', 0)),
+                        'high': float(ticker.get('highPrice', 0)),
+                        'low': float(ticker.get('lowPrice', 0)),
+                        'count': int(ticker.get('count', 0))
+                    }
+                    for ticker in response[:100]  # Limiter pour éviter trop de données
+                ]
+                
+        except Exception as e:
+            logger.error(f"❌ Erreur récupération ticker 24h: {e}")
+            return {} if symbol else []
+    
+    def get_top_symbols(self, limit: int = 20) -> List[str]:
+        """Récupère les top symboles par volume"""
+        try:
+            all_tickers = self.get_24hr_ticker()
+            if not all_tickers:
+                return []
+            
+            # Filtrer les USDT pairs et trier par volume
+            usdt_pairs = [
+                ticker for ticker in all_tickers 
+                if ticker['symbol'].endswith('USDT') and ticker['quoteVolume'] > 0
+            ]
+            
+            # Trier par volume de quote (USDT)
+            usdt_pairs.sort(key=lambda x: x['quoteVolume'], reverse=True)
+            
+            return [ticker['symbol'] for ticker in usdt_pairs[:limit]]
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur récupération top symboles: {e}")
+            return []
+    
+    def get_gainers_losers(self, limit: int = 10) -> Dict:
+        """Récupère les top gainers et losers 24h"""
+        try:
+            all_tickers = self.get_24hr_ticker()
+            if not all_tickers:
+                return {'gainers': [], 'losers': []}
+            
+            # Filtrer les USDT pairs avec volume significatif
+            usdt_pairs = [
+                ticker for ticker in all_tickers 
+                if ticker['symbol'].endswith('USDT') and ticker['quoteVolume'] > 100000  # 100k USDT minimum
+            ]
+            
+            # Trier par pourcentage de changement
+            gainers = sorted(usdt_pairs, key=lambda x: x['priceChangePercent'], reverse=True)[:limit]
+            losers = sorted(usdt_pairs, key=lambda x: x['priceChangePercent'])[:limit]
+            
+            return {
+                'gainers': [
+                    {
+                        'symbol': ticker['symbol'],
+                        'price': ticker['price'],
+                        'change_percent': ticker['priceChangePercent'],
+                        'volume': ticker['quoteVolume']
+                    }
+                    for ticker in gainers
+                ],
+                'losers': [
+                    {
+                        'symbol': ticker['symbol'],
+                        'price': ticker['price'],
+                        'change_percent': ticker['priceChangePercent'],
+                        'volume': ticker['quoteVolume']
+                    }
+                    for ticker in losers
+                ]
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur récupération gainers/losers: {e}")
+            return {'gainers': [], 'losers': []}
+    
+    def get_market_summary(self) -> Dict:
+        """Récupère un résumé global du marché crypto"""
+        try:
+            all_tickers = self.get_24hr_ticker()
+            if not all_tickers:
+                return {}
+            
+            # Filtrer les USDT pairs
+            usdt_pairs = [
+                ticker for ticker in all_tickers 
+                if ticker['symbol'].endswith('USDT')
+            ]
+            
+            if not usdt_pairs:
+                return {}
+            
+            # Calculer statistiques globales
+            total_volume = sum(ticker['quoteVolume'] for ticker in usdt_pairs)
+            gainers_count = len([t for t in usdt_pairs if t['priceChangePercent'] > 0])
+            losers_count = len([t for t in usdt_pairs if t['priceChangePercent'] < 0])
+            avg_change = sum(ticker['priceChangePercent'] for ticker in usdt_pairs) / len(usdt_pairs)
+            
+            # Top par volume
+            top_by_volume = sorted(usdt_pairs, key=lambda x: x['quoteVolume'], reverse=True)[:5]
+            
+            return {
+                'total_pairs': len(usdt_pairs),
+                'total_volume_usdt': total_volume,
+                'gainers_count': gainers_count,
+                'losers_count': losers_count,
+                'neutral_count': len(usdt_pairs) - gainers_count - losers_count,
+                'average_change_percent': avg_change,
+                'top_volume_pairs': [
+                    {
+                        'symbol': ticker['symbol'],
+                        'volume': ticker['quoteVolume'],
+                        'change_percent': ticker['priceChangePercent']
+                    }
+                    for ticker in top_by_volume
+                ]
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur résumé marché: {e}")
+            return {}
 
 
 # Instance globale

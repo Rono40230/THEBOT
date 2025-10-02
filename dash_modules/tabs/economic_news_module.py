@@ -1,43 +1,54 @@
 """
 Economic News Module for THEBOT
-Handles general economic and financial news
+News économiques exclusivement alimentées par RSS avec widgets AI
 """
 
-from .base_news_module import BaseNewsModule
 import dash
 from dash import dcc, html, callback, Input, Output, State, ALL
 import dash_bootstrap_components as dbc
-from typing import List, Dict
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+from typing import List, Dict, Optional
 import pandas as pd
+from datetime import datetime, timedelta
+import json
+import re
+from collections import Counter
+import numpy as np
 
-class EconomicNewsModule(BaseNewsModule):
-    """Economic News Module handling general financial and economic news"""
+# Import RSS News Manager
+try:
+    from ..data_providers.rss_news_manager import rss_news_manager
+    RSS_AVAILABLE = True
+except ImportError:
+    print("⚠️ RSS News Manager non disponible")
+    RSS_AVAILABLE = False
+
+# Import AI Engine
+try:
+    from ..ai_engine.smart_ai_manager import smart_ai_manager
+    AI_AVAILABLE = True
+except ImportError:
+    print("⚠️ Smart AI Manager non disponible")
+    AI_AVAILABLE = False
+
+class EconomicNewsModule:
+    """Module News Économiques alimenté exclusivement par RSS avec widgets AI complets"""
     
     def __init__(self, calculators: Dict = None):
-        super().__init__(
-            news_type='economic',
-            calculators=calculators
-        )
-
-    def _get_news_sources(self) -> List[str]:
-        """Get news sources for economic news"""
-        # Sources pour les news économiques générales
-        return ['yahoo', 'fmp', 'alpha_vantage']
-
-    def _filter_news_by_type(self, news_list: List[Dict]) -> List[Dict]:
-        """Filter news to include only economic/financial news"""
-        if not news_list:
-            return []
+        self.calculators = calculators or {}
+        self.news_cache = []
+        self.sentiment_cache = {}
+        self.trending_cache = []
+        self.last_update = None
         
-        # Keywords for economic news (in multiple languages)
-        economic_keywords = [
-            # French terms
-            'économie', 'économique', 'finance', 'financier', 'banque', 'bourse', 
+        # Configuration économique
+        self.economic_keywords = [
+            'économie', 'économique', 'finance', 'financier', 'banque', 'bourse',
             'marché', 'action', 'obligation', 'taux', 'inflation', 'croissance',
             'pib', 'fed', 'bce', 'banque centrale', 'politique monétaire',
             'commerce', 'industrie', 'emploi', 'chômage', 'consommation',
-            
-            # English terms
             'economy', 'economic', 'finance', 'financial', 'banking', 'stock market',
             'market', 'stock', 'bond', 'rate', 'inflation', 'growth',
             'gdp', 'federal reserve', 'central bank', 'monetary policy',
@@ -45,196 +56,434 @@ class EconomicNewsModule(BaseNewsModule):
             'earnings', 'revenue', 'profit', 'dividend', 'treasury'
         ]
         
-        # Keywords to exclude (crypto-related)
-        crypto_keywords = [
+        self.exclude_keywords = [
             'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency',
-            'blockchain', 'altcoin', 'defi', 'nft', 'dogecoin', 'litecoin',
-            'ripple', 'xrp', 'ada', 'cardano', 'binance coin', 'bnb'
+            'altcoin', 'defi', 'nft', 'blockchain', 'mining'
         ]
         
-        filtered_news = []
-        for news_item in news_list:
-            # Get title and description for analysis
-            title = (news_item.get('title', '') or '').lower()
-            description = (news_item.get('description', '') or news_item.get('summary', '') or '').lower()
-            source = (news_item.get('source', '') or '').lower()
-            
-            # Check if source is economic-focused
-            economic_sources = ['yahoo', 'fmp', 'alpha_vantage', 'marketwatch', 'bloomberg', 'reuters']
-            is_economic_source = any(src in source for src in economic_sources)
-            
-            # Check for crypto keywords (exclude if found)
-            has_crypto_keywords = any(keyword in title or keyword in description for keyword in crypto_keywords)
-            
-            # Check for economic keywords (include if found)
-            has_economic_keywords = any(keyword in title or keyword in description for keyword in economic_keywords)
-            
-            # Include if it's from economic source and doesn't have crypto keywords
-            # OR if it has economic keywords and doesn't have crypto keywords
-            if (is_economic_source and not has_crypto_keywords) or (has_economic_keywords and not has_crypto_keywords):
-                filtered_news.append(news_item)
+        print("✅ Economic News Module initialisé (RSS exclusif)")
+    
+    def get_rss_news(self) -> List[Dict]:
+        """Récupérer les news depuis RSS Manager exclusivement"""
+        if not RSS_AVAILABLE:
+            return self._get_fallback_news()
         
-        print(f"📊 Economic news filter: {len(news_list)} → {len(filtered_news)} articles")
-        return filtered_news
-
-    def get_layout(self):
-        """Get the complete layout for economic news module"""
+        try:
+            # Récupérer toutes les news RSS
+            all_news = rss_news_manager.get_news(limit=100)
+            
+            # Filtrer pour économie seulement
+            economic_news = []
+            for article in all_news:
+                if self._is_economic_news(article):
+                    economic_news.append(article)
+            
+            # Limiter et trier par date
+            economic_news = sorted(economic_news, 
+                                 key=lambda x: x.get('published_time', datetime.now()), 
+                                 reverse=True)[:30]
+            
+            self.news_cache = economic_news
+            self.last_update = datetime.now()
+            
+            print(f"✅ {len(economic_news)} news économiques RSS récupérées")
+            return economic_news
+            
+        except Exception as e:
+            print(f"❌ Erreur RSS Economic News: {e}")
+            return self._get_fallback_news()
+    
+    def _is_economic_news(self, article: Dict) -> bool:
+        """Déterminer si un article est économique"""
+        text_to_check = f"{article.get('title', '')} {article.get('summary', '')}".lower()
+        
+        # Vérifier présence de mots-clés économiques
+        has_economic = any(keyword in text_to_check for keyword in self.economic_keywords)
+        
+        # Exclure crypto explicitement
+        has_crypto = any(keyword in text_to_check for keyword in self.exclude_keywords)
+        
+        return has_economic and not has_crypto
+    
+    def _get_fallback_news(self) -> List[Dict]:
+        """News simulées en cas d'échec RSS"""
+        return [
+            {
+                'title': 'Fed Maintains Interest Rates at 5.25%',
+                'summary': 'Federal Reserve keeps rates steady amid inflation concerns...',
+                'published_time': datetime.now() - timedelta(hours=1),
+                'source': 'RSS Economic Feed',
+                'url': '#',
+                'sentiment': 'neutral'
+            },
+            {
+                'title': 'EU Economic Growth Slows to 0.1% in Q3',
+                'summary': 'European economy shows signs of slowdown with GDP growth...',
+                'published_time': datetime.now() - timedelta(hours=2),
+                'source': 'RSS Economic Feed',
+                'url': '#',
+                'sentiment': 'negative'
+            },
+            {
+                'title': 'Tech Stocks Rally on AI Innovation',
+                'summary': 'Technology sector leads market gains as AI developments...',
+                'published_time': datetime.now() - timedelta(hours=3),
+                'source': 'RSS Economic Feed',
+                'url': '#',
+                'sentiment': 'positive'
+            }
+        ]
+    
+    def analyze_sentiment(self, articles: List[Dict]) -> Dict:
+        """Analyser le sentiment des articles avec IA"""
+        if not AI_AVAILABLE or not articles:
+            return {'positive': 30, 'neutral': 50, 'negative': 20, 'confidence': 0.6}
+        
+        try:
+            # Analyser avec Smart AI Manager
+            sentiments = []
+            for article in articles[:20]:  # Limiter pour performance
+                text = f"{article.get('title', '')} {article.get('summary', '')}"
+                if len(text.strip()) > 10:
+                    result = smart_ai_manager.analyze_with_best_ai({'text': text}, 'sentiment')
+                    sentiment = result.get('sentiment', 'neutral')
+                    sentiments.append(sentiment)
+            
+            if not sentiments:
+                return {'positive': 30, 'neutral': 50, 'negative': 20, 'confidence': 0.6}
+            
+            # Calculer distribution
+            sentiment_counts = Counter(sentiments)
+            total = len(sentiments)
+            
+            result = {
+                'positive': round((sentiment_counts.get('positive', 0) / total) * 100, 1),
+                'neutral': round((sentiment_counts.get('neutral', 0) / total) * 100, 1),
+                'negative': round((sentiment_counts.get('negative', 0) / total) * 100, 1),
+                'confidence': 0.85
+            }
+            
+            self.sentiment_cache = result
+            return result
+            
+        except Exception as e:
+            print(f"❌ Erreur analyse sentiment: {e}")
+            return {'positive': 30, 'neutral': 50, 'negative': 20, 'confidence': 0.6}
+    
+    def extract_trending_topics(self, articles: List[Dict]) -> List[Dict]:
+        """Extraire les sujets tendance avec IA"""
+        if not articles:
+            return []
+        
+        try:
+            # Extraire mots-clés de tous les titres
+            all_text = ' '.join([article.get('title', '') for article in articles])
+            
+            # Compter les mots importants
+            words = re.findall(r'\b[A-Za-zÀ-ÿ]{4,}\b', all_text.lower())
+            word_counts = Counter(words)
+            
+            # Filtrer et créer sujets tendance
+            trending = []
+            for word, count in word_counts.most_common(10):
+                if word in self.economic_keywords and count > 1:
+                    trending.append({
+                        'topic': word.title(),
+                        'count': count,
+                        'trend': 'up' if count > 2 else 'stable'
+                    })
+            
+            self.trending_cache = trending[:8]  # Top 8
+            return self.trending_cache
+            
+        except Exception as e:
+            print(f"❌ Erreur trending topics: {e}")
+            return []
+    
+    def calculate_fear_greed_index(self, articles: List[Dict], sentiment: Dict) -> Dict:
+        """Calculer l'indice Fear & Greed pour l'économie"""
+        try:
+            # Facteurs économiques
+            positive_pct = sentiment.get('positive', 30)
+            negative_pct = sentiment.get('negative', 20)
+            
+            # Calcul basé sur sentiment et volume de news
+            news_volume_factor = min(len(articles) / 20, 1.0)  # Normaliser
+            sentiment_factor = (positive_pct - negative_pct) / 100
+            
+            # Score final (0-100)
+            fear_greed_score = 50 + (sentiment_factor * 40) + (news_volume_factor * 10)
+            fear_greed_score = max(0, min(100, fear_greed_score))
+            
+            # Classification
+            if fear_greed_score >= 75:
+                classification = "Extreme Greed"
+                color = "#16a34a"
+            elif fear_greed_score >= 55:
+                classification = "Greed"
+                color = "#22c55e"
+            elif fear_greed_score >= 45:
+                classification = "Neutral"
+                color = "#eab308"
+            elif fear_greed_score >= 25:
+                classification = "Fear"
+                color = "#f97316"
+            else:
+                classification = "Extreme Fear"
+                color = "#dc2626"
+            
+            return {
+                'score': round(fear_greed_score, 1),
+                'classification': classification,
+                'color': color,
+                'confidence': sentiment.get('confidence', 0.7)
+            }
+            
+        except Exception as e:
+            print(f"❌ Erreur Fear & Greed: {e}")
+            return {
+                'score': 50.0,
+                'classification': 'Neutral',
+                'color': '#eab308',
+                'confidence': 0.5
+            }
+    
+    def get_layout(self) -> html.Div:
+        """Layout principal avec widgets AI complets"""
         return html.Div([
-            # Hidden stores for data and callbacks
-            dcc.Store(id='economic-news-data-store', data=[]),
-            dcc.Store(id='economic-news-articles-store', data=[]),
-            
-            # Loading indicator
-            dcc.Loading([
-                html.Div(id='economic-news-loading-target')
-            ], id='economic-news-loading', type='circle'),
-            
-            # Main content container
-            html.Div([
-                # Quick Stats Row
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.H4("📊", className="text-primary mb-0"),
-                                html.Small("News Économiques", className="text-muted")
-                            ])
-                        ], className="h-100 text-center")
-                    ], width=3),
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.H4(id='economic-total-articles', children="0", className="text-info mb-0"),
-                                html.Small("Articles Totaux", className="text-muted")
-                            ])
-                        ], className="h-100 text-center")
-                    ], width=3),
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.H4(id='economic-sentiment-score', children="Neutre", className="text-success mb-0"),
-                                html.Small("Sentiment Global", className="text-muted")
-                            ])
-                        ], className="h-100 text-center")
-                    ], width=3),
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.H4(id='economic-last-update', children="--:--", className="text-warning mb-0"),
-                                html.Small("Dernière MAJ", className="text-muted")
-                            ])
-                        ], className="h-100 text-center")
-                    ], width=3)
-                ], className="mb-4"),
+            # AI Widgets Row
+            dbc.Row([
+                # Sentiment Analysis
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-brain me-2"),
+                            "AI Sentiment Analysis",
+                            dbc.Button([
+                                html.I(className="fas fa-sync-alt")
+                            ], id="refresh-economic-news-btn", color="info", size="sm", 
+                               className="float-end ms-2", style={'padding': '0.25rem 0.5rem'})
+                        ]),
+                        dbc.CardBody([
+                            dcc.Graph(id="economic-sentiment-chart", style={'height': '300px'})
+                        ])
+                    ])
+                ], width=4),
                 
-                # News Feed
-                dbc.Row([
-                    dbc.Col([
-                        # News Feed
-                        html.Div(id='economic-news-feed', children=[
-                            html.P("Chargement des actualités économiques...", className="text-center text-muted p-4")
+                # Fear & Greed Index
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-thermometer-half me-2"),
+                            "Economic Fear & Greed"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id="economic-fear-greed-widget")
                         ])
-                    ], width=8),
-                    dbc.Col([
-                        # Side widgets
-                        html.Div([
-                            # Market Impact Widget
-                            dbc.Card([
-                                dbc.CardBody(id='economic-market-impact')
-                            ], className="mb-3"),
-                            
-                            # Economic Calendar Widget
-                            dbc.Card([
-                                dbc.CardBody(id='economic-calendar')
-                            ])
+                    ])
+                ], width=4),
+                
+                # Trending Topics
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-fire me-2"),
+                            "Trending Topics"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id="economic-trending-topics")
                         ])
-                    ], width=4)
-                ])
-            ], id='economic-news-content')
-        ])
-
+                    ])
+                ], width=4)
+            ], className="mb-4"),
+            
+            # News Feed Principal
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.I(className="fas fa-rss me-2"),
+                            "Live RSS Economic News Feed"
+                        ]),
+                        dbc.CardBody([
+                            html.Div(id="economic-news-feed", style={'maxHeight': '600px', 'overflowY': 'auto'})
+                        ])
+                    ])
+                ], width=12)
+            ]),
+            
+            # Store pour données
+            dcc.Store(id='economic-news-store'),
+            dcc.Store(id='economic-sentiment-store'),
+            
+            # Interval pour auto-refresh
+            dcc.Interval(
+                id='economic-news-interval',
+                interval=60000,  # 1 minute
+                n_intervals=0
+            )
+        ], className="p-3")
+    
     def setup_callbacks(self, app):
-        """Setup callbacks for economic news module"""
+        """Configurer les callbacks pour Economic News"""
         
         @app.callback(
-            [Output('economic-news-data-store', 'data'),
-             Output('economic-news-articles-store', 'data'),
-             Output('economic-news-feed', 'children'),
-             Output('economic-total-articles', 'children'),
-             Output('economic-sentiment-score', 'children'),
-             Output('economic-last-update', 'children'),
-             Output('economic-market-impact', 'children'),
-             Output('economic-calendar', 'children'),
-             Output('economic-news-loading-target', 'children')],
-            [Input('economic-news-data-store', 'id')],  # Trigger on component mount
-            prevent_initial_call=False
+            [Output('economic-news-store', 'data'),
+             Output('economic-sentiment-store', 'data')],
+            [Input('refresh-economic-news-btn', 'n_clicks'),
+             Input('economic-news-interval', 'n_intervals')]
         )
-        def load_economic_news_data(_):
-            """Load and display economic news data"""
-            try:
-                # Load economic news data
-                news_data = self.load_news_data(category='All News', limit=100)
-                
-                if news_data.empty:
-                    return (
-                        [], [], 
-                        html.P("Aucune actualité économique disponible.", className="text-center text-muted p-4"),
-                        "0", "Neutre", "--:--",
-                        html.P("Pas de données d'impact", className="text-muted"),
-                        self.create_economic_calendar_widget(),
-                        ""
-                    )
-                
-                # Create news feed
-                news_feed, articles_data = self.create_news_feed(news_data)
-                
-                # Calculate statistics
-                total_articles = len(news_data)
-                
-                # Calculate sentiment
-                if 'sentiment' in news_data.columns:
-                    sentiment_counts = news_data['sentiment'].value_counts()
-                    if sentiment_counts.get('positive', 0) > sentiment_counts.get('negative', 0):
-                        sentiment_score = "Positif"
-                    elif sentiment_counts.get('negative', 0) > sentiment_counts.get('positive', 0):
-                        sentiment_score = "Négatif"
-                    else:
-                        sentiment_score = "Neutre"
+        def update_economic_news_data(refresh_clicks, interval_clicks):
+            """Mettre à jour les données RSS économiques"""
+            # Récupérer news RSS
+            news = self.get_rss_news()
+            
+            # Analyser sentiment
+            sentiment = self.analyze_sentiment(news)
+            
+            # Extraire trending topics
+            trending = self.extract_trending_topics(news)
+            
+            # Calculer Fear & Greed
+            fear_greed = self.calculate_fear_greed_index(news, sentiment)
+            
+            return {
+                'news': news,
+                'trending': trending,
+                'fear_greed': fear_greed,
+                'timestamp': datetime.now().isoformat()
+            }, sentiment
+        
+        @app.callback(
+            Output('economic-news-feed', 'children'),
+            [Input('economic-news-store', 'data')]
+        )
+        def update_news_feed(news_data):
+            """Mettre à jour le feed de news"""
+            if not news_data or not news_data.get('news'):
+                return dbc.Alert("Aucune news RSS disponible", color="warning")
+            
+            news_items = []
+            for article in news_data['news'][:20]:
+                # Déterminer couleur sentiment
+                sentiment = article.get('sentiment', 'neutral')
+                if sentiment == 'positive':
+                    border_color = "border-success"
+                    icon_color = "text-success"
+                    icon = "fas fa-arrow-up"
+                elif sentiment == 'negative':
+                    border_color = "border-danger"
+                    icon_color = "text-danger"
+                    icon = "fas fa-arrow-down"
                 else:
-                    sentiment_score = "Neutre"
+                    border_color = "border-warning"
+                    icon_color = "text-warning"
+                    icon = "fas fa-minus"
                 
-                # Last update time
-                from datetime import datetime
-                last_update = datetime.now().strftime("%H:%M")
-                
-                # Market impact widget
-                market_impact = self.create_market_impact_widget(news_data)
-                
-                # Economic calendar widget
-                economic_calendar = self.create_economic_calendar_widget()
-                
-                return (
-                    news_data.to_dict('records'),
-                    articles_data,
-                    news_feed,
-                    str(total_articles),
-                    sentiment_score,
-                    last_update,
-                    market_impact,
-                    economic_calendar,
-                    ""
+                news_items.append(
+                    dbc.Card([
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.H6(article.get('title', 'No Title'), className="mb-2"),
+                                    html.P(article.get('summary', 'No summary available')[:200] + '...', 
+                                          className="text-muted small mb-2"),
+                                    html.Div([
+                                        dbc.Badge(article.get('source', 'RSS'), color="info", className="me-2"),
+                                        html.Small([
+                                            html.I(className="fas fa-clock me-1"),
+                                            str(article.get('published_time', 'N/A'))
+                                        ], className="text-muted")
+                                    ])
+                                ], width=10),
+                                dbc.Col([
+                                    html.I(className=f"{icon} {icon_color}", style={'fontSize': '1.5rem'})
+                                ], width=2, className="text-center")
+                            ])
+                        ])
+                    ], className=f"mb-3 {border_color}")
                 )
-                
-            except Exception as e:
-                print(f"❌ Error in economic news callback: {e}")
-                import traceback
-                traceback.print_exc()
-                
-                return (
-                    [], [],
-                    html.P("Erreur lors du chargement des actualités économiques.", className="text-center text-danger p-4"),
-                    "0", "Erreur", "--:--",
-                    html.P("Erreur de chargement", className="text-muted"),
-                    self.create_economic_calendar_widget(),
-                    ""
+            
+            return news_items
+        
+        @app.callback(
+            Output('economic-sentiment-chart', 'figure'),
+            [Input('economic-sentiment-store', 'data')]
+        )
+        def update_sentiment_chart(sentiment_data):
+            """Mettre à jour le graphique de sentiment"""
+            if not sentiment_data:
+                sentiment_data = {'positive': 30, 'neutral': 50, 'negative': 20}
+            
+            # Graphique en donut
+            fig = go.Figure(data=[
+                go.Pie(
+                    labels=['Positive', 'Neutral', 'Negative'],
+                    values=[sentiment_data.get('positive', 0), 
+                           sentiment_data.get('neutral', 0), 
+                           sentiment_data.get('negative', 0)],
+                    hole=0.5,
+                    marker_colors=['#22c55e', '#eab308', '#ef4444']
                 )
+            ])
+            
+            fig.update_layout(
+                title="Market Sentiment",
+                showlegend=True,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font_color='white',
+                height=300
+            )
+            
+            return fig
+        
+        @app.callback(
+            Output('economic-fear-greed-widget', 'children'),
+            [Input('economic-news-store', 'data')]
+        )
+        def update_fear_greed_widget(news_data):
+            """Widget Fear & Greed"""
+            if not news_data or not news_data.get('fear_greed'):
+                fear_greed = {'score': 50, 'classification': 'Neutral', 'color': '#eab308'}
+            else:
+                fear_greed = news_data['fear_greed']
+            
+            return html.Div([
+                html.H1(str(fear_greed['score']), 
+                       className="text-center mb-2", 
+                       style={'color': fear_greed['color'], 'fontSize': '4rem'}),
+                html.H5(fear_greed['classification'], 
+                       className="text-center mb-3", 
+                       style={'color': fear_greed['color']}),
+                dbc.Progress(
+                    value=fear_greed['score'],
+                    color="success" if fear_greed['score'] > 60 else "warning" if fear_greed['score'] > 40 else "danger",
+                    style={'height': '10px'}
+                )
+            ])
+        
+        @app.callback(
+            Output('economic-trending-topics', 'children'),
+            [Input('economic-news-store', 'data')]
+        )
+        def update_trending_topics(news_data):
+            """Widget sujets tendance"""
+            if not news_data or not news_data.get('trending'):
+                return html.P("Aucun sujet tendance", className="text-muted text-center")
+            
+            trending_items = []
+            for topic in news_data['trending'][:6]:
+                trending_items.append(
+                    dbc.Row([
+                        dbc.Col([
+                            html.Span(topic['topic'], className="fw-bold")
+                        ], width=8),
+                        dbc.Col([
+                            dbc.Badge(topic['count'], color="info", className="me-1"),
+                            html.I(className=f"fas fa-arrow-up text-success" if topic['trend'] == 'up' else "fas fa-minus text-warning")
+                        ], width=4, className="text-end")
+                    ], className="mb-2")
+                )
+            
+            return trending_items

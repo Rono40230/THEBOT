@@ -67,7 +67,7 @@ class CryptoNewsModule:
         
         try:
             # Récupérer toutes les news RSS
-            all_news = rss_news_manager.get_news(limit=100)
+            all_news = rss_news_manager.get_latest_news(limit=100)
             
             # Filtrer pour crypto seulement
             crypto_news = []
@@ -140,14 +140,8 @@ class CryptoNewsModule:
             for article in articles[:20]:
                 text = f"{article.get('title', '')} {article.get('summary', '')}"
                 if len(text.strip()) > 10:
-                    result = smart_ai_manager.analyze_with_best_ai({'text': text}, 'crypto_sentiment')
-                    sentiment = result.get('sentiment', 'neutral')
-                    if sentiment == 'positive':
-                        sentiments.append('bullish')
-                    elif sentiment == 'negative':
-                        sentiments.append('bearish')
-                    else:
-                        sentiments.append('neutral')
+                    sentiment = smart_ai_manager.analyze_crypto_sentiment(text)
+                    sentiments.append(sentiment)
             
             if not sentiments:
                 return {'bullish': 40, 'neutral': 35, 'bearish': 25, 'confidence': 0.7}
@@ -245,23 +239,7 @@ class CryptoNewsModule:
                 classification = "Extreme Fear 💀"
                 color = "#dc2626"
             
-            return {
-                'score': round(fear_greed_score, 1),
-                'classification': classification,
-                'color': color,
-                'confidence': sentiment.get('confidence', 0.75)
-            }
-            
-        except Exception as e:
-            print(f"❌ Erreur Crypto Fear & Greed: {e}")
-            return {
-                'score': 50.0,
-                'classification': 'Neutral ⚖️',
-                'color': '#eab308',
-                'confidence': 0.5
-            }
-    
-    def analyze_price_impact(self, articles: List[Dict]) -> Dict:
+            def analyze_price_impact(self, articles: List[Dict]) -> Dict:
         """Analyser l'impact potentiel sur les prix"""
         try:
             # Analyser mentions et sentiment
@@ -300,6 +278,22 @@ class CryptoNewsModule:
     def get_layout(self) -> html.Div:
         """Layout principal avec widgets AI crypto complets"""
         return html.Div([
+            # Header avec refresh
+            dbc.Row([
+                dbc.Col([
+                    html.H2([
+                        html.I(className="fas fa-coins me-3"),
+                        "🪙 Crypto News (RSS Feeds Only)"
+                    ], className="text-warning mb-0")
+                ], width=8),
+                dbc.Col([
+                    dbc.Button([
+                        html.I(className="fas fa-sync-alt me-2"),
+                        "Refresh RSS"
+                    ], id="refresh-crypto-news-btn", color="warning", size="sm")
+                ], width=4, className="text-end")
+            ], className="mb-4"),
+            
             # AI Widgets Row
             dbc.Row([
                 # Sentiment Analysis Crypto
@@ -307,11 +301,7 @@ class CryptoNewsModule:
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-brain me-2"),
-                            "Crypto Sentiment",
-                            dbc.Button([
-                                html.I(className="fas fa-sync-alt")
-                            ], id="refresh-crypto-news-btn", color="warning", size="sm", 
-                               className="float-end ms-2", style={'padding': '0.25rem 0.5rem'})
+                            "Crypto Sentiment"
                         ]),
                         dbc.CardBody([
                             dcc.Graph(id="crypto-sentiment-chart", style={'height': '300px'})
