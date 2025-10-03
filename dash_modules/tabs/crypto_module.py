@@ -697,10 +697,12 @@ class CryptoModule:
              Output('crypto-atr-chart', 'figure')],
             [Input('crypto-symbol-search', 'value'),
              Input('crypto-timeframe-selector', 'value'),
+             Input('crypto-rsi-switch', 'value'),
              Input('crypto-rsi-period', 'value'),
+             Input('crypto-atr-switch', 'value'),
              Input('crypto-atr-period', 'value')]
         )
-        def update_secondary_charts(symbol, timeframe, rsi_period, atr_period):
+        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period):
             """Met à jour les graphiques secondaires"""
             try:
                 if not symbol:
@@ -718,7 +720,7 @@ class CryptoModule:
                 
                 # RSI Chart
                 rsi_fig = go.Figure()
-                if rsi_period and rsi_period > 0:
+                if rsi_enabled and rsi_period and rsi_period > 0:
                     rsi = self.calculate_rsi(data['close'], rsi_period)
                     rsi_fig.add_trace(go.Scatter(
                         x=data.index,
@@ -729,6 +731,14 @@ class CryptoModule:
                     ))
                     rsi_fig.add_hline(y=70, line=dict(color='red', dash='dash'))
                     rsi_fig.add_hline(y=30, line=dict(color='green', dash='dash'))
+                
+                if not rsi_enabled:
+                    rsi_fig.add_annotation(
+                        text="RSI désactivé",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, showarrow=False,
+                        font=dict(size=14, color="#666666")
+                    )
                 
                 rsi_fig.update_layout(
                     title="RSI",
@@ -755,7 +765,7 @@ class CryptoModule:
                 
                 # ATR Chart
                 atr_fig = go.Figure()
-                if atr_period and atr_period > 0:
+                if atr_enabled and atr_period and atr_period > 0:
                     atr = self.calculate_atr(data, atr_period)
                     atr_fig.add_trace(go.Scatter(
                         x=data.index,
@@ -764,6 +774,14 @@ class CryptoModule:
                         name='ATR',
                         line=dict(color='#95e1d3', width=2)
                     ))
+                
+                if not atr_enabled:
+                    atr_fig.add_annotation(
+                        text="ATR désactivé",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, showarrow=False,
+                        font=dict(size=14, color="#666666")
+                    )
                 
                 atr_fig.update_layout(
                     title="ATR",
