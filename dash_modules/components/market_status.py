@@ -50,6 +50,13 @@ class MarketStatusManager:
                 'open_time': (9, 30),  # 9h30 HKT
                 'close_time': (16, 0), # 16h00 HKT
                 'days': [0, 1, 2, 3, 4]
+            },
+            'Sydney': {
+                'name': 'Sydney',
+                'timezone': 'Australia/Sydney',
+                'open_time': (10, 0),  # 10h00 AEST
+                'close_time': (16, 0), # 16h00 AEST
+                'days': [0, 1, 2, 3, 4]
             }
         }
     
