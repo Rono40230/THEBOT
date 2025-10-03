@@ -25,6 +25,7 @@ from decimal import Decimal
 
 # Import modules THEBOT
 from dash_modules.data_providers.binance_api import binance_provider
+from dash_modules.data_providers.websocket_manager import ws_manager
 from dash_modules.components.symbol_search import default_symbol_search
 from dash_modules.components.market_status import market_status_manager
 from dash_modules.core.api_config import api_config
@@ -377,6 +378,9 @@ class THEBOTDashApp:
             dcc.Store(id='settings-store', data=self.get_default_settings()),
             dcc.Store(id='main-symbol-selected', data='BTCUSDT'),
             dcc.Store(id='symbols-cache-store', data=self.all_symbols),
+            
+            # Store pour données WebSocket temps réel
+            dcc.Store(id='realtime-data-store', data={}),
             
             # Interval pour mise à jour automatique des statuts de marchés (toutes les minutes)
             dcc.Interval(
@@ -930,6 +934,42 @@ class THEBOTDashApp:
             """Met à jour les badges de statut des marchés"""
             return market_status_manager.get_all_market_badges()
         
+        # Callback pour données WebSocket temps réel
+        @self.app.callback(
+            Output('realtime-data-store', 'data'),
+            [Input('realtime-interval', 'n_intervals'),
+             Input('main-symbol-selected', 'data')]
+        )
+        def update_realtime_data(n_intervals, selected_symbol):
+            """Met à jour les données temps réel via WebSocket"""
+            if not selected_symbol:
+                return {}
+            
+            try:
+                # S'assurer que WebSocket est connecté pour le symbole actuel
+                if not ws_manager.is_connected(selected_symbol):
+                    print(f"🔌 Connexion WebSocket: {selected_symbol}")
+                    ws_manager.subscribe(selected_symbol)
+                
+                # Récupérer dernières données
+                latest_data = ws_manager.get_latest_data(selected_symbol)
+                
+                if latest_data:
+                    return {
+                        'symbol': selected_symbol,
+                        'price': latest_data['price'],
+                        'price_change': latest_data['price_change'],
+                        'volume': latest_data['volume'],
+                        'high_24h': latest_data['high_24h'],
+                        'low_24h': latest_data['low_24h'],
+                        'timestamp': latest_data['timestamp']
+                    }
+                    
+            except Exception as e:
+                print(f"❌ Erreur WebSocket {selected_symbol}: {e}")
+            
+            return {}
+        
         # Callback pour la barre de contrôle conditionnelle
         @self.app.callback(
             Output('control-bar-content', 'children'),
@@ -1275,7 +1315,15 @@ class THEBOTDashApp:
     def run(self, debug=False, port=8050):
         """Lancer l'application Dash"""
         print("🚀 THEBOT Dashboard Starting - Pure Orchestrator Mode!")
-        self.app.run(debug=debug, port=port, host='0.0.0.0')
+        try:
+            self.app.run(debug=debug, port=port, host='0.0.0.0')
+        finally:
+            # Nettoyer les connexions WebSocket à la fermeture
+            try:
+                ws_manager.cleanup()
+                print("✅ WebSocket Manager nettoyé")
+            except Exception as e:
+                print(f"⚠️ Erreur nettoyage WebSocket: {e}")
 
 
 def main():

@@ -83,13 +83,49 @@ class CryptoModule:
         return html.Div([
             dcc.Dropdown(
                 id='crypto-symbol-search',
-                options=[{'label': symbol, 'value': symbol} for symbol in self.get_symbols_list()[:50]],
+                options=[{'label': symbol, 'value': symbol} for symbol in self.get_symbols_list()],
                 value=self.current_symbol,
                 placeholder="Rechercher un actif crypto...",
                 searchable=True,
                 className="mb-3"
             )
         ], className="mb-4")
+    
+    def create_price_display(self):
+        """Crée la fenêtre d'affichage du prix en temps réel"""
+        return dbc.Card([
+            dbc.CardBody([
+                dbc.Row([
+                    dbc.Col([
+                        html.Span(
+                            id='crypto-current-symbol',
+                            children=self.current_symbol,
+                            className="fw-bold me-3",
+                            style={'color': '#212529', 'fontSize': '1.1rem'}
+                        ),
+                        html.Span(
+                            id='crypto-current-price',
+                            children="Loading...",
+                            className="text-primary fw-bold me-2",
+                            style={'fontSize': '1.2rem'}
+                        ),
+                        html.Span(
+                            id='crypto-price-change',
+                            children="",
+                            className="me-3"
+                        ),
+                        html.Small([
+                            html.Span("Vol: ", className="text-muted"),
+                            html.Span(
+                                id='crypto-volume-24h',
+                                children="--",
+                                className="fw-bold"
+                            )
+                        ])
+                    ], width=12)
+                ], align="center")
+            ], className="py-1 px-3")
+        ], className="mb-2 border-0 shadow-sm", style={'backgroundColor': '#f8f9fa'})
     
     def create_price_display(self):
         """Crée la fenêtre d'affichage du prix en temps réel"""
@@ -571,6 +607,7 @@ class CryptoModule:
                 print(f"❌ Erreur mise à jour prix: {e}")
                 return selected_symbol or self.current_symbol, "Error", "", "--"
         
+        # Callback pour le graphique principal seulement
         @app.callback(
             Output('crypto-main-chart', 'figure'),
             [Input('crypto-symbol-search', 'value'),
@@ -632,9 +669,6 @@ class CryptoModule:
                         name=f'EMA {ema_period}',
                         line=dict(color='#00bfff', width=2)
                     ))
-                
-                # Note: Prix affiché dans la fenêtre dédiée au-dessus du graphique
-                # Ligne de prix supprimée pour éviter la redondance
                 
                 # Style du graphique
                 fig.update_layout(
