@@ -186,7 +186,9 @@ class CryptoModule:
                     {'label': '📊 15m - Short Term', 'value': '15m'},
                     {'label': '📈 1h - Day Trading', 'value': '1h'},
                     {'label': '📅 4h - Swing', 'value': '4h'},
-                    {'label': '🏛️ 1D - Position', 'value': '1d'}
+                    {'label': '🏛️ 1D - Position', 'value': '1d'},
+                    {'label': '📆 1W - Weekly', 'value': '1w'},
+                    {'label': '🗓️ 1M - Monthly', 'value': '1M'}
                 ],
                 value=self.current_timeframe,
                 className="mb-3"

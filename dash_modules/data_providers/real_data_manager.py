@@ -197,7 +197,7 @@ class RealDataManager:
         # Mapper timeframes Dash vers Binance
         binance_interval_map = {
             '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m',
-            '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w'
+            '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w', '1M': '1M'
         }
         
         binance_interval = binance_interval_map.get(timeframe, '1h')
@@ -219,7 +219,7 @@ class RealDataManager:
         # Mapper timeframes pour CoinGecko (utilise des jours)
         days_map = {
             '1m': 1, '5m': 1, '15m': 1, '30m': 1,
-            '1h': 1, '4h': 2, '1d': 7, '1w': 30
+            '1h': 1, '4h': 2, '1d': 7, '1w': 30, '1M': 90
         }
         days = days_map.get(timeframe, 7)
         
