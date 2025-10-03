@@ -1,6 +1,6 @@
 """
 THEBOT Crypto Module - Interface Moderne Complète
-Module crypto avec interface exacte selon spécifications
+Module crypto avec interface exacte selon spécifications + Indicateurs Structurels Phase 1
 """
 
 import pandas as pd
@@ -15,6 +15,17 @@ from typing import Dict, List, Optional, Any
 
 # Import des providers de données
 from ..data_providers.binance_api import binance_provider
+
+# Indicateurs structurels Phase 1 - Import conditionnel
+STRUCTURAL_INDICATORS_AVAILABLE = False
+try:
+    # Version simplifiée sans dépendances complexes
+    print("📊 Chargement des indicateurs structurels Phase 1...")
+    STRUCTURAL_INDICATORS_AVAILABLE = True
+    print("✅ Mode indicateurs structurels activé")
+except Exception as e:
+    print(f"⚠️ Indicateurs structurels indisponibles: {e}")
+    STRUCTURAL_INDICATORS_AVAILABLE = False
 
 class CryptoModule:
     """Module crypto moderne avec interface complète"""
@@ -272,10 +283,82 @@ class CryptoModule:
                 ], className="mb-2")
             ]),
             
-            # Espace pour futurs indicateurs
+            # === INDICATEURS STRUCTURELS (PHASE 1) ===
+            html.Hr(className="my-3"),
+            html.H6("📊 Analyse Structurelle", className="text-primary mb-3"),
+            
+            # Support/Resistance
             html.Div([
-                html.Small("Plus d'indicateurs bientôt disponibles...", 
-                          className="text-muted fst-italic")
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Switch(
+                            id="crypto-sr-switch",
+                            label="Support/Resistance",
+                            value=False
+                        )
+                    ], width=8),
+                    dbc.Col([
+                        dbc.Input(
+                            id="crypto-sr-strength",
+                            type="number",
+                            value=2,
+                            min=1, max=5, step=1,
+                            size="sm"
+                        )
+                    ], width=4)
+                ], className="mb-2")
+            ]),
+            
+            # Fibonacci
+            html.Div([
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Switch(
+                            id="crypto-fibonacci-switch",
+                            label="Fibonacci",
+                            value=False
+                        )
+                    ], width=8),
+                    dbc.Col([
+                        dbc.Input(
+                            id="crypto-fibonacci-swing",
+                            type="number",
+                            value=2,
+                            min=1, max=5, step=1,
+                            size="sm"
+                        )
+                    ], width=4)
+                ], className="mb-2")
+            ]),
+            
+            # Pivot Points
+            html.Div([
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Switch(
+                            id="crypto-pivot-switch",
+                            label="Pivot Points",
+                            value=False
+                        )
+                    ], width=8),
+                    dbc.Col([
+                        dcc.Dropdown(
+                            id="crypto-pivot-method",
+                            options=[
+                                {'label': 'Standard', 'value': 'standard'},
+                                {'label': 'Fibonacci', 'value': 'fibonacci'},
+                                {'label': 'Camarilla', 'value': 'camarilla'}
+                            ],
+                            value='standard',
+                            style={'fontSize': '12px'}
+                        )
+                    ], width=4)
+                ], className="mb-2")
+            ]),
+            
+            html.Div([
+                html.Small("✨ Phase 1: Indicateurs Structurels Active", 
+                          className="text-success fst-italic")
             ], className="mt-3")
             
         ], className="mb-4")
@@ -556,11 +639,18 @@ class CryptoModule:
         def update_price_display(selected_symbol, realtime_data):
             """Met à jour l'affichage du prix en temps réel"""
             try:
-                if not selected_symbol:
-                    selected_symbol = self.current_symbol
+                # IMPORTANT: Synchroniser le symbole - TOUJOURS utiliser le dernier symbole sélectionné
+                if selected_symbol:
+                    if selected_symbol != self.current_symbol:
+                        self.current_symbol = selected_symbol
+                        print(f"🔄 Symbole prix mis à jour: {selected_symbol}")
+                    active_symbol = selected_symbol
+                else:
+                    # Utiliser le symbole actuel seulement si aucun symbole sélectionné
+                    active_symbol = self.current_symbol
                 
                 # Données en temps réel depuis WebSocket
-                if realtime_data and realtime_data.get('symbol') == selected_symbol:
+                if realtime_data and realtime_data.get('symbol') == active_symbol:
                     price = realtime_data.get('price', 0)
                     price_change = realtime_data.get('price_change', 0)
                     volume = realtime_data.get('volume', 0)
@@ -588,26 +678,26 @@ class CryptoModule:
                         volume_str = f"{volume:.0f}"
                     
                     return (
-                        selected_symbol,
+                        active_symbol,
                         price_str,
                         html.Span(change_str, style=change_style),
                         volume_str
                     )
                 else:
                     # Données par défaut si pas de données WebSocket
-                    data = self.load_market_data(selected_symbol, '1h', 1)
+                    data = self.load_market_data(active_symbol, '1h', 1)
                     if not data.empty:
                         current_price = data['close'].iloc[-1]
                         price_str = f"${current_price:,.2f}" if current_price > 1 else f"${current_price:.6f}"
-                        return selected_symbol, price_str, "Loading...", "--"
+                        return active_symbol, price_str, "Loading...", "--"
                 
-                return selected_symbol, "Loading...", "", "--"
+                return active_symbol, "Loading...", "", "--"
                 
             except Exception as e:
                 print(f"❌ Erreur mise à jour prix: {e}")
-                return selected_symbol or self.current_symbol, "Error", "", "--"
+                return (self.current_symbol, "Error", "", "--")
         
-        # Callback pour le graphique principal seulement
+        # Callback pour le graphique principal avec indicateurs structurels
         @app.callback(
             Output('crypto-main-chart', 'figure'),
             [Input('crypto-symbol-search', 'value'),
@@ -615,15 +705,34 @@ class CryptoModule:
              Input('crypto-sma-switch', 'value'),
              Input('crypto-sma-period', 'value'),
              Input('crypto-ema-switch', 'value'),
-             Input('crypto-ema-period', 'value')]
+             Input('crypto-ema-period', 'value'),
+             # Nouveaux inputs pour indicateurs structurels
+             Input('crypto-sr-switch', 'value'),
+             Input('crypto-sr-strength', 'value'),
+             Input('crypto-fibonacci-switch', 'value'),
+             Input('crypto-fibonacci-swing', 'value'),
+             Input('crypto-pivot-switch', 'value'),
+             Input('crypto-pivot-method', 'value')]
         )
-        def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period):
-            """Met à jour le graphique principal"""
+        def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period,
+                             sr_enabled, sr_strength, fibonacci_enabled, fibonacci_swing,
+                             pivot_enabled, pivot_method):
+            """Met à jour le graphique principal avec indicateurs structurels"""
             try:
+                # CORRECTION: Être strict sur le symbole, pas de fallback
                 if not symbol:
-                    symbol = self.current_symbol
-                    
-                # Charger les données
+                    return go.Figure().add_annotation(
+                        text="Aucun symbole sélectionné",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, showarrow=False
+                    )
+                
+                # IMPORTANT: Mettre à jour self.current_symbol UNIQUEMENT ici
+                if symbol != self.current_symbol:
+                    self.current_symbol = symbol
+                    print(f"🔄 Graphique principal: symbole changé vers {symbol}")
+                
+                # Charger les données pour le nouveau symbole
                 data = self.load_market_data(symbol, timeframe)
                 
                 if data.empty:
@@ -670,6 +779,46 @@ class CryptoModule:
                         line=dict(color='#00bfff', width=2)
                     ))
                 
+                # === INDICATEURS STRUCTURELS (PHASE 1) ===
+                # Calculer et ajouter les indicateurs structurels
+                try:
+                    structural_data = self.calculate_structural_indicators(
+                        data,
+                        sr_enabled=sr_enabled,
+                        sr_strength=sr_strength or 2,
+                        fibonacci_enabled=fibonacci_enabled,
+                        fibonacci_swing=fibonacci_swing or 2,
+                        pivot_enabled=pivot_enabled,
+                        pivot_method=pivot_method or 'standard'
+                    )
+                    
+                    # Ajouter les niveaux structurels au graphique
+                    fig = self.add_structural_levels_to_chart(fig, structural_data)
+                    
+                    # Ajouter annotation pour indiquer les indicateurs actifs
+                    active_indicators = []
+                    if sr_enabled and structural_data.get('support_resistance'):
+                        active_indicators.append("S/R")
+                    if fibonacci_enabled and structural_data.get('fibonacci'):
+                        active_indicators.append("Fibonacci")
+                    if pivot_enabled and structural_data.get('pivot_points'):
+                        active_indicators.append("Pivots")
+                    
+                    if active_indicators:
+                        fig.add_annotation(
+                            text=f"Phase 1: {', '.join(active_indicators)}",
+                            xref="paper", yref="paper",
+                            x=0.02, y=0.98,
+                            showarrow=False,
+                            font=dict(color='#00ff88', size=10),
+                            bgcolor='rgba(0,0,0,0.5)',
+                            bordercolor='#00ff88',
+                            borderwidth=1
+                        )
+                        
+                except Exception as e:
+                    print(f"⚠️ Erreur indicateurs structurels: {e}")
+                
                 # Style du graphique
                 fig.update_layout(
                     title=f"{symbol} - {timeframe}",
@@ -705,8 +854,14 @@ class CryptoModule:
         def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period):
             """Met à jour les graphiques secondaires"""
             try:
+                # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
                 if not symbol:
-                    symbol = self.current_symbol
+                    return go.Figure(), go.Figure(), go.Figure()
+                
+                # Mettre à jour le symbole courant pour synchronisation
+                if symbol != self.current_symbol:
+                    self.current_symbol = symbol
+                    print(f"🔄 Graphiques secondaires: symbole synchronisé vers {symbol}")
                     
                 data = self.current_data if not self.current_data.empty else self.load_market_data(symbol, timeframe)
                 
@@ -825,3 +980,331 @@ class CryptoModule:
             return atr
         except:
             return pd.Series([1] * len(data), index=data.index)
+
+    # === NOUVEAUX INDICATEURS STRUCTURELS (PHASE 1) ===
+    
+    # === INDICATEURS STRUCTURELS SIMPLIFIÉS (PHASE 1) ===
+    
+    def calculate_support_resistance_simple(self, data, strength=2, lookback=50):
+        """Version simplifiée du calcul Support/Resistance"""
+        try:
+            if len(data) < lookback:
+                return {'support_levels': [], 'resistance_levels': []}
+            
+            # Utiliser les dernières données
+            recent_data = data.tail(lookback)
+            current_price = data['close'].iloc[-1]
+            
+            # Trouver les niveaux de support et résistance simples
+            support_levels = []
+            resistance_levels = []
+            
+            # Recherche de niveaux basée sur les minima/maxima locaux
+            window = 10
+            for i in range(window, len(recent_data) - window):
+                price_window = recent_data['close'].iloc[i-window:i+window+1]
+                current_val = recent_data['close'].iloc[i]
+                
+                # Support (minimum local)
+                if current_val == price_window.min() and current_val < current_price:
+                    support_levels.append({
+                        'y': current_val,
+                        'strength': strength,
+                        'label': f"S: {current_val:.4f}",
+                        'color': 'green',
+                        'line_width': 2
+                    })
+                
+                # Résistance (maximum local)
+                if current_val == price_window.max() and current_val > current_price:
+                    resistance_levels.append({
+                        'y': current_val,
+                        'strength': strength,
+                        'label': f"R: {current_val:.4f}",
+                        'color': 'red',
+                        'line_width': 2
+                    })
+            
+            # Limiter le nombre de niveaux et éliminer les doublons
+            support_levels = sorted(support_levels, key=lambda x: abs(x['y'] - current_price))[:5]
+            resistance_levels = sorted(resistance_levels, key=lambda x: abs(x['y'] - current_price))[:5]
+            
+            return {
+                'support_levels': support_levels,
+                'resistance_levels': resistance_levels
+            }
+            
+        except Exception as e:
+            print(f"⚠️ Erreur calcul S/R: {e}")
+            return {'support_levels': [], 'resistance_levels': []}
+    
+    def calculate_fibonacci_simple(self, data, min_swing_pct=2):
+        """Version simplifiée du calcul Fibonacci"""
+        try:
+            if len(data) < 50:
+                return {'retracement_levels': [], 'extension_levels': []}
+            
+            # Trouver le swing high et low récents
+            recent_data = data.tail(100)
+            swing_high = recent_data['high'].max()
+            swing_low = recent_data['low'].min()
+            
+            # Vérifier que le swing est assez grand
+            swing_size = (swing_high - swing_low) / swing_low * 100
+            if swing_size < min_swing_pct:
+                return {'retracement_levels': [], 'extension_levels': []}
+            
+            # Ratios de Fibonacci
+            fib_ratios = [0.236, 0.382, 0.5, 0.618, 0.786]
+            extension_ratios = [1.272, 1.414, 1.618]
+            
+            fib_colors = {
+                0.236: '#FFE4B5', 0.382: '#FFA500', 0.5: '#FF6347',
+                0.618: '#DC143C', 0.786: '#8B0000', 1.272: '#9370DB',
+                1.414: '#8A2BE2', 1.618: '#4B0082'
+            }
+            
+            retracement_levels = []
+            extension_levels = []
+            
+            # Calculer les retracements (du high vers le low)
+            for ratio in fib_ratios:
+                fib_price = swing_high - (swing_high - swing_low) * ratio
+                retracement_levels.append({
+                    'y': fib_price,
+                    'ratio': ratio,
+                    'label': f"Fib {ratio:.1%}: {fib_price:.4f}",
+                    'color': fib_colors.get(ratio, '#888888'),
+                    'line_width': 2 if ratio in [0.382, 0.5, 0.618] else 1,
+                    'line_dash': 'solid' if ratio in [0.382, 0.5, 0.618] else 'dash'
+                })
+            
+            # Calculer les extensions
+            for ratio in extension_ratios:
+                ext_price = swing_high + (swing_high - swing_low) * (ratio - 1.0)
+                extension_levels.append({
+                    'y': ext_price,
+                    'ratio': ratio,
+                    'label': f"Ext {ratio:.1%}: {ext_price:.4f}",
+                    'color': fib_colors.get(ratio, '#888888'),
+                    'line_width': 2,
+                    'line_dash': 'dot'
+                })
+            
+            return {
+                'retracement_levels': retracement_levels,
+                'extension_levels': extension_levels
+            }
+            
+        except Exception as e:
+            print(f"⚠️ Erreur calcul Fibonacci: {e}")
+            return {'retracement_levels': [], 'extension_levels': []}
+    
+    def calculate_pivot_points_simple(self, data, method='standard'):
+        """Version simplifiée du calcul Pivot Points"""
+        try:
+            if len(data) < 2:
+                return {'pivot_levels': []}
+            
+            # Utiliser les données de la veille (ou dernière session complète)
+            prev_data = data.iloc[-24:] if len(data) >= 24 else data
+            
+            high = prev_data['high'].max()
+            low = prev_data['low'].min()
+            close = prev_data['close'].iloc[-1]
+            
+            levels = []
+            
+            if method == 'standard':
+                # Pivot Points standard
+                pp = (high + low + close) / 3
+                r1 = 2 * pp - low
+                s1 = 2 * pp - high
+                r2 = pp + (high - low)
+                s2 = pp - (high - low)
+                r3 = high + 2 * (pp - low)
+                s3 = low - 2 * (high - pp)
+                
+                pivot_data = [
+                    (pp, 'PP', '#FFFF00', 3),
+                    (r1, 'R1', '#FF6B6B', 2), (s1, 'S1', '#4ECDC4', 2),
+                    (r2, 'R2', '#FF8E8E', 1), (s2, 'S2', '#7EDDD8', 1),
+                    (r3, 'R3', '#FFB3B3', 1), (s3, 'S3', '#AFEEED', 1)
+                ]
+                
+            elif method == 'fibonacci':
+                # Pivot Points Fibonacci
+                pp = (high + low + close) / 3
+                range_hl = high - low
+                
+                pivot_data = [
+                    (pp, 'PP', '#FFFF00', 3),
+                    (pp + 0.382 * range_hl, 'R1', '#FF6B6B', 2),
+                    (pp - 0.382 * range_hl, 'S1', '#4ECDC4', 2),
+                    (pp + 0.618 * range_hl, 'R2', '#FF8E8E', 1),
+                    (pp - 0.618 * range_hl, 'S2', '#7EDDD8', 1),
+                    (pp + 1.000 * range_hl, 'R3', '#FFB3B3', 1),
+                    (pp - 1.000 * range_hl, 'S3', '#AFEEED', 1)
+                ]
+                
+            else:  # camarilla
+                # Pivot Points Camarilla
+                pivot_data = [
+                    (close, 'PP', '#FFFF00', 3),
+                    (close + (high - low) * 1.1 / 12, 'R1', '#FF6B6B', 2),
+                    (close - (high - low) * 1.1 / 12, 'S1', '#4ECDC4', 2),
+                    (close + (high - low) * 1.1 / 6, 'R2', '#FF8E8E', 1),
+                    (close - (high - low) * 1.1 / 6, 'S2', '#7EDDD8', 1),
+                    (close + (high - low) * 1.1 / 4, 'R3', '#FFB3B3', 1),
+                    (close - (high - low) * 1.1 / 4, 'S3', '#AFEEED', 1)
+                ]
+            
+            for price, name, color, width in pivot_data:
+                levels.append({
+                    'y': price,
+                    'label': f"{name}: {price:.4f}",
+                    'color': color,
+                    'line_width': width,
+                    'line_dash': 'solid' if name == 'PP' else 'dash',
+                    'level_type': 'pivot' if name == 'PP' else ('support' if name.startswith('S') else 'resistance'),
+                    'touches': 0
+                })
+            
+            return {'pivot_levels': levels}
+            
+        except Exception as e:
+            print(f"⚠️ Erreur calcul Pivots: {e}")
+            return {'pivot_levels': []}
+
+    def calculate_structural_indicators(self, data, 
+                                      sr_enabled=False, sr_strength=2,
+                                      fibonacci_enabled=False, fibonacci_swing=2,
+                                      pivot_enabled=False, pivot_method='standard'):
+        """
+        Version simplifiée des indicateurs structurels
+        """
+        results = {
+            'support_resistance': None,
+            'fibonacci': None,
+            'pivot_points': None
+        }
+        
+        if data.empty or len(data) < 10:
+            return results
+        
+        try:
+            # Support/Resistance
+            if sr_enabled:
+                results['support_resistance'] = self.calculate_support_resistance_simple(
+                    data, strength=sr_strength or 2
+                )
+            
+            # Fibonacci
+            if fibonacci_enabled:
+                results['fibonacci'] = self.calculate_fibonacci_simple(
+                    data, min_swing_pct=fibonacci_swing or 2
+                )
+            
+            # Pivot Points
+            if pivot_enabled:
+                results['pivot_points'] = self.calculate_pivot_points_simple(
+                    data, method=pivot_method or 'standard'
+                )
+                
+        except Exception as e:
+            print(f"❌ Erreur calcul indicateurs structurels: {e}")
+        
+        return results
+
+    def add_structural_levels_to_chart(self, fig, structural_data):
+        """
+        Ajoute les niveaux structurels au graphique principal
+        
+        Args:
+            fig: Figure Plotly
+            structural_data: Données des indicateurs structurels
+        """
+        if not structural_data or not any(structural_data.values()):
+            return fig
+        
+        try:
+            # Support/Resistance
+            if structural_data.get('support_resistance'):
+                sr_data = structural_data['support_resistance']
+                
+                # Supports
+                for level in sr_data.get('support_levels', []):
+                    fig.add_hline(
+                        y=level['y'],
+                        line=dict(
+                            color=level['color'],
+                            width=level['line_width'],
+                            dash='solid'
+                        ),
+                        annotation_text=level['label'],
+                        annotation_position="right"
+                    )
+                
+                # Résistances
+                for level in sr_data.get('resistance_levels', []):
+                    fig.add_hline(
+                        y=level['y'],
+                        line=dict(
+                            color=level['color'],
+                            width=level['line_width'],
+                            dash='solid'
+                        ),
+                        annotation_text=level['label'],
+                        annotation_position="right"
+                    )
+            
+            # Fibonacci
+            if structural_data.get('fibonacci'):
+                fib_data = structural_data['fibonacci']
+                
+                # Retracements
+                for level in fib_data.get('retracement_levels', []):
+                    fig.add_hline(
+                        y=level['y'],
+                        line=dict(
+                            color=level['color'],
+                            width=level['line_width'],
+                            dash=level['line_dash']
+                        ),
+                        annotation_text=level['label'],
+                        annotation_position="left"
+                    )
+                
+                # Extensions
+                for level in fib_data.get('extension_levels', []):
+                    fig.add_hline(
+                        y=level['y'],
+                        line=dict(
+                            color=level['color'],
+                            width=level['line_width'],
+                            dash=level['line_dash']
+                        ),
+                        annotation_text=level['label'],
+                        annotation_position="left"
+                    )
+            
+            # Pivot Points
+            if structural_data.get('pivot_points'):
+                pivot_data = structural_data['pivot_points']
+                
+                for level in pivot_data.get('pivot_levels', []):
+                    fig.add_hline(
+                        y=level['y'],
+                        line=dict(
+                            color=level['color'],
+                            width=level['line_width'],
+                            dash=level['line_dash']
+                        ),
+                        annotation_text=level['label'],
+                        annotation_position="top right"
+                    )
+            
+        except Exception as e:
+            print(f"⚠️ Erreur ajout niveaux structurels: {e}")
+        
+        return fig

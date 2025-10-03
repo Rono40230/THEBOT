@@ -934,18 +934,27 @@ class THEBOTDashApp:
             """Met à jour les badges de statut des marchés"""
             return market_status_manager.get_all_market_badges()
         
-        # Callback pour données WebSocket temps réel
+        # Callback pour données WebSocket temps réel - SE DÉCLENCHE UNIQUEMENT SUR CHANGEMENT DE SYMBOLE
         @self.app.callback(
             Output('realtime-data-store', 'data'),
-            [Input('realtime-interval', 'n_intervals'),
-             Input('main-symbol-selected', 'data')]
+            [Input('main-symbol-selected', 'data')]
         )
-        def update_realtime_data(n_intervals, selected_symbol):
-            """Met à jour les données temps réel via WebSocket"""
+        def update_realtime_data(selected_symbol):
+            """Met à jour les données temps réel via WebSocket - CHANGEMENT DE SYMBOLE UNIQUEMENT"""
+            print(f"🐛 DEBUG WebSocket callback déclenché: {selected_symbol}")
             if not selected_symbol:
+                print("🐛 DEBUG: Aucun symbole sélectionné")
                 return {}
             
             try:
+                # Gérer le changement de symbole WebSocket
+                current_connections = list(ws_manager.connections.keys())
+                if current_connections and selected_symbol not in current_connections:
+                    # Déconnecter les anciens symboles
+                    for old_symbol in current_connections:
+                        print(f"🔌 Déconnexion WebSocket: {old_symbol}")
+                        ws_manager.unsubscribe(old_symbol)
+                
                 # S'assurer que WebSocket est connecté pour le symbole actuel
                 if not ws_manager.is_connected(selected_symbol):
                     print(f"🔌 Connexion WebSocket: {selected_symbol}")
@@ -967,6 +976,39 @@ class THEBOTDashApp:
                     
             except Exception as e:
                 print(f"❌ Erreur WebSocket {selected_symbol}: {e}")
+            
+            return {}
+        
+        # Callback pour mises à jour périodiques des données WebSocket existantes
+        @self.app.callback(
+            Output('realtime-data-store', 'data', allow_duplicate=True),
+            [Input('realtime-interval', 'n_intervals')],
+            [State('main-symbol-selected', 'data')],
+            prevent_initial_call=True
+        )
+        def update_realtime_data_periodic(n_intervals, current_symbol):
+            """Mise à jour périodique des données pour le symbole ACTUEL uniquement"""
+            if not current_symbol:
+                return {}
+                
+            try:
+                # Récupérer données seulement si WebSocket est connecté pour ce symbole
+                if ws_manager.is_connected(current_symbol):
+                    latest_data = ws_manager.get_latest_data(current_symbol)
+                    
+                    if latest_data:
+                        return {
+                            'symbol': current_symbol,
+                            'price': latest_data['price'],
+                            'price_change': latest_data['price_change'],
+                            'volume': latest_data['volume'],
+                            'high_24h': latest_data['high_24h'],
+                            'low_24h': latest_data['low_24h'],
+                            'timestamp': latest_data['timestamp']
+                        }
+                        
+            except Exception as e:
+                print(f"❌ Erreur mise à jour périodique {current_symbol}: {e}")
             
             return {}
         
@@ -1163,26 +1205,36 @@ class THEBOTDashApp:
             
             return selected_symbol, selected_symbol
         
-        # Callback pour charger les données du symbole sélectionné (sans timeframe)
+        # Callback pour synchroniser le dropdown crypto avec le store global
+        @self.app.callback(
+            Output('main-symbol-selected', 'data', allow_duplicate=True),
+            [Input('crypto-symbol-search', 'value')],
+            prevent_initial_call=True
+        )
+        def sync_crypto_symbol_to_main_store(crypto_symbol):
+            """Synchroniser le symbole crypto sélectionné avec le store global"""
+            if crypto_symbol:
+                print(f"🔄 Synchronisation store global: {crypto_symbol}")
+                return crypto_symbol
+            return dash.no_update
+        
+        # Callback pour charger les données du symbole sélectionné (seulement sur changement de symbole)
         @self.app.callback(
             Output('market-data-store', 'data'),
             [Input('main-symbol-selected', 'data'),
-             Input('realtime-interval', 'n_intervals'),
              Input('main-tabs', 'active_tab')],
             prevent_initial_call=True
         )
-        def load_symbol_data(selected_symbol, n_intervals, active_tab):
-            """Charger les données du symbole sélectionné"""
-            # Ne traiter que si on est sur un onglet de marché
+        def load_symbol_data(selected_symbol, active_tab):
+            """Charger les données du symbole sélectionné - UNIQUEMENT sur changement de symbole"""
+            # Ne traiter que si on est sur un onglet de marché et qu'un symbole est sélectionné
             if active_tab not in ['crypto', 'forex', 'stocks'] or not selected_symbol:
                 return {}
             
-            # Utiliser un timeframe par défaut
-            timeframe = '1h'
-            if not timeframe:
-                timeframe = '1h'
+            # IMPORTANT: Ne se déclenche QUE sur changement de symbole, pas sur interval
+            print(f"🔄 Chargement des données pour {selected_symbol} (changement de symbole)")
             
-            print(f"🔄 Chargement des données pour {selected_symbol}...")
+            timeframe = '1h'
             df = self.load_symbol_data(selected_symbol, timeframe, 200)
             
             if df is not None and not df.empty:
