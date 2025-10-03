@@ -26,6 +26,7 @@ from decimal import Decimal
 # Import modules THEBOT
 from dash_modules.data_providers.binance_api import binance_provider
 from dash_modules.components.symbol_search import default_symbol_search
+from dash_modules.components.market_status import market_status_manager
 from dash_modules.core.api_config import api_config
 
 # Import modules modulaires
@@ -377,6 +378,13 @@ class THEBOTDashApp:
             dcc.Store(id='main-symbol-selected', data='BTCUSDT'),
             dcc.Store(id='symbols-cache-store', data=self.all_symbols),
             
+            # Interval pour mise à jour automatique des statuts de marchés (toutes les minutes)
+            dcc.Interval(
+                id='interval-component',
+                interval=60*1000,  # 60 secondes en millisecondes
+                n_intervals=0
+            ),
+            
             # Interval pour updates automatiques
             dcc.Interval(
                 id='realtime-interval',
@@ -410,9 +418,12 @@ class THEBOTDashApp:
             # Indicateurs de marchés globaux et API Keys
             dbc.Col([
                 html.Div([
-                    dbc.Badge("NY: Open", color="success", className="me-2"),
-                    dbc.Badge("London: Open", color="success", className="me-2"),
-                    dbc.Badge("Tokyo: Closed", color="secondary", className="me-2"),
+                    # Utilisation du nouveau module market_status
+                    html.Div(
+                        market_status_manager.get_all_market_badges(),
+                        id="market-status-badges",
+                        className="d-inline-flex"
+                    ),
                     dbc.Button(
                         [html.I(className="fas fa-key me-1"), "🔑 API Keys"],
                         color="dark",
@@ -910,22 +921,29 @@ class THEBOTDashApp:
     def setup_callbacks(self):
         """Configurer les callbacks Dash"""
         
+        # Callback pour mise à jour automatique des statuts de marchés (toutes les minutes)
+        @self.app.callback(
+            Output('market-status-badges', 'children'),
+            [Input('interval-component', 'n_intervals')]  # Dépend d'un interval existant ou à créer
+        )
+        def update_market_status(n_intervals):
+            """Met à jour les badges de statut des marchés"""
+            return market_status_manager.get_all_market_badges()
+        
         # Callback pour la barre de contrôle conditionnelle
         @self.app.callback(
             Output('control-bar-content', 'children'),
             [Input('main-tabs', 'active_tab')]
         )
         def update_control_bar(active_tab):
-            """Masquer la barre de contrôle pour les onglets de marché (ont leurs propres contrôles)"""
-            # Onglets qui N'ONT PAS besoin de la barre de contrôle (ont leurs propres contrôles intégrés)
-            market_tabs = ['crypto', 'forex', 'stocks']
-            
-            if active_tab in market_tabs:
-                # Pas de barre de contrôle pour les marchés (contrôles intégrés dans les modules)
-                return html.Div()
-            else:
-                # Barre de contrôle pour news et strategies
+            """Afficher la barre de contrôle seulement pour l'onglet strategies"""
+            # Seul l'onglet strategies a besoin de la barre de contrôle
+            if active_tab == 'strategies':
+                # Barre de contrôle pour strategies uniquement
                 return self.create_control_bar()
+            else:
+                # Pas de barre de contrôle pour tous les autres onglets
+                return html.Div()
         
         # Callback principal pour la navigation entre onglets modulaires
         @self.app.callback(
