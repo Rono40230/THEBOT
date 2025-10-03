@@ -81,11 +81,6 @@ class CryptoModule:
     def create_search_component(self):
         """Crée le composant de recherche d'actifs"""
         return html.Div([
-            html.H6([
-                html.I(className="fas fa-search me-2"),
-                "Recherche Actif"
-            ], className="text-primary border-bottom border-secondary pb-2 mb-3"),
-            
             dcc.Dropdown(
                 id='crypto-symbol-search',
                 options=[{'label': symbol, 'value': symbol} for symbol in self.get_symbols_list()[:50]],
@@ -99,11 +94,6 @@ class CryptoModule:
     def create_timeframe_component(self):
         """Crée le composant de sélection de timeframe"""
         return html.Div([
-            html.H6([
-                html.I(className="fas fa-clock me-2"),
-                "Timeframe"
-            ], className="text-primary border-bottom border-secondary pb-2 mb-3"),
-            
             dcc.Dropdown(
                 id='crypto-timeframe-selector',
                 options=[
@@ -122,11 +112,6 @@ class CryptoModule:
     def create_technical_indicators_component(self):
         """Crée le composant des indicateurs techniques (extensible)"""
         return html.Div([
-            html.H6([
-                html.I(className="fas fa-chart-line me-2"),
-                "Technical Indicators"
-            ], className="text-info border-bottom border-secondary pb-2 mb-3"),
-            
             # SMA
             html.Div([
                 dbc.Row([
@@ -226,11 +211,6 @@ class CryptoModule:
     def create_ai_analysis_component(self):
         """Crée le composant d'analyse IA"""
         return html.Div([
-            html.H6([
-                html.I(className="fas fa-brain me-2"),
-                "AI Analysis"
-            ], className="text-warning border-bottom border-secondary pb-2 mb-3"),
-            
             # Switch Enable AI Analysis
             dbc.Switch(
                 id="crypto-ai-enabled-switch",
@@ -278,11 +258,6 @@ class CryptoModule:
     def create_smart_alerts_component(self):
         """Crée le composant des alertes intelligentes"""
         return html.Div([
-            html.H6([
-                html.I(className="fas fa-bell me-2"),
-                "Smart Alerts"
-            ], className="text-danger border-bottom border-secondary pb-2 mb-3"),
-            
             # Switch Enable Alerts
             dbc.Switch(
                 id="crypto-alerts-enabled-switch",

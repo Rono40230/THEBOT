@@ -916,15 +916,16 @@ class THEBOTDashApp:
             [Input('main-tabs', 'active_tab')]
         )
         def update_control_bar(active_tab):
-            """Afficher la barre de contrôle seulement pour les onglets de marché"""
-            # Onglets qui ont besoin de la barre de contrôle
+            """Masquer la barre de contrôle pour les onglets de marché (ont leurs propres contrôles)"""
+            # Onglets qui N'ONT PAS besoin de la barre de contrôle (ont leurs propres contrôles intégrés)
             market_tabs = ['crypto', 'forex', 'stocks']
             
             if active_tab in market_tabs:
-                return self.create_control_bar()
-            else:
-                # Pas de barre de contrôle pour news et strategies
+                # Pas de barre de contrôle pour les marchés (contrôles intégrés dans les modules)
                 return html.Div()
+            else:
+                # Barre de contrôle pour news et strategies
+                return self.create_control_bar()
         
         # Callback principal pour la navigation entre onglets modulaires
         @self.app.callback(
