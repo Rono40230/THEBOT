@@ -8,6 +8,7 @@ import dash
 from dash import dcc, html, Input, Output, callback
 import plotly.graph_objects as go
 import plotly.express as px
+from dash_modules.core.price_formatter import format_crypto_price_adaptive, format_percentage_change
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -545,7 +546,7 @@ def update_top_performers(mode, limit, n_intervals):
                 ] + [
                     html.Tr([
                         html.Td(g['symbol'].replace('USDT', '')),
-                        html.Td(f"${g['price']:.4f}"),
+                        html.Td(format_crypto_price_adaptive(g['price'])),
                         html.Td(f"+{g['change_percent']:.2f}%", style={'color': 'green'}),
                         html.Td(f"${g['volume']:,.0f}"),
                         html.Td(g['risk_level'])
@@ -568,8 +569,8 @@ def update_top_performers(mode, limit, n_intervals):
                 ] + [
                     html.Tr([
                         html.Td(l['symbol'].replace('USDT', '')),
-                        html.Td(f"${l['price']:.4f}"),
-                        html.Td(f"{l['change_percent']:.2f}%", style={'color': 'red'}),
+                        html.Td(format_crypto_price_adaptive(l['price'])),
+                        html.Td(format_percentage_change(l['change_percent']), style={'color': 'red'}),
                         html.Td(f"${l['volume']:,.0f}"),
                         html.Td(l['recovery_potential'])
                     ]) for l in losers[:5]

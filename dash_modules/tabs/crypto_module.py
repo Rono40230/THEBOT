@@ -12,6 +12,7 @@ from plotly.subplots import make_subplots
 import dash_bootstrap_components as dbc
 from dash import html, dcc, Input, Output, State, callback
 from typing import Dict, List, Optional, Any
+from dash_modules.core.price_formatter import format_crypto_price_adaptive, format_percentage_change, format_volume_adaptive, format_price_label_adaptive
 
 # Import des providers de données
 from ..data_providers.binance_api import binance_provider
@@ -655,18 +656,16 @@ class CryptoModule:
                     price_change = realtime_data.get('price_change', 0)
                     volume = realtime_data.get('volume', 0)
                     
-                    # Formatage du prix
-                    price_str = f"${price:,.2f}" if price > 1 else f"${price:.6f}"
+                    # Formatage du prix adaptatif
+                    price_str = format_crypto_price_adaptive(price)
                     
                     # Formatage du changement de prix avec couleur
+                    change_str = format_percentage_change(price_change)
                     if price_change > 0:
-                        change_str = f"+{price_change:.2f}%"
                         change_style = {'color': '#28a745'}
                     elif price_change < 0:
-                        change_str = f"{price_change:.2f}%"
                         change_style = {'color': '#dc3545'}
                     else:
-                        change_str = "0.00%"
                         change_style = {'color': '#6c757d'}
                     
                     # Formatage du volume
@@ -688,7 +687,7 @@ class CryptoModule:
                     data = self.load_market_data(active_symbol, '1h', 1)
                     if not data.empty:
                         current_price = data['close'].iloc[-1]
-                        price_str = f"${current_price:,.2f}" if current_price > 1 else f"${current_price:.6f}"
+                        price_str = format_crypto_price_adaptive(current_price)
                         return active_symbol, price_str, "Loading...", "--"
                 
                 return active_symbol, "Loading...", "", "--"
@@ -1010,7 +1009,7 @@ class CryptoModule:
                     support_levels.append({
                         'y': current_val,
                         'strength': strength,
-                        'label': f"S: {current_val:.4f}",
+                        'label': f"S: {format_price_label_adaptive(current_val)}",
                         'color': 'green',
                         'line_width': 2
                     })
@@ -1020,7 +1019,7 @@ class CryptoModule:
                     resistance_levels.append({
                         'y': current_val,
                         'strength': strength,
-                        'label': f"R: {current_val:.4f}",
+                        'label': f"R: {format_price_label_adaptive(current_val)}",
                         'color': 'red',
                         'line_width': 2
                     })
@@ -1073,7 +1072,7 @@ class CryptoModule:
                 retracement_levels.append({
                     'y': fib_price,
                     'ratio': ratio,
-                    'label': f"Fib {ratio:.1%}: {fib_price:.4f}",
+                    'label': f"Fib {ratio:.1%}: {format_price_label_adaptive(fib_price)}",
                     'color': fib_colors.get(ratio, '#888888'),
                     'line_width': 2 if ratio in [0.382, 0.5, 0.618] else 1,
                     'line_dash': 'solid' if ratio in [0.382, 0.5, 0.618] else 'dash'
@@ -1085,7 +1084,7 @@ class CryptoModule:
                 extension_levels.append({
                     'y': ext_price,
                     'ratio': ratio,
-                    'label': f"Ext {ratio:.1%}: {ext_price:.4f}",
+                    'label': f"Ext {ratio:.1%}: {format_price_label_adaptive(ext_price)}",
                     'color': fib_colors.get(ratio, '#888888'),
                     'line_width': 2,
                     'line_dash': 'dot'
@@ -1162,7 +1161,7 @@ class CryptoModule:
             for price, name, color, width in pivot_data:
                 levels.append({
                     'y': price,
-                    'label': f"{name}: {price:.4f}",
+                    'label': f"{name}: {format_price_label_adaptive(price)}",
                     'color': color,
                     'line_width': width,
                     'line_dash': 'solid' if name == 'PP' else 'dash',

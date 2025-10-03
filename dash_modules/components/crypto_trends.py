@@ -8,6 +8,7 @@ import dash
 from dash import dcc, html, Input, Output, callback
 import plotly.graph_objects as go
 import plotly.express as px
+from dash_modules.core.price_formatter import format_crypto_price_adaptive, format_percentage_change
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -353,7 +354,7 @@ def update_crypto_trends(limit, n_intervals):
                 x=symbols,
                 y=changes,
                 marker_color=colors,
-                text=[f"${price:,.2f}" for price in prices],
+                text=[format_crypto_price_adaptive(price) for price in prices],
                 textposition='outside',
                 name="Change 24h %"
             ))
@@ -403,8 +404,8 @@ def update_crypto_trends(limit, n_intervals):
             for coin in trending_coins[:10]:
                 row = html.Tr([
                     html.Td(coin['symbol'].replace('USDT', '')),
-                    html.Td(f"${coin['price']:,.2f}"),
-                    html.Td(f"{coin['change_24h']:.2f}%", 
+                    html.Td(format_crypto_price_adaptive(coin['price'])),
+                    html.Td(format_percentage_change(coin['change_24h']), 
                             style={'color': 'green' if coin['change_24h'] > 0 else 'red'}),
                     html.Td(f"${coin['volume_24h']:,.0f}"),
                     html.Td(coin['momentum'])
