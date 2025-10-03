@@ -90,6 +90,42 @@ class CryptoModule:
                 className="mb-3"
             )
         ], className="mb-4")
+    
+    def create_price_display(self):
+        """Crée la fenêtre d'affichage du prix en temps réel"""
+        return dbc.Card([
+            dbc.CardBody([
+                dbc.Row([
+                    dbc.Col([
+                        html.Span(
+                            id='crypto-current-symbol',
+                            children=self.current_symbol,
+                            className="fw-bold me-3",
+                            style={'color': '#212529', 'fontSize': '1.1rem'}
+                        ),
+                        html.Span(
+                            id='crypto-current-price',
+                            children="Loading...",
+                            className="text-primary fw-bold me-2",
+                            style={'fontSize': '1.2rem'}
+                        ),
+                        html.Span(
+                            id='crypto-price-change',
+                            children="",
+                            className="me-3"
+                        ),
+                        html.Small([
+                            html.Span("Vol: ", className="text-muted"),
+                            html.Span(
+                                id='crypto-volume-24h',
+                                children="--",
+                                className="fw-bold"
+                            )
+                        ])
+                    ], width=12)
+                ], align="center")
+            ], className="py-1 px-3")
+        ], className="mb-2 border-0 shadow-sm", style={'backgroundColor': '#f8f9fa'})
 
     def create_timeframe_component(self):
         """Crée le composant de sélection de timeframe"""
@@ -437,6 +473,13 @@ class CryptoModule:
         """Retourne le layout principal"""
         return html.Div([
             
+            # Affichage du prix en temps réel
+            dbc.Row([
+                dbc.Col([
+                    self.create_price_display()
+                ], width=12)
+            ]),
+            
             # Graphique principal
             dbc.Row([
                 dbc.Col([
@@ -464,6 +507,69 @@ class CryptoModule:
 
     def setup_callbacks(self, app):
         """Configure les callbacks pour l'interactivité"""
+        
+        # Callback pour mettre à jour l'affichage du prix en temps réel
+        @app.callback(
+            [Output('crypto-current-symbol', 'children'),
+             Output('crypto-current-price', 'children'),
+             Output('crypto-price-change', 'children'),
+             Output('crypto-volume-24h', 'children')],
+            [Input('crypto-symbol-search', 'value'),
+             Input('realtime-data-store', 'data')]
+        )
+        def update_price_display(selected_symbol, realtime_data):
+            """Met à jour l'affichage du prix en temps réel"""
+            try:
+                if not selected_symbol:
+                    selected_symbol = self.current_symbol
+                
+                # Données en temps réel depuis WebSocket
+                if realtime_data and realtime_data.get('symbol') == selected_symbol:
+                    price = realtime_data.get('price', 0)
+                    price_change = realtime_data.get('price_change', 0)
+                    volume = realtime_data.get('volume', 0)
+                    
+                    # Formatage du prix
+                    price_str = f"${price:,.2f}" if price > 1 else f"${price:.6f}"
+                    
+                    # Formatage du changement de prix avec couleur
+                    if price_change > 0:
+                        change_str = f"+{price_change:.2f}%"
+                        change_style = {'color': '#28a745'}
+                    elif price_change < 0:
+                        change_str = f"{price_change:.2f}%"
+                        change_style = {'color': '#dc3545'}
+                    else:
+                        change_str = "0.00%"
+                        change_style = {'color': '#6c757d'}
+                    
+                    # Formatage du volume
+                    if volume > 1000000:
+                        volume_str = f"{volume/1000000:.1f}M"
+                    elif volume > 1000:
+                        volume_str = f"{volume/1000:.1f}K"
+                    else:
+                        volume_str = f"{volume:.0f}"
+                    
+                    return (
+                        selected_symbol,
+                        price_str,
+                        html.Span(change_str, style=change_style),
+                        volume_str
+                    )
+                else:
+                    # Données par défaut si pas de données WebSocket
+                    data = self.load_market_data(selected_symbol, '1h', 1)
+                    if not data.empty:
+                        current_price = data['close'].iloc[-1]
+                        price_str = f"${current_price:,.2f}" if current_price > 1 else f"${current_price:.6f}"
+                        return selected_symbol, price_str, "Loading...", "--"
+                
+                return selected_symbol, "Loading...", "", "--"
+                
+            except Exception as e:
+                print(f"❌ Erreur mise à jour prix: {e}")
+                return selected_symbol or self.current_symbol, "Error", "", "--"
         
         @app.callback(
             Output('crypto-main-chart', 'figure'),
@@ -527,15 +633,8 @@ class CryptoModule:
                         line=dict(color='#00bfff', width=2)
                     ))
                 
-                # Ligne de prix en direct (dernière valeur)
-                if not data.empty:
-                    current_price = data['close'].iloc[-1]
-                    fig.add_hline(
-                        y=current_price,
-                        line=dict(color='yellow', width=2, dash='dash'),
-                        annotation_text=f"Prix actuel: {current_price:.2f}",
-                        annotation_position="top right"
-                    )
+                # Note: Prix affiché dans la fenêtre dédiée au-dessus du graphique
+                # Ligne de prix supprimée pour éviter la redondance
                 
                 # Style du graphique
                 fig.update_layout(
