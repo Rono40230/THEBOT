@@ -403,6 +403,37 @@ class THEBOTDashApp:
             'minHeight': '100vh'
         })
         
+        # CSS personnalisé pour le modal IA
+        try:
+            from dash_modules.components.ai_trading_modal import ai_trading_modal
+            if ai_trading_modal:
+                modal_css = ai_trading_modal.get_custom_css()
+                self.app.index_string = f'''
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        {{%metas%}}
+                        <title>{{%title%}}</title>
+                        {{%favicon%}}
+                        {{%css%}}
+                        <style>
+                            {modal_css}
+                        </style>
+                    </head>
+                    <body>
+                        {{%app_entry%}}
+                        <footer>
+                            {{%config%}}
+                            {{%scripts%}}
+                            {{%renderer%}}
+                        </footer>
+                    </body>
+                </html>
+                '''
+                print("✅ CSS Modal IA ajouté")
+        except Exception as e:
+            print(f"⚠️ CSS Modal IA non ajouté: {e}")
+        
     def create_header(self):
         """Créer le header avec navigation modulaire"""
         
@@ -586,20 +617,11 @@ class THEBOTDashApp:
                        className="text-muted text-center p-4")
             ], className="mb-3"),
             
-            # Tab AI Insights uniquement - Backtesting déplacé vers l'onglet Stratégies
-            dbc.Tabs([
-                dbc.Tab(
-                    label="🧠 AI Insights",
-                    tab_id="ai-tab",
-                    children=[
-                        html.Div([
-                            html.P("AI Dashboard moved to individual market modules", 
-                                   className="text-muted text-center p-4")
-                        ], className="p-3")
-                    ]
-                )
-                
-            ], id="secondary-tabs", active_tab="ai-tab", className="custom-tabs mt-3")
+            # Note sur le nouveau modal IA
+            dbc.Alert([
+                html.I(className="fas fa-robot me-2"),
+                "L'analyse IA est maintenant accessible via le bouton 'Generate AI Insights' dans chaque module de marché"
+            ], color="info", className="mb-3")
             
         ], className="p-3")
         

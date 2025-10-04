@@ -304,6 +304,60 @@ class RSSNewsManager:
         
         logger.info(f"✅ RSS sources test completed: {results['successful']}/{results['total_sources']} successful")
         return results
+    
+    def get_symbol_specific_news(self, symbol: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Récupère les nouvelles filtrées pour un symbole spécifique
+        
+        Args:
+            symbol: Symbole à rechercher (ex: BTCUSDT, ETHUSDT)
+            limit: Nombre maximum d'articles
+            
+        Returns:
+            Liste d'articles relatifs au symbole
+        """
+        try:
+            # Déterminer la catégorie basée sur le symbole
+            if any(symbol.startswith(crypto) for crypto in ['BTC', 'ETH', 'BNB', 'ADA', 'XRP', 'SOL', 'DOGE']):
+                categories = ['crypto']
+            elif 'USD' in symbol or 'EUR' in symbol or 'GBP' in symbol:
+                categories = ['forex', 'economic']
+            else:
+                categories = ['general', 'economic']
+            
+            # Récupérer toutes les nouvelles de ces catégories
+            all_news = self.get_news(categories=categories, limit=limit*3)
+            
+            # Filtrer par symbole
+            symbol_base = symbol.replace('USDT', '').replace('USD', '').replace('EUR', '').upper()
+            
+            filtered_news = []
+            for article in all_news:
+                title = article.get('title', '').upper()
+                summary = article.get('summary', '').upper() 
+                
+                # Mots-clés basés sur le symbole
+                keywords = [symbol, symbol_base]
+                if symbol_base == 'BTC':
+                    keywords.extend(['BITCOIN', 'BTC'])
+                elif symbol_base == 'ETH':
+                    keywords.extend(['ETHEREUM', 'ETH'])
+                elif symbol_base == 'BNB':
+                    keywords.extend(['BINANCE', 'BNB'])
+                
+                # Vérifier si l'article contient le symbole
+                if any(keyword in title or keyword in summary for keyword in keywords):
+                    filtered_news.append(article)
+                    
+                if len(filtered_news) >= limit:
+                    break
+            
+            logger.info(f"📰 Found {len(filtered_news)} articles for symbol {symbol}")
+            return filtered_news
+            
+        except Exception as e:
+            logger.error(f"❌ Error filtering news for symbol {symbol}: {e}")
+            return []
 
 
 # Instance globale

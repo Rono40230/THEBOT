@@ -17,6 +17,16 @@ from dash_modules.core.price_formatter import format_crypto_price_adaptive, form
 # Import des providers de données
 from ..data_providers.binance_api import binance_provider
 
+# Import du modal IA
+try:
+    from ..components.ai_trading_modal import ai_trading_modal, register_ai_modal_callbacks
+    AI_MODAL_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Modal IA non disponible: {e}")
+    ai_trading_modal = None
+    register_ai_modal_callbacks = None
+    AI_MODAL_AVAILABLE = False
+
 # Indicateurs structurels Phase 1 - Import conditionnel
 STRUCTURAL_INDICATORS_AVAILABLE = False
 try:
@@ -134,45 +144,19 @@ class CryptoModule:
                                 className="fw-bold"
                             )
                         ])
-                    ], width=12)
-                ], align="center")
-            ], className="py-1 px-3")
-        ], className="mb-2 border-0 shadow-sm", style={'backgroundColor': '#f8f9fa'})
-    
-    def create_price_display(self):
-        """Crée la fenêtre d'affichage du prix en temps réel"""
-        return dbc.Card([
-            dbc.CardBody([
-                dbc.Row([
+                    ], width=8),
                     dbc.Col([
-                        html.Span(
-                            id='crypto-current-symbol',
-                            children=self.current_symbol,
-                            className="fw-bold me-3",
-                            style={'color': '#212529', 'fontSize': '1.1rem'}
-                        ),
-                        html.Span(
-                            id='crypto-current-price',
-                            children="Loading...",
-                            className="text-primary fw-bold me-2",
-                            style={'fontSize': '1.2rem'}
-                        ),
-                        html.Span(
-                            id='crypto-price-change',
-                            children="",
-                            className="me-3"
-                        ),
-                        html.Small([
-                            html.Span("Vol: ", className="text-muted"),
-                            html.Span(
-                                id='crypto-volume-24h',
-                                children="--",
-                                className="fw-bold"
-                            )
-                        ])
-                    ], width=12)
+                        # Bouton IA à l'extrême droite
+                        dbc.Button(
+                            [html.I(className="fas fa-brain me-2"), "AI Analysis"],
+                            id="generate-ai-insights-btn",
+                            color="primary",
+                            size="sm",
+                            className="float-end"
+                        )
+                    ], width=4, className="text-end")
                 ], align="center")
-            ], className="py-1 px-3")
+            ], className="py-2 px-3")
         ], className="mb-2 border-0 shadow-sm", style={'backgroundColor': '#f8f9fa'})
 
     def create_timeframe_component(self):
@@ -367,51 +351,10 @@ class CryptoModule:
         ], className="mb-4")
 
     def create_ai_analysis_component(self):
-        """Crée le composant d'analyse IA"""
+        """Composant IA simplifié - Retourné vide car contrôles déplacés"""
         return html.Div([
-            # Switch Enable AI Analysis
-            dbc.Switch(
-                id="crypto-ai-enabled-switch",
-                label="Enable AI Analysis",
-                value=True,
-                className="mb-3"
-            ),
-            
-            # Dropdown moteur IA
-            html.Div([
-                html.Label("Moteur IA:", className="form-label small"),
-                dcc.Dropdown(
-                    id='crypto-ai-engine-dropdown',
-                    options=[
-                        {'label': 'IA Locale Gratuite', 'value': 'local'},
-                        {'label': 'IA Hybride Smart', 'value': 'smart'},
-                        {'label': 'IA Premium', 'value': 'premium'}
-                    ],
-                    value='local',
-                    className="mb-3"
-                )
-            ]),
-            
-            # Slider confidence threshold
-            html.Div([
-                html.Label("AI Confidence Threshold:", className="form-label small"),
-                dcc.Slider(
-                    id='crypto-ai-confidence-slider',
-                    min=0, max=100, step=5, value=70,
-                    marks={i: f'{i}%' for i in range(0, 101, 25)},
-                    tooltip={"placement": "bottom", "always_visible": True}
-                )
-            ], className="mb-3"),
-            
-            # Bouton Generate AI Insights
-            dbc.Button(
-                [html.I(className="fas fa-magic me-2"), "Generate AI Insights"],
-                id="crypto-generate-ai-btn",
-                color="success",
-                className="w-100"
-            )
-            
-        ], className="mb-4")
+            # Composant vide - Tous les contrôles IA sont maintenant dans le modal et la zone prix
+        ])
 
     def create_smart_alerts_component(self):
         """Crée le composant des alertes intelligentes"""
@@ -455,7 +398,7 @@ class CryptoModule:
         ])
 
     def get_sidebar(self):
-        """Retourne la sidebar complète"""
+        """Retourne la sidebar complète avec composants modal IA"""
         return dbc.Card([
             dbc.CardBody([
                 
@@ -472,7 +415,13 @@ class CryptoModule:
                 self.create_ai_analysis_component(),
                 
                 # Smart Alerts
-                self.create_smart_alerts_component()
+                self.create_smart_alerts_component(),
+                
+                # Dropdowns cachés pour le modal IA (nécessaires pour les callbacks)
+                html.Div([
+                    dcc.Dropdown(id='crypto-symbol-dropdown', style={'display': 'none'}),
+                    dcc.Dropdown(id='crypto-timeframe-dropdown', style={'display': 'none'})
+                ], style={'display': 'none'})
                 
             ])
         ], className="h-100", style={'backgroundColor': '#1f2937'})
@@ -592,8 +541,8 @@ class CryptoModule:
         ], className="g-3")
 
     def get_layout(self):
-        """Retourne le layout principal"""
-        return html.Div([
+        """Retourne le layout principal avec modal IA intégré"""
+        layout_components = [
             
             # Affichage du prix en temps réel
             dbc.Row([
@@ -610,24 +559,36 @@ class CryptoModule:
             ], className="mb-3"),
             
             # Graphiques secondaires
-            self.create_secondary_charts(),
+            self.create_secondary_charts()
             
-            # Onglet AI Insights
-            dbc.Tabs([
-                dbc.Tab(
-                    label="🧠 AI Insights",
-                    tab_id="ai-insights-tab",
-                    children=[
-                        html.Div([
-                            self.create_ai_insights_cards()
-                        ], className="p-3")
-                    ]
-                )
-            ], id="crypto-secondary-tabs", active_tab="ai-insights-tab", className="custom-tabs mt-3")
-            
-        ], className="p-3")
-
+        ]
+        
+        # Ajouter le modal IA si disponible
+        if AI_MODAL_AVAILABLE and ai_trading_modal:
+            layout_components.append(ai_trading_modal.create_modal())
+        
+        return html.Div(layout_components, className="p-3")
+    
     def setup_callbacks(self, app):
+        """Configure les callbacks pour l'interactivité avec modal IA"""
+        
+        # Enregistrer les callbacks du modal IA si disponible
+        if AI_MODAL_AVAILABLE and register_ai_modal_callbacks:
+            register_ai_modal_callbacks(app)
+            print("✅ Callbacks Modal IA enregistrés")
+            
+        # Ajouter les dropdowns nécessaires pour le modal
+        if AI_MODAL_AVAILABLE:
+            # Callback pour synchroniser les dropdowns avec le modal
+            @app.callback(
+                [Output('crypto-symbol-dropdown', 'value'),
+                 Output('crypto-timeframe-dropdown', 'value')],
+                [Input('crypto-symbol-search', 'value'),
+                 Input('crypto-timeframe-selector', 'value')]
+            )
+            def sync_modal_dropdowns(symbol, timeframe):
+                """Synchroniser les valeurs pour le modal IA"""
+                return symbol or self.current_symbol, timeframe or self.current_timeframe
         """Configure les callbacks pour l'interactivité"""
         
         # Callback pour mettre à jour l'affichage du prix en temps réel
