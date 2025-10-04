@@ -372,6 +372,29 @@ class THEBOTDashApp:
             # ===== API CONFIGURATION MODAL =====
             api_config.get_api_config_modal(),
             
+            # ===== SYSTÈME D'ALERTES =====
+            # Container pour les notifications d'alertes (position fixe en haut à droite)
+            html.Div(id="alerts-notification-container", children=[], style={
+                'position': 'fixed',
+                'top': '20px',
+                'right': '20px',
+                'zIndex': '9999',
+                'width': '350px',
+                'maxHeight': '80vh',
+                'overflowY': 'auto'
+            }),
+            
+            # Store pour le statut du monitoring
+            dcc.Store(id='alerts-monitoring-status', data={'active': False, 'last_check': None}),
+            
+            # Interval pour le système d'alertes (vérification toutes les 15 secondes)
+            dcc.Interval(
+                id='alerts-monitoring-interval',
+                interval=15*1000,  # 15 secondes en millisecondes
+                n_intervals=0,
+                disabled=False  # Toujours actif pour les alertes
+            ),
+            
             # Stores pour données avec initialisation par défaut
             dcc.Store(id='market-data-store', data=self.get_default_market_data()),
             dcc.Store(id='indicators-store', data={}),
@@ -403,11 +426,28 @@ class THEBOTDashApp:
             'minHeight': '100vh'
         })
         
-        # CSS personnalisé pour le modal IA
+        # CSS personnalisé pour les modals IA et Alertes
         try:
             from dash_modules.components.ai_trading_modal import ai_trading_modal
+            from dash_modules.components.price_alerts_modal import price_alerts_modal
+            from dash_modules.components.alerts_notifications import alerts_notification_component
+            from dash_modules.core.alerts_monitor import start_alerts_monitoring, stop_alerts_monitoring
+            
+            modal_css = ""
+            
             if ai_trading_modal:
-                modal_css = ai_trading_modal.get_custom_css()
+                modal_css += ai_trading_modal.get_custom_css()
+                print("✅ CSS Modal IA ajouté")
+            
+            if price_alerts_modal:
+                modal_css += "\n" + price_alerts_modal.get_custom_css()
+                print("✅ CSS Modal Alertes ajouté")
+            
+            # CSS pour les notifications d'alertes
+            modal_css += "\n" + alerts_notification_component.get_custom_css()
+            print("✅ CSS Notifications Alertes ajouté")
+            
+            if modal_css:
                 self.app.index_string = f'''
                 <!DOCTYPE html>
                 <html>
@@ -430,9 +470,8 @@ class THEBOTDashApp:
                     </body>
                 </html>
                 '''
-                print("✅ CSS Modal IA ajouté")
         except Exception as e:
-            print(f"⚠️ CSS Modal IA non ajouté: {e}")
+            print(f"⚠️ CSS Modals non ajouté: {e}")
         
     def create_header(self):
         """Créer le header avec navigation modulaire"""
@@ -1386,18 +1425,116 @@ class THEBOTDashApp:
         # All technical indicator callbacks moved to respective modules
         # Note: News modal callbacks are handled in their respective modules
         
+        # ===== CALLBACKS SYSTÈME D'ALERTES =====
+        
+        @self.app.callback(
+            [Output('alerts-notification-container', 'children'),
+             Output('alerts-monitoring-status', 'data')],
+            [Input('alerts-monitoring-interval', 'n_intervals')],
+            [State('alerts-monitoring-status', 'data')],
+            prevent_initial_call=True
+        )
+        def update_alerts_monitoring(n_intervals, status_data):
+            """Callback principal pour la surveillance des alertes"""
+            try:
+                from dash_modules.core.alerts_monitor import alerts_monitor
+                from dash_modules.components.alerts_notifications import alerts_notification_component
+                
+                # Démarrer le monitoring s'il n'est pas actif
+                if not alerts_monitor.monitoring_active:
+                    alerts_monitor.start_monitoring()
+                    print("🚨 Système de surveillance d'alertes démarré")
+                
+                # Récupérer les notifications en attente
+                notifications = alerts_monitor.get_pending_notifications()
+                
+                # Créer les composants de notification
+                notification_components = []
+                for notification in notifications:
+                    notification_components.append(
+                        alerts_notification_component.create_notification(
+                            notification_id=notification['id'],
+                            alert_data=notification['alert'],
+                            trigger_price=notification['trigger_price'],
+                            current_price=notification['current_price']
+                        )
+                    )
+                
+                # Marquer les notifications comme affichées
+                alerts_monitor.mark_notifications_displayed(notifications)
+                
+                # Mettre à jour le statut
+                new_status = {
+                    'active': alerts_monitor.monitoring_active,
+                    'last_check': alerts_monitor.last_check_time.isoformat() if alerts_monitor.last_check_time else None,
+                    'alerts_count': len(alerts_monitor.alerts_manager.get_all_alerts())
+                }
+                
+                return notification_components, new_status
+                
+            except Exception as e:
+                print(f"❌ Erreur dans le callback d'alertes: {e}")
+                return [], status_data
+        
+        @self.app.callback(
+            Output('alerts-notification-container', 'children', allow_duplicate=True),
+            [Input({'type': 'notification-dismiss', 'index': ALL}, 'n_clicks')],
+            [State('alerts-notification-container', 'children')],
+            prevent_initial_call=True
+        )
+        def dismiss_notification(dismiss_clicks, current_notifications):
+            """Gérer la fermeture des notifications"""
+            ctx = dash.callback_context
+            if not ctx.triggered or not any(dismiss_clicks):
+                return dash.no_update
+                
+            # Identifier quelle notification fermer
+            triggered_id = ctx.triggered[0]['prop_id']
+            if triggered_id != '.':
+                import json
+                button_data = json.loads(triggered_id.split('.')[0])
+                notification_id = button_data['index']
+                
+                # Filtrer la notification fermée
+                updated_notifications = []
+                for notification in current_notifications:
+                    if notification and 'props' in notification:
+                        if notification['props'].get('id', {}).get('index') != notification_id:
+                            updated_notifications.append(notification)
+                
+                return updated_notifications
+            
+            return dash.no_update
+        
     def run(self, debug=False, port=8050):
         """Lancer l'application Dash"""
         print("🚀 THEBOT Dashboard Starting - Pure Orchestrator Mode!")
+        
+        # Initialiser le système d'alertes
+        try:
+            from dash_modules.core.alerts_monitor import alerts_monitor
+            # Le monitoring se démarrera automatiquement via les callbacks
+            print("✅ Système d'alertes initialisé")
+        except Exception as e:
+            print(f"⚠️ Erreur initialisation alertes: {e}")
+        
         try:
             self.app.run(debug=debug, port=port, host='0.0.0.0')
         finally:
-            # Nettoyer les connexions WebSocket à la fermeture
+            # Nettoyer les connexions à la fermeture
             try:
                 ws_manager.cleanup()
                 print("✅ WebSocket Manager nettoyé")
             except Exception as e:
                 print(f"⚠️ Erreur nettoyage WebSocket: {e}")
+            
+            # Arrêter le système d'alertes
+            try:
+                from dash_modules.core.alerts_monitor import alerts_monitor
+                alerts_monitor.stop_monitoring()
+                print("✅ Système d'alertes arrêté")
+            except Exception as e:
+                print(f"⚠️ Erreur arrêt alertes: {e}")
 
 
 def main():

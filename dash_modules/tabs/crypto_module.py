@@ -27,6 +27,17 @@ except ImportError as e:
     register_ai_modal_callbacks = None
     AI_MODAL_AVAILABLE = False
 
+# Import du modal alertes
+try:
+    from ..components.price_alerts_modal import price_alerts_modal, register_alerts_modal_callbacks, alerts_store
+    ALERTS_MODAL_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Modal Alertes non disponible: {e}")
+    price_alerts_modal = None
+    register_alerts_modal_callbacks = None
+    alerts_store = None
+    ALERTS_MODAL_AVAILABLE = False
+
 # Indicateurs structurels Phase 1 - Import conditionnel
 STRUCTURAL_INDICATORS_AVAILABLE = False
 try:
@@ -144,17 +155,24 @@ class CryptoModule:
                                 className="fw-bold"
                             )
                         ])
-                    ], width=8),
+                    ], width=6),
                     dbc.Col([
-                        # Bouton IA à l'extrême droite
-                        dbc.Button(
-                            [html.I(className="fas fa-brain me-2"), "AI Analysis"],
-                            id="generate-ai-insights-btn",
-                            color="primary",
-                            size="sm",
-                            className="float-end"
-                        )
-                    ], width=4, className="text-end")
+                        # Boutons IA et Alertes côte à côte
+                        dbc.ButtonGroup([
+                            dbc.Button(
+                                [html.I(className="fas fa-brain me-2"), "AI Analysis"],
+                                id="generate-ai-insights-btn",
+                                color="primary",
+                                size="sm"
+                            ),
+                            dbc.Button(
+                                [html.I(className="fas fa-bell me-2"), "Price Alerts"],
+                                id="manage-alerts-btn",
+                                color="success",
+                                size="sm"
+                            )
+                        ], className="float-end")
+                    ], width=6, className="text-end")
                 ], align="center")
             ], className="py-2 px-3")
         ], className="mb-2 border-0 shadow-sm", style={'backgroundColor': '#f8f9fa'})
@@ -357,44 +375,9 @@ class CryptoModule:
         ])
 
     def create_smart_alerts_component(self):
-        """Crée le composant des alertes intelligentes"""
+        """Composant alertes simplifié - Retouré vide car contrôles déplacés"""
         return html.Div([
-            # Switch Enable Alerts
-            dbc.Switch(
-                id="crypto-alerts-enabled-switch",
-                label="Enable Alerts",
-                value=False,
-                className="mb-3"
-            ),
-            
-            # Price Alerts
-            html.Div([
-                html.Label("Price Alerts:", className="form-label small"),
-                
-                # Above
-                html.Div([
-                    html.Label("Above:", className="form-label small text-success"),
-                    dbc.Input(
-                        id="crypto-alert-above",
-                        type="number",
-                        placeholder="Prix d'alerte (au-dessus)",
-                        size="sm",
-                        className="mb-2"
-                    )
-                ]),
-                
-                # Below
-                html.Div([
-                    html.Label("Below:", className="form-label small text-danger"),
-                    dbc.Input(
-                        id="crypto-alert-below",
-                        type="number",
-                        placeholder="Prix d'alerte (en-dessous)",
-                        size="sm"
-                    )
-                ])
-            ])
-            
+            # Composant vide - Tous les contrôles alertes sont maintenant dans le modal et la zone prix
         ])
 
     def get_sidebar(self):
@@ -419,8 +402,27 @@ class CryptoModule:
                 
                 # Dropdowns cachés pour le modal IA (nécessaires pour les callbacks)
                 html.Div([
-                    dcc.Dropdown(id='crypto-symbol-dropdown', style={'display': 'none'}),
-                    dcc.Dropdown(id='crypto-timeframe-dropdown', style={'display': 'none'})
+                    dcc.Dropdown(
+                        id='crypto-symbol-dropdown', 
+                        options=[{'label': symbol, 'value': symbol} for symbol in self.popular_symbols],
+                        value=self.current_symbol,
+                        style={'display': 'none'}
+                    ),
+                    dcc.Dropdown(
+                        id='crypto-timeframe-dropdown',
+                        options=[
+                            {'label': '1m', 'value': '1m'},
+                            {'label': '5m', 'value': '5m'},
+                            {'label': '15m', 'value': '15m'},
+                            {'label': '1h', 'value': '1h'},
+                            {'label': '4h', 'value': '4h'},
+                            {'label': '1d', 'value': '1d'},
+                            {'label': '1w', 'value': '1w'},
+                            {'label': '1M', 'value': '1M'}
+                        ],
+                        value=self.current_timeframe,
+                        style={'display': 'none'}
+                    )
                 ], style={'display': 'none'})
                 
             ])
@@ -563,19 +565,29 @@ class CryptoModule:
             
         ]
         
-        # Ajouter le modal IA si disponible
+        # Ajouter les modals IA et Alertes si disponibles
         if AI_MODAL_AVAILABLE and ai_trading_modal:
             layout_components.append(ai_trading_modal.create_modal())
+        
+        if ALERTS_MODAL_AVAILABLE and price_alerts_modal:
+            layout_components.append(price_alerts_modal.create_modal())
+            # Ajouter le Store pour les alertes
+            layout_components.append(alerts_store)
         
         return html.Div(layout_components, className="p-3")
     
     def setup_callbacks(self, app):
-        """Configure les callbacks pour l'interactivité avec modal IA"""
+        """Configure les callbacks pour l'interactivité avec modals IA et Alertes"""
         
         # Enregistrer les callbacks du modal IA si disponible
         if AI_MODAL_AVAILABLE and register_ai_modal_callbacks:
             register_ai_modal_callbacks(app)
             print("✅ Callbacks Modal IA enregistrés")
+        
+        # Enregistrer les callbacks du modal Alertes si disponible
+        if ALERTS_MODAL_AVAILABLE and register_alerts_modal_callbacks:
+            register_alerts_modal_callbacks(app)
+            print("✅ Callbacks Modal Alertes enregistrés")
             
         # Ajouter les dropdowns nécessaires pour le modal
         if AI_MODAL_AVAILABLE:

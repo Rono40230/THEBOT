@@ -45,15 +45,11 @@ class BaseMarketModule(ABC):
     def format_price_adaptive(self, price: float) -> str:
         """Format price according to market type and value"""
         if self.market_type == 'crypto':
-            # Crypto adaptive formatting
-            if price >= 1:
-                return f"{price:.2f}"
-            elif price >= 0.01:
-                return f"{price:.4f}"
-            elif price >= 0.0001:
-                return f"{price:.6f}"
-            else:
-                return f"{price:.8f}"
+            # Utiliser le formatage adaptatif centralisé pour crypto
+            from dash_modules.core.price_formatter import format_crypto_price_adaptive
+            formatted = format_crypto_price_adaptive(price)
+            # Enlever le symbole $ car cette fonction ne doit retourner que le nombre
+            return formatted[1:] if formatted.startswith('$') else formatted
         elif self.market_type == 'forex':
             # Forex typically 4-5 decimal places
             return f"{price:.5f}"

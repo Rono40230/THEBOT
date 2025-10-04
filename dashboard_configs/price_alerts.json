@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "symbol": "ETHUSDT",
+    "type": "Prix Inférieur à (Below)",
+    "price": 4800.0,
+    "message": "",
+    "created": "04/10/2025 18:32",
+    "active": true
+  },
+  {
+    "id": 4,
+    "symbol": "PEPEUSDT",
+    "type": "Prix Supérieur à (Above)",
+    "price": 1.4e-06,
+    "message": "",
+    "created": "04/10/2025 18:39",
+    "active": true
+  },
+  {
+    "id": 2,
+    "symbol": "BTCUSDT",
+    "type": "Prix Inférieur à (Below)",
+    "price": 121700.0,
+    "message": "",
+    "created": "04/10/2025 19:13",
+    "active": true
+  },
+  {
+    "id": 3,
+    "symbol": "BTCUSDT",
+    "type": "Prix Supérieur à (Above)",
+    "price": 121800.0,
+    "message": "",
+    "created": "04/10/2025 19:13",
+    "active": true
+  }
+]
