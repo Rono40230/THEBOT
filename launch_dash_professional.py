@@ -1106,11 +1106,14 @@ class THEBOTDashApp:
             """Mettre à jour le contenu selon l'onglet actif - délégation aux modules"""
             
             self.current_tab = active_tab
+            print(f"🔄 DEBUG: Switching to tab: {active_tab}")
+            print(f"🔄 DEBUG: Available modules: {list(self.modules.keys())}")
             
             try:
                 if active_tab == 'economic_news':
                     # Economic News module : layout spécialisé
                     if 'economic_news' in self.modules:
+                        print("🔄 DEBUG: Loading economic_news module")
                         return (
                             self.modules['economic_news'].get_layout() if hasattr(self.modules['economic_news'], 'get_layout') else html.Div("Economic News en cours de développement"),
                             html.Div(),  # Pas de sidebar pour news
@@ -1196,6 +1199,15 @@ class THEBOTDashApp:
                     3,
                     9
                 )
+            
+            # Fallback par défaut si aucune condition n'est remplie
+            print("⚠️ DEBUG: No condition matched, using default fallback")
+            return (
+                html.Div([dbc.Alert("Configuration par défaut", color="info")]),
+                html.Div(),
+                0,
+                12
+            )
         
         # Callback pour la recherche dynamique de symboles (modulaire)
         @self.app.callback(

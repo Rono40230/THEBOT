@@ -699,9 +699,13 @@ class CryptoModule:
         @app.callback(
             Output('crypto-main-chart', 'figure'),
             [Input('crypto-symbol-search', 'value'),
-             Input('crypto-timeframe-selector', 'value')]
+             Input('crypto-timeframe-selector', 'value'),
+             Input('indicators-sma-switch', 'value'),
+             Input('indicators-sma-period', 'value'),
+             Input('indicators-ema-switch', 'value'),
+             Input('indicators-ema-period', 'value')]
         )
-        def update_main_chart(symbol, timeframe):
+        def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period):
             """Met à jour le graphique principal"""
             try:
                 # CORRECTION: Être strict sur le symbole, pas de fallback
@@ -782,11 +786,8 @@ class CryptoModule:
                     customdata=volume_signals
                 ), row=2, col=1)
                 
-                # Valeurs par défaut pour les indicateurs (à connecter plus tard via modal)
-                sma_enabled = True
-                sma_period = 20
-                ema_enabled = True  
-                ema_period = 50
+                # Utiliser les valeurs des indicateurs reçues en paramètres
+                # sma_enabled, sma_period, ema_enabled, ema_period sont déjà disponibles
                 sr_enabled = True
                 sr_strength = 2
                 fibonacci_enabled = False
@@ -898,9 +899,13 @@ class CryptoModule:
             [Output('crypto-rsi-chart', 'figure'),
              Output('crypto-atr-chart', 'figure')],
             [Input('crypto-symbol-search', 'value'),
-             Input('crypto-timeframe-selector', 'value')]
+             Input('crypto-timeframe-selector', 'value'),
+             Input('indicators-rsi-switch', 'value'),
+             Input('indicators-rsi-period', 'value'),
+             Input('indicators-atr-switch', 'value'),
+             Input('indicators-atr-period', 'value')]
         )
-        def update_secondary_charts(symbol, timeframe):
+        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period):
             """Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal"""
             try:
                 # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
@@ -911,11 +916,8 @@ class CryptoModule:
                 if symbol != self.current_symbol:
                     self.current_symbol = symbol
                 
-                # Valeurs par défaut pour les indicateurs
-                rsi_enabled = True
-                rsi_period = 14
-                atr_enabled = True
-                atr_period = 14
+                # Utiliser les valeurs des indicateurs reçues en paramètres
+                # rsi_enabled, rsi_period, atr_enabled, atr_period sont déjà disponibles
                 
                 print(f"🔄 Graphiques secondaires: symbole synchronisé vers {symbol}")
                     
