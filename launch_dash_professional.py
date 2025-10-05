@@ -38,6 +38,9 @@ from dash_modules.tabs.economic_news_module import EconomicNewsModule
 from dash_modules.tabs.crypto_news_module import CryptoNewsModule
 from dash_modules.tabs.strategies_module import StrategiesModule
 
+# Import style trading manager
+from dash_modules.core.style_trading import trading_style_manager
+
 # Import calculateurs THEBOT
 try:
     from thebot.indicators.basic.sma.config import SMAConfig

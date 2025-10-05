@@ -703,9 +703,28 @@ class CryptoModule:
              Input('indicators-sma-switch', 'value'),
              Input('indicators-sma-period', 'value'),
              Input('indicators-ema-switch', 'value'),
-             Input('indicators-ema-period', 'value')]
+             Input('indicators-ema-period', 'value'),
+             Input('indicators-sr-switch', 'value'),
+             Input('indicators-sr-strength', 'value'),
+             Input('indicators-sr-lookback', 'value'),
+             Input('indicators-sr-support-color', 'value'),
+             Input('indicators-sr-resistance-color', 'value'),
+             Input('indicators-sr-line-style', 'value'),
+             Input('indicators-sr-line-width', 'value'),
+             Input('indicators-fibonacci-switch', 'value'),
+             Input('indicators-fibonacci-swing', 'value'),
+             Input('indicators-fibonacci-line-style', 'value'),
+             Input('indicators-fibonacci-line-width', 'value'),
+             Input('indicators-fibonacci-transparency', 'value'),
+             Input('indicators-pivot-switch', 'value'),
+             Input('indicators-pivot-method', 'value'),
+             Input('indicators-pivot-line-style', 'value'),
+             Input('indicators-pivot-line-width', 'value')]
         )
-        def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period):
+        def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period, 
+                             sr_enabled, sr_strength, sr_lookback, sr_support_color, sr_resistance_color, sr_line_style, sr_line_width,
+                             fibonacci_enabled, fibonacci_swing, fibonacci_line_style, fibonacci_line_width, fibonacci_transparency,
+                             pivot_enabled, pivot_method, pivot_line_style, pivot_line_width):
             """Met à jour le graphique principal"""
             try:
                 # CORRECTION: Être strict sur le symbole, pas de fallback
@@ -787,11 +806,9 @@ class CryptoModule:
                 ), row=2, col=1)
                 
                 # Utiliser les valeurs des indicateurs reçues en paramètres
-                # sma_enabled, sma_period, ema_enabled, ema_period sont déjà disponibles
-                sr_enabled = True
-                sr_strength = 2
-                fibonacci_enabled = False
-                fibonacci_swing = 20  # Valeur par défaut
+                # Tous les paramètres sont maintenant connectés aux switchs de la modal
+                # sr_enabled, sr_strength, fibonacci_enabled, fibonacci_swing, pivot_enabled, pivot_method
+                # sont déjà disponibles via les inputs du callback
                 
                 # Ajouter SMA si activé (sur le graphique principal) avec tooltip
                 if sma_enabled and sma_period:
@@ -831,18 +848,39 @@ class CryptoModule:
                 # === INDICATEURS STRUCTURELS (PHASE 1) ===
                 # Calculer et ajouter les indicateurs structurels
                 try:
+                    # Paramètres visuels pour les indicateurs
+                    visual_params = {
+                        'support_resistance': {
+                            'lookback': sr_lookback or 50,
+                            'support_color': sr_support_color or '#27AE60',
+                            'resistance_color': sr_resistance_color or '#E74C3C',
+                            'line_style': sr_line_style or 'solid',
+                            'line_width': sr_line_width or 2
+                        },
+                        'fibonacci': {
+                            'line_style': fibonacci_line_style or 'dashed',
+                            'line_width': fibonacci_line_width or 1,
+                            'transparency': fibonacci_transparency or 0.8
+                        },
+                        'pivot': {
+                            'line_style': pivot_line_style or 'dotted',
+                            'line_width': pivot_line_width or 2
+                        }
+                    }
+                    
                     structural_data = self.calculate_structural_indicators(
                         data,
                         sr_enabled=sr_enabled,
                         sr_strength=sr_strength or 2,
                         fibonacci_enabled=fibonacci_enabled,
-                        fibonacci_swing=fibonacci_swing or 2,
+                        fibonacci_swing=fibonacci_swing or 20,
                         pivot_enabled=pivot_enabled,
-                        pivot_method=pivot_method or 'standard'
+                        pivot_method=pivot_method or 'standard',
+                        visual_params=visual_params
                     )
                     
                     # Ajouter les niveaux structurels au graphique
-                    fig = self.add_structural_levels_to_chart(fig, structural_data)
+                    fig = self.add_structural_levels_to_chart(fig, structural_data, visual_params)
                     
                     # Ajouter annotation pour indiquer les indicateurs actifs
                     active_indicators = []
@@ -1186,7 +1224,9 @@ class CryptoModule:
     
     # === INDICATEURS STRUCTURELS SIMPLIFIÉS (PHASE 1) ===
     
-    def calculate_support_resistance_simple(self, data, strength=2, lookback=50):
+    def calculate_support_resistance_simple(self, data, strength=2, lookback=50, 
+                                           support_color='#27AE60', resistance_color='#E74C3C', 
+                                           line_style='solid', line_width=2):
         """Version simplifiée du calcul Support/Resistance"""
         try:
             if len(data) < lookback:
@@ -1212,8 +1252,9 @@ class CryptoModule:
                         'y': current_val,
                         'strength': strength,
                         'label': f"S: {format_price_label_adaptive(current_val)}",
-                        'color': 'green',
-                        'line_width': 2
+                        'color': support_color,
+                        'line_width': line_width,
+                        'line_dash': line_style
                     })
                 
                 # Résistance (maximum local)
@@ -1222,8 +1263,9 @@ class CryptoModule:
                         'y': current_val,
                         'strength': strength,
                         'label': f"R: {format_price_label_adaptive(current_val)}",
-                        'color': 'red',
-                        'line_width': 2
+                        'color': resistance_color,
+                        'line_width': line_width,
+                        'line_dash': line_style
                     })
             
             # Limiter le nombre de niveaux et éliminer les doublons
@@ -1239,7 +1281,7 @@ class CryptoModule:
             print(f"⚠️ Erreur calcul S/R: {e}")
             return {'support_levels': [], 'resistance_levels': []}
     
-    def calculate_fibonacci_simple(self, data, min_swing_pct=2):
+    def calculate_fibonacci_simple(self, data, min_swing_pct=2, line_style='dashed', line_width=1, transparency=0.8):
         """Version simplifiée du calcul Fibonacci"""
         try:
             if len(data) < 50:
@@ -1276,8 +1318,8 @@ class CryptoModule:
                     'ratio': ratio,
                     'label': f"Fib {ratio:.1%}: {format_price_label_adaptive(fib_price)}",
                     'color': fib_colors.get(ratio, '#888888'),
-                    'line_width': 2 if ratio in [0.382, 0.5, 0.618] else 1,
-                    'line_dash': 'solid' if ratio in [0.382, 0.5, 0.618] else 'dash'
+                    'line_width': line_width + (1 if ratio in [0.382, 0.5, 0.618] else 0),  # Niveaux importants légèrement plus épais
+                    'line_dash': line_style
                 })
             
             # Calculer les extensions
@@ -1288,8 +1330,8 @@ class CryptoModule:
                     'ratio': ratio,
                     'label': f"Ext {ratio:.1%}: {format_price_label_adaptive(ext_price)}",
                     'color': fib_colors.get(ratio, '#888888'),
-                    'line_width': 2,
-                    'line_dash': 'dot'
+                    'line_width': line_width,
+                    'line_dash': line_style
                 })
             
             return {
@@ -1301,7 +1343,7 @@ class CryptoModule:
             print(f"⚠️ Erreur calcul Fibonacci: {e}")
             return {'retracement_levels': [], 'extension_levels': []}
     
-    def calculate_pivot_points_simple(self, data, method='standard'):
+    def calculate_pivot_points_simple(self, data, method='standard', line_style='dotted', line_width=2):
         """Version simplifiée du calcul Pivot Points"""
         try:
             if len(data) < 2:
@@ -1327,10 +1369,10 @@ class CryptoModule:
                 s3 = low - 2 * (high - pp)
                 
                 pivot_data = [
-                    (pp, 'PP', '#FFFF00', 3),
-                    (r1, 'R1', '#FF6B6B', 2), (s1, 'S1', '#4ECDC4', 2),
-                    (r2, 'R2', '#FF8E8E', 1), (s2, 'S2', '#7EDDD8', 1),
-                    (r3, 'R3', '#FFB3B3', 1), (s3, 'S3', '#AFEEED', 1)
+                    (pp, 'PP', '#FFFF00', line_width + 1),
+                    (r1, 'R1', '#FF6B6B', line_width), (s1, 'S1', '#4ECDC4', line_width),
+                    (r2, 'R2', '#FF8E8E', max(1, line_width - 1)), (s2, 'S2', '#7EDDD8', max(1, line_width - 1)),
+                    (r3, 'R3', '#FFB3B3', max(1, line_width - 1)), (s3, 'S3', '#AFEEED', max(1, line_width - 1))
                 ]
                 
             elif method == 'fibonacci':
@@ -1339,25 +1381,25 @@ class CryptoModule:
                 range_hl = high - low
                 
                 pivot_data = [
-                    (pp, 'PP', '#FFFF00', 3),
-                    (pp + 0.382 * range_hl, 'R1', '#FF6B6B', 2),
-                    (pp - 0.382 * range_hl, 'S1', '#4ECDC4', 2),
-                    (pp + 0.618 * range_hl, 'R2', '#FF8E8E', 1),
-                    (pp - 0.618 * range_hl, 'S2', '#7EDDD8', 1),
-                    (pp + 1.000 * range_hl, 'R3', '#FFB3B3', 1),
-                    (pp - 1.000 * range_hl, 'S3', '#AFEEED', 1)
+                    (pp, 'PP', '#FFFF00', line_width + 1),
+                    (pp + 0.382 * range_hl, 'R1', '#FF6B6B', line_width),
+                    (pp - 0.382 * range_hl, 'S1', '#4ECDC4', line_width),
+                    (pp + 0.618 * range_hl, 'R2', '#FF8E8E', max(1, line_width - 1)),
+                    (pp - 0.618 * range_hl, 'S2', '#7EDDD8', max(1, line_width - 1)),
+                    (pp + 1.000 * range_hl, 'R3', '#FFB3B3', max(1, line_width - 1)),
+                    (pp - 1.000 * range_hl, 'S3', '#AFEEED', max(1, line_width - 1))
                 ]
                 
             else:  # camarilla
                 # Pivot Points Camarilla
                 pivot_data = [
-                    (close, 'PP', '#FFFF00', 3),
-                    (close + (high - low) * 1.1 / 12, 'R1', '#FF6B6B', 2),
-                    (close - (high - low) * 1.1 / 12, 'S1', '#4ECDC4', 2),
-                    (close + (high - low) * 1.1 / 6, 'R2', '#FF8E8E', 1),
-                    (close - (high - low) * 1.1 / 6, 'S2', '#7EDDD8', 1),
-                    (close + (high - low) * 1.1 / 4, 'R3', '#FFB3B3', 1),
-                    (close - (high - low) * 1.1 / 4, 'S3', '#AFEEED', 1)
+                    (close, 'PP', '#FFFF00', line_width + 1),
+                    (close + (high - low) * 1.1 / 12, 'R1', '#FF6B6B', line_width),
+                    (close - (high - low) * 1.1 / 12, 'S1', '#4ECDC4', line_width),
+                    (close + (high - low) * 1.1 / 6, 'R2', '#FF8E8E', max(1, line_width - 1)),
+                    (close - (high - low) * 1.1 / 6, 'S2', '#7EDDD8', max(1, line_width - 1)),
+                    (close + (high - low) * 1.1 / 4, 'R3', '#FFB3B3', max(1, line_width - 1)),
+                    (close - (high - low) * 1.1 / 4, 'S3', '#AFEEED', max(1, line_width - 1))
                 ]
             
             for price, name, color, width in pivot_data:
@@ -1366,7 +1408,7 @@ class CryptoModule:
                     'label': f"{name}: {format_price_label_adaptive(price)}",
                     'color': color,
                     'line_width': width,
-                    'line_dash': 'solid' if name == 'PP' else 'dash',
+                    'line_dash': line_style,
                     'level_type': 'pivot' if name == 'PP' else ('support' if name.startswith('S') else 'resistance'),
                     'touches': 0
                 })
@@ -1380,7 +1422,8 @@ class CryptoModule:
     def calculate_structural_indicators(self, data, 
                                       sr_enabled=False, sr_strength=2,
                                       fibonacci_enabled=False, fibonacci_swing=2,
-                                      pivot_enabled=False, pivot_method='standard'):
+                                      pivot_enabled=False, pivot_method='standard',
+                                      visual_params=None):
         """
         Version simplifiée des indicateurs structurels
         """
@@ -1393,23 +1436,43 @@ class CryptoModule:
         if data.empty or len(data) < 10:
             return results
         
+        # Paramètres visuels par défaut
+        if visual_params is None:
+            visual_params = {}
+        
         try:
-            # Support/Resistance
+            # Support/Resistance avec paramètres visuels
             if sr_enabled:
+                sr_visual = visual_params.get('support_resistance', {})
                 results['support_resistance'] = self.calculate_support_resistance_simple(
-                    data, strength=sr_strength or 2
+                    data, 
+                    strength=sr_strength or 2,
+                    lookback=sr_visual.get('lookback', 50),
+                    support_color=sr_visual.get('support_color', '#27AE60'),
+                    resistance_color=sr_visual.get('resistance_color', '#E74C3C'),
+                    line_style=sr_visual.get('line_style', 'solid'),
+                    line_width=sr_visual.get('line_width', 2)
                 )
             
-            # Fibonacci
+            # Fibonacci avec paramètres visuels
             if fibonacci_enabled:
+                fib_visual = visual_params.get('fibonacci', {})
                 results['fibonacci'] = self.calculate_fibonacci_simple(
-                    data, min_swing_pct=fibonacci_swing or 2
+                    data, 
+                    min_swing_pct=fibonacci_swing or 2,
+                    line_style=fib_visual.get('line_style', 'dashed'),
+                    line_width=fib_visual.get('line_width', 1),
+                    transparency=fib_visual.get('transparency', 0.8)
                 )
             
-            # Pivot Points
+            # Pivot Points avec paramètres visuels
             if pivot_enabled:
+                pivot_visual = visual_params.get('pivot', {})
                 results['pivot_points'] = self.calculate_pivot_points_simple(
-                    data, method=pivot_method or 'standard'
+                    data, 
+                    method=pivot_method or 'standard',
+                    line_style=pivot_visual.get('line_style', 'dotted'),
+                    line_width=pivot_visual.get('line_width', 2)
                 )
                 
         except Exception as e:
@@ -1417,13 +1480,14 @@ class CryptoModule:
         
         return results
 
-    def add_structural_levels_to_chart(self, fig, structural_data):
+    def add_structural_levels_to_chart(self, fig, structural_data, visual_params=None):
         """
         Ajoute les niveaux structurels au graphique principal
         
         Args:
             fig: Figure Plotly (avec subplots)
             structural_data: Données des indicateurs structurels
+            visual_params: Paramètres visuels pour chaque indicateur
         """
         if not structural_data or not any(structural_data.values()):
             return fig

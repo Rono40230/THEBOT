@@ -1,0 +1,798 @@
+# THEBOT - Règles de développement
+
+## ⚠️ IMPÉRATIF - Ne JAMAIS enfreindre
+
+### 🎯 RÈGLES DE COMPORTEMENT CRITIQUE
+
+**PROFIL UTILISATEUR : Non-codeur - Claude modifie directement les fichiers dans VSCode**
+
+1. **Structure modulaire OBLIGATOIRE**
+   - ✅ TOUTE implémentation DOIT respecter l'architecture modulaire existante
+   - ✅ Suivre EXACTEMENT le pattern `[category]/[name]/{__init__.py, config.py, calculator.py, plotter.py}`
+   - ❌ JAMAIS créer de nouvelle structure sans validation explicite
+
+2. **Ne JAMAIS casser le code existant**
+   - ✅ Tester l'impact sur le code existant AVANT toute modification
+   - ✅ Si une modification risque de casser quelque chose : DEMANDER confirmation avant d'agir
+   - ❌ AUCUNE modification du code fonctionnel sans approbation explicite
+   - ✅ **AVERTIR** clairement si une modification touche du code sensible
+
+3. **Zéro initiative non sollicitée**
+   - ❌ INTERDICTION ABSOLUE de proposer des "améliorations" non demandées
+   - ❌ Ne JAMAIS refactoriser sans demande explicite
+   - ❌ Ne JAMAIS "optimiser" le code sans instruction
+   - ✅ Faire UNIQUEMENT ce qui est demandé, rien de plus
+   - ✅ **EXCEPTION** : Signaler brièvement les opportunités d'optimisation CRITIQUES (>20% performance) SANS les implémenter
+
+4. **Communication adaptée aux non-codeurs**
+   - ✅ **MODIFICATIONS DIRECTES** : Claude modifie les fichiers directement dans VSCode
+   - ✅ **FEEDBACK MINIMAL** : Après modification réussie, message court type "✅ Modifié : [fichier]"
+   - ✅ **EXPLICATIONS CIBLÉES** : Expliquer uniquement les décisions importantes ou concepts nouveaux
+   - ✅ **OPTIMISATIONS** : Suggérer optimisations si impact significatif (>20%) SANS les appliquer automatiquement
+   - ❌ **PAS de résumé** détaillé de ce qui a été changé (l'utilisateur voit les changements dans VSCode)
+   - ❌ **PAS de jargon** technique non expliqué
+
+5. **Gestion des bugs récurrents**
+   - ✅ Après **5 tentatives échouées** sur la même correction : CHANGER DE STRATÉGIE
+   - ✅ Reconnaître explicitement : "❌ Ma logique est incorrecte, je teste une autre approche"
+   - ✅ **EXPLIQUER** brièvement pourquoi la nouvelle approche est différente (2-3 lignes max)
+   - ✅ Proposer UNE alternative radicalement différente
+   - ❌ Ne JAMAIS répéter la même logique en espérant un résultat différent
+
+6. **Économie de tokens intelligente**
+   - ✅ Priorité tokens pour : MODIFICATIONS CODE + EXPLICATIONS CRITIQUES + OPTIMISATIONS
+   - ❌ Éviter : Longs résumés de modifications, explications évidentes, théorie excessive
+   - ✅ Format ultra-concis : l'utilisateur VOIT les changements dans VSCode
+   - ✅ Utiliser des emojis (✅❌⚠️⚡) pour clarté visuelle rapide
+
+### Format de réponse OBLIGATOIRE
+
+**Pour une modification simple (95% des cas) :**
+```
+✅ Modifié : `src/thebot/indicators/basic/sma/calculator.py`
+```
+
+**Pour une modification avec point important :**
+```
+✅ Modifié : `src/thebot/indicators/basic/rsi/calculator.py`
+
+💡 Utilise maintenant Decimal pour éviter erreurs d'arrondi sur prix.
+```
+
+**Pour correction après erreur :**
+```
+✅ Corrigé : `chemin/vers/fichier.py`
+```
+
+**Pour bug récurrent (5+ échecs) :**
+```
+❌ Ma logique pandas.ewm() ne fonctionne pas.
+Nouvelle approche : calcul manuel avec numpy (plus stable).
+
+✅ Modifié : `src/thebot/indicators/basic/ema/calculator.py`
+```
+
+**Pour suggérer optimisation CRITIQUE :**
+```
+⚡ OPTIMISATION : Calcul actuel 2.5s → possible 0.3s avec vectorisation numpy (gain 88%).
+
+Veux-tu que je l'implémente ?
+```
+
+**Pour demander confirmation avant modification sensible :**
+```
+⚠️ Cette modification va toucher `core/types.py` utilisé par 15 modules.
+Risque de casser le code existant.
+
+Veux-tu que je continue ?
+```
+
+### Sécurité et données sensibles
+- ❌ **Interdiction absolue** : Jamais de clés API, tokens, ou credentials en dur dans le code
+- ❌ **Interdiction absolue** : Pas de localStorage/sessionStorage dans les artifacts/dashboards
+- ✅ **Obligatoire** : Toutes les credentials dans `config/api_keys.env` (non versionné)
+- ✅ **Obligatoire** : Utiliser des variables d'environnement pour les secrets
+- ✅ **Obligatoire** : Valider et nettoyer toutes les entrées utilisateur
+
+### Gestion d'erreurs et robustesse
+- ✅ **Obligatoire** : Gérer TOUTES les exceptions avec try/except appropriés
+- ✅ **Obligatoire** : Logger toutes les erreurs avec contexte détaillé
+- ✅ **Obligatoire** : Timeout sur TOUS les appels API externes
+- ✅ **Obligatoire** : Retry logic pour les opérations critiques (max 3 tentatives)
+- ✅ **Obligatoire** : Graceful degradation si service externe indisponible
+
+### Tests et qualité
+- ✅ **Obligatoire** : Tests unitaires pour CHAQUE nouvel indicateur
+- ✅ **Obligatoire** : Coverage > 80% pour le code core
+- ✅ **Obligatoire** : Validation des résultats avec précision Decimal
+- ✅ **Obligatoire** : Tests de performance pour indicateurs critiques
+
+---
+
+## 🏗️ Architecture ultra-modulaire (RÈGLE D'OR)
+
+### Pattern pour TOUS les indicateurs
+Chaque indicateur DOIT suivre cette structure exacte :
+
+```
+src/thebot/indicators/[category]/[name]/
+├── __init__.py          # Orchestration et API publique
+├── config.py            # Configuration Pydantic (validation)
+├── calculator.py        # Logique de calcul pure (Single Responsibility)
+└── plotter.py           # Visualisation (optionnel)
+```
+
+### Principes architecturaux
+- **Single Responsibility** : Un module = une responsabilité unique
+- **Separation of Concerns** : Séparer config / calcul / visualisation
+- **Interface Contracts** : Tous les indicateurs héritent de `base.indicator.Indicator`
+- **Dependency Injection** : Pas de dépendances hardcodées
+- **Factory Pattern** : Utiliser `manager.factory` pour créer les indicateurs
+
+### Categories d'indicateurs
+- `basic/` : SMA, EMA, ATR, RSI, OBV, SuperTrend
+- `momentum/` : Squeeze, Patterns, Breakout
+- `structural/` : FVG, Support/Resistance, Fibonacci, Order Blocks
+- `smart_money/` : Market Structure, Liquidity, Sessions
+- `volume/` : Volume Profile
+- `analysis/` : TrendScore, Regime, MTF
+
+---
+
+## 💻 Style de code Python
+
+### Versions et compatibilité
+- **Python** : 3.11+ minimum (utiliser les features modernes)
+- **Type hints** : Obligatoires pour TOUTES les fonctions publiques
+- **Async** : Utiliser `async/await` pour toutes les opérations I/O
+
+### Conventions de nommage
+- **Variables** : `snake_case` (ex: `close_prices`, `indicator_values`)
+- **Fonctions** : `snake_case` (ex: `calculate_sma`, `fetch_market_data`)
+- **Classes** : `PascalCase` (ex: `SimpleMovingAverage`, `DataProvider`)
+- **Constantes** : `UPPER_SNAKE_CASE` (ex: `MAX_RETRIES`, `DEFAULT_PERIOD`)
+- **Fichiers** : `snake_case.py` (ex: `market_data_repo.py`)
+- **Modules privés** : Préfixer avec `_` (ex: `_internal_utils.py`)
+
+### Formatage
+- **Formatter** : Black avec line length = 88
+- **Import order** : isort avec groupes (stdlib, third-party, local)
+- **Docstrings** : Google style pour toutes les classes/fonctions publiques
+- **Comments** : En français, uniquement pour logique complexe
+
+### Type hints exemples
+```python
+from typing import Optional, List, Dict, Tuple
+from decimal import Decimal
+import pandas as pd
+
+def calculate_indicator(
+    data: pd.DataFrame,
+    period: int = 14,
+    source: str = "close"
+) -> pd.Series:
+    """Calcule un indicateur technique.
+    
+    Args:
+        data: DataFrame avec colonnes OHLCV
+        period: Période de calcul (défaut: 14)
+        source: Colonne à utiliser (défaut: "close")
+        
+    Returns:
+        Series avec valeurs de l'indicateur
+        
+    Raises:
+        ValueError: Si period <= 0 ou source invalide
+    """
+    ...
+```
+
+---
+
+## 📊 Données et précision
+
+### Types de données
+- **Prix/volumes** : Utiliser `Decimal` pour précision (jamais float pour prix)
+- **Calculs intermédiaires** : `numpy.float64` acceptable
+- **Résultats finaux** : Convertir en `Decimal` si nécessaire
+- **Timestamps** : `pd.Timestamp` avec timezone UTC
+
+### Validation des données
+```python
+# Toujours valider les DataFrames en entrée
+assert isinstance(data, pd.DataFrame), "data doit être un DataFrame"
+assert not data.empty, "data ne peut pas être vide"
+assert all(col in data.columns for col in ["open", "high", "low", "close"]), \
+    "Colonnes OHLC manquantes"
+```
+
+### Gestion des NaN
+- **Explicite** : Toujours spécifier comment gérer les NaN (dropna, fillna, interpolate)
+- **Documentation** : Documenter le comportement avec NaN dans docstring
+- **Validation** : Vérifier absence de NaN inattendus dans résultats
+
+---
+
+## 🔌 APIs et intégrations
+
+### Structure providers
+Chaque provider suit ce pattern :
+```python
+from abc import ABC, abstractmethod
+
+class BaseProvider(ABC):
+    @abstractmethod
+    async def fetch_data(self, symbol: str, timeframe: str) -> pd.DataFrame:
+        """Récupère les données de marché."""
+        pass
+    
+    @abstractmethod
+    async def validate_connection(self) -> bool:
+        """Vérifie la connexion au service."""
+        pass
+```
+
+### Règles pour APIs externes
+- **Rate limiting** : Respecter STRICTEMENT les limites (Binance: 1200/min, AlphaVantage: 5/min)
+- **Caching** : Toujours cacher les données pour minimiser les appels
+- **Exponential backoff** : Pour les retry après erreurs
+- **Timeout** : 30s pour REST, 60s pour WebSocket
+- **Error handling** : Gérer spécifiquement les erreurs réseau vs erreurs API
+
+### APIs utilisées
+- **Binance** : Crypto (REST + WebSocket)
+- **Alpha Vantage** : Forex (REST seulement, limite 5 calls/min)
+- **Trading Economics** : Calendrier économique
+- **FRED** : Données macroéconomiques
+- **OpenAI/Claude** : Analyse IA (optionnel)
+
+---
+
+## 🗄️ Base de données SQLite
+
+### Modèles SQLAlchemy
+```python
+from sqlalchemy import Column, Integer, String, DateTime, Numeric
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
+class MarketData(Base):
+    __tablename__ = "market_data"
+    
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String, nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    open = Column(Numeric(precision=20, scale=8), nullable=False)
+    high = Column(Numeric(precision=20, scale=8), nullable=False)
+    low = Column(Numeric(precision=20, scale=8), nullable=False)
+    close = Column(Numeric(precision=20, scale=8), nullable=False)
+    volume = Column(Numeric(precision=20, scale=8), nullable=False)
+```
+
+### Pattern Repository
+- Utiliser le pattern Repository pour TOUTE interaction DB
+- Un repository par table principale
+- Méthodes async pour opérations I/O
+
+### Migrations
+- Versioning strict : `v001_description.py`, `v002_description.py`
+- Toujours tester rollback
+- Documenter les changements dans docstring
+
+---
+
+## 📈 Indicateurs techniques
+
+### Validation Pydantic
+Tous les configs d'indicateurs utilisent Pydantic :
+```python
+from pydantic import BaseModel, Field, validator
+
+class SMAConfig(BaseModel):
+    period: int = Field(default=20, ge=1, le=500)
+    source: str = Field(default="close")
+    
+    @validator("source")
+    def validate_source(cls, v):
+        valid_sources = ["open", "high", "low", "close"]
+        if v not in valid_sources:
+            raise ValueError(f"source doit être parmi {valid_sources}")
+        return v
+```
+
+### Tests d'indicateurs
+Chaque indicateur DOIT avoir :
+- Tests avec données synthétiques (edge cases)
+- Tests avec données réelles (validation précision)
+- Tests de performance (temps d'exécution)
+- Comparaison avec librairie de référence si possible
+
+### Translation depuis Rust (NonoBot)
+- Préserver EXACTEMENT la logique de calcul
+- Adapter les types de données (Rust → Python)
+- Maintenir la même précision numérique
+- Tester la parité des résultats
+
+---
+
+## 🧠 Intelligence Artificielle
+
+### APIs IA (OpenAI/Claude)
+```python
+# Pattern pour prompts
+MARKET_ANALYSIS_PROMPT = """
+Analyse le marché {symbol} avec les données suivantes :
+- Prix actuel : {price}
+- RSI : {rsi}
+- Tendance : {trend}
+
+Fournis une analyse concise en 3 points max.
+"""
+
+# Toujours gérer les erreurs API
+try:
+    response = await openai_client.analyze(prompt)
+except OpenAIError as e:
+    logger.error(f"Erreur OpenAI: {e}")
+    return "Analyse indisponible"
+```
+
+### Machine Learning
+- **Librairies** : scikit-learn, tensorflow/pytorch
+- **Versioning** : Sauvegarder les modèles avec versioning (mlflow ou custom)
+- **Features** : Documenter TOUTES les features utilisées
+- **Validation** : Cross-validation temporelle (pas k-fold classique)
+- **Overfitting** : Walk-forward analysis obligatoire
+
+---
+
+## 📊 Interface Dash et visualisations
+
+### Structure Dash
+```python
+import dash
+from dash import html, dcc, Input, Output
+import plotly.graph_objects as go
+
+app = dash.Dash(__name__)
+
+# Layout modulaire
+app.layout = html.Div([
+    dcc.Graph(id='price-chart'),
+    dcc.Interval(id='interval', interval=1000)  # Update 1s
+])
+
+# Callbacks avec error handling
+@app.callback(
+    Output('price-chart', 'figure'),
+    Input('interval', 'n_intervals')
+)
+def update_chart(n):
+    try:
+        # Logique de mise à jour
+        return create_figure()
+    except Exception as e:
+        logger.error(f"Erreur update chart: {e}")
+        return go.Figure()  # Figure vide
+```
+
+### Règles Plotly
+- **Thème** : Utiliser thème sombre par défaut (`template="plotly_dark"`)
+- **Performance** : Limiter les données affichées (max 1000 points)
+- **Responsive** : `config={'responsive': True}`
+- **Subplots** : Utiliser `make_subplots` pour indicateurs multiples
+
+---
+
+## 🧪 Tests et qualité
+
+### Structure des tests
+```
+tests/
+├── unit/                    # Tests unitaires isolés
+│   ├── test_indicators/
+│   └── test_data/
+├── integration/             # Tests intégration
+│   └── test_api_integration.py
+└── performance/             # Tests performance
+    └── test_indicators_speed.py
+```
+
+### Pytest conventions
+```python
+import pytest
+import pandas as pd
+from decimal import Decimal
+
+@pytest.fixture
+def sample_ohlcv_data():
+    """Fixture avec données OHLCV sample."""
+    return pd.DataFrame({
+        'open': [100, 101, 102],
+        'high': [105, 106, 107],
+        'low': [99, 100, 101],
+        'close': [104, 105, 106],
+        'volume': [1000, 1100, 1200]
+    })
+
+def test_sma_calculation(sample_ohlcv_data):
+    """Test calcul SMA avec données sample."""
+    result = calculate_sma(sample_ohlcv_data, period=2)
+    
+    assert not result.isna().all(), "SMA ne doit pas être que NaN"
+    assert len(result) == len(sample_ohlcv_data), "Longueur doit être préservée"
+```
+
+### Coverage
+- **Minimum** : 80% pour code core
+- **Priorité** : 100% pour calculs d'indicateurs
+- **Commande** : `pytest --cov=src/thebot --cov-report=html`
+
+---
+
+## 📝 Logging et debugging
+
+### Configuration logging
+```python
+import logging
+from pathlib import Path
+
+# Setup logger
+logger = logging.getLogger("thebot")
+logger.setLevel(logging.INFO)
+
+# File handler
+log_file = Path("logs/thebot.log")
+log_file.parent.mkdir(exist_ok=True)
+fh = logging.FileHandler(log_file)
+fh.setFormatter(logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+))
+logger.addHandler(fh)
+```
+
+### Niveaux de log
+- **DEBUG** : Détails calculs, valeurs intermédiaires
+- **INFO** : Opérations importantes (fetch data, calculate indicator)
+- **WARNING** : Situations anormales mais gérables (retry, cache miss)
+- **ERROR** : Erreurs nécessitant attention (API failure, DB error)
+- **CRITICAL** : Erreurs bloquantes (connexion DB impossible)
+
+### Pas de print()
+❌ **Interdit** : `print()` dans le code de production
+✅ **Utiliser** : `logger.info()`, `logger.debug()`, etc.
+
+---
+
+## 🚀 Performance et optimisation
+
+### Règles de performance
+- **Vectorisation** : Utiliser numpy/pandas vectorisé (éviter les loops Python)
+- **Caching** : Cacher les résultats coûteux avec `functools.lru_cache`
+- **Lazy loading** : Charger les données seulement si nécessaire
+- **Memory** : Nettoyer les DataFrames inutilisés (`.drop()`, `del`)
+
+### Profiling
+```python
+import cProfile
+import pstats
+
+def profile_function():
+    profiler = cProfile.Profile()
+    profiler.enable()
+    
+    # Code à profiler
+    result = expensive_calculation()
+    
+    profiler.disable()
+    stats = pstats.Stats(profiler)
+    stats.sort_stats('cumulative')
+    stats.print_stats(10)  # Top 10
+```
+
+---
+
+## 📦 Dépendances et environnement
+
+### requirements.txt structure
+```txt
+# Core
+pandas==2.1.0
+numpy==1.24.0
+SQLAlchemy==2.0.0
+
+# APIs
+python-binance==1.0.17
+alpha-vantage==2.3.1
+aiohttp==3.8.5
+
+# Visualization
+plotly==5.17.0
+dash==2.14.0
+
+# ML
+scikit-learn==1.3.0
+tensorflow==2.13.0  # Optionnel
+
+# Testing
+pytest==7.4.0
+pytest-cov==4.1.0
+pytest-asyncio==0.21.0
+
+# Dev
+black==23.7.0
+isort==5.12.0
+mypy==1.5.0
+pylint==2.17.0
+```
+
+### Environnement virtuel
+```bash
+# Toujours utiliser venv
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# Installer dépendances
+pip install -r requirements.txt
+```
+
+---
+
+## 📚 Documentation
+
+### Docstrings Google style
+```python
+def calculate_rsi(
+    data: pd.DataFrame,
+    period: int = 14,
+    source: str = "close"
+) -> pd.Series:
+    """Calcule le Relative Strength Index (RSI).
+    
+    Le RSI est un oscillateur momentum mesurant la vitesse et 
+    l'amplitude des mouvements de prix.
+    
+    Args:
+        data: DataFrame avec colonnes OHLCV
+        period: Période de calcul (défaut: 14)
+        source: Colonne à utiliser pour le calcul (défaut: "close")
+        
+    Returns:
+        Series avec valeurs RSI (0-100)
+        
+    Raises:
+        ValueError: Si period <= 0 ou source invalide
+        KeyError: Si colonne source manquante dans data
+        
+    Example:
+        >>> df = pd.DataFrame({'close': [100, 102, 98, 105]})
+        >>> rsi = calculate_rsi(df, period=14)
+        >>> print(rsi)
+    
+    Note:
+        Les premiers `period` valeurs seront NaN.
+        Formule standard de Wilder utilisée.
+    """
+    ...
+```
+
+### README et docs
+- Maintenir le README.md à jour avec l'avancement
+- Documenter les décisions architecturales importantes
+- Créer des guides utilisateur si interface complexe
+
+---
+
+## 🔄 Git workflow
+
+### Branches
+- `main` : Production stable
+- `develop` : Développement en cours
+- `feature/nom-feature` : Nouvelles fonctionnalités
+- `fix/nom-bug` : Corrections de bugs
+
+### Commits conventionnels
+```
+feat: Ajout indicateur SuperTrend
+fix: Correction calcul ATR avec NaN
+docs: Mise à jour README avec exemples
+test: Ajout tests unitaires RSI
+refactor: Restructuration module data providers
+perf: Optimisation calcul SMA vectorisé
+```
+
+### Pull Requests
+- Description claire de la modification
+- Tests passent (CI/CD)
+- Coverage maintenu ou amélioré
+- Review obligatoire avant merge
+
+---
+
+## 🎯 Spécificités THEBOT
+
+### Focus stratégies
+1. **Scalping** (priorité) : Timeframes 1m, 5m, 15m
+2. **Day Trading** : Timeframes 1h, 4h
+3. **Swing Trading** : Timeframes 1D, 1W
+4. **Position Trading** : Timeframes 1M
+
+### Marchés supportés
+- **Crypto** : BTC, ETH, altcoins majeurs (Binance)
+- **Forex** : Paires majeures EUR/USD, GBP/USD, USD/JPY, etc. (Alpha Vantage)
+
+### Événements économiques
+- Intégrer systématiquement le calendrier économique
+- Analyser impact annonces vs mouvements prix
+- Alertes pré/post événements importants
+- Corrélation événements ↔ volatilité
+
+### Translation indicateurs NonoBot (Rust → Python)
+- **Source** : https://github.com/Rono40230/NonoBot
+- **Objectif** : 25 indicateurs à traduire
+- **Méthode** : Analyse algorithme Rust → Implementation Python pure
+- **Validation** : Tester parité résultats Rust vs Python
+- **Documentation** : Référencer l'indicateur Rust source
+
+---
+
+## ✅ Checklist avant chaque commit
+
+- [ ] Code formaté avec Black
+- [ ] Imports triés avec isort
+- [ ] Type hints présents
+- [ ] Docstrings Google style
+- [ ] Tests unitaires passent
+- [ ] Coverage maintenu/amélioré
+- [ ] Pas de print() en production
+- [ ] Pas de credentials en dur
+- [ ] Logs appropriés ajoutés
+- [ ] Documentation mise à jour si nécessaire
+- [ ] **VÉRIFIÉ : Aucun code existant cassé**
+- [ ] **VÉRIFIÉ : Structure modulaire respectée**
+
+---
+
+## 📋 Rappel TOKENS - Économie INTELLIGENTE pour non-codeur
+
+### Ce qui CONSOMME les tokens (à utiliser)
+✅ Code complet et fonctionnel
+✅ Instructions claires (chemins fichiers, commandes)
+✅ Explications pour comprendre la logique (si nécessaire)
+✅ Suggestions d'optimisation critiques (>20% impact)
+✅ Aide au debugging avec stratégies alternatives
+
+### Ce qui GASPILLE les tokens (à éviter)
+❌ Longs paragraphes d'introduction
+❌ Historiques détaillés des modifications
+❌ Théorie excessive sur les concepts
+❌ Explications de ce qui est évident
+❌ Comptes-rendus verbeux après succès
+
+### Exemples de réponses adaptées
+
+**❌ MAUVAIS (trop verbeux pour non-codeur)** :
+```
+[CODE sans contexte]
+```
+*Problème : Non-codeur ne sait pas où mettre ce code*
+
+**❌ MAUVAIS (trop de blabla)** :
+```
+J'ai analysé en profondeur votre demande et après avoir examiné 
+l'architecture existante, j'ai identifié que la meilleure approche 
+serait d'utiliser le pattern Factory combiné avec... [500 mots]
+
+Voici le code :
+[code]
+```
+*Problème : Gaspillage de tokens, l'utilisateur veut le code*
+
+**✅ BON (équilibre optimal)** :
+```
+📁 Créer : `src/thebot/indicators/basic/rsi/calculator.py`
+
+[CODE COMPLET]
+
+💡 Ce fichier calcule le RSI. Utilise la formule de Wilder.
+
+▶️ Pour tester : `pytest tests/unit/test_indicators/test_rsi.py`
+```
+*Parfait : Code + Contexte minimal + Action claire*
+
+**✅ BON (optimisation critique)** :
+```
+⚡ OPTIMISATION : Calcul actuel prend 2.5s sur 10k bougies
+Possible de réduire à 0.3s avec vectorisation numpy.
+
+Veux-tu que je l'implémente ?
+```
+*Parfait : Impact chiffré + Question claire*
+
+**✅ BON (après 5 échecs)** :
+```
+❌ Mon approche avec pandas.ewm() ne fonctionne pas.
+
+Nouvelle stratégie : Calcul manuel avec boucle numpy (plus lent mais stable).
+
+📁 Fichier : `src/thebot/indicators/basic/ema/calculator.py`
+[CODE avec nouvelle approche]
+```
+*Parfait : Reconnaissance erreur + Explication courte + Code*
+
+---
+
+## 🚫 Interdictions strictes
+
+### À ne JAMAIS faire
+- ❌ Credentials/API keys en dur dans le code
+- ❌ `print()` à la place de `logger`
+- ❌ Float pour calculs de prix (utiliser Decimal)
+- ❌ Ignorer les exceptions (`except: pass`)
+- ❌ Code non testé en production
+- ❌ Boucles Python sur DataFrames (vectoriser)
+- ❌ Importer tout un module (`from module import *`)
+- ❌ Variables globales mutables
+- ❌ Modification des DataFrames en place sans `.copy()`
+- ❌ Commits sans message clair
+
+---
+
+## 💡 Bonnes pratiques encouragées
+
+### À privilégier
+- ✅ Type hints partout
+- ✅ Validation Pydantic pour configs
+- ✅ Async/await pour I/O
+- ✅ Pattern Repository pour DB
+- ✅ Factory Pattern pour indicateurs
+- ✅ Caching intelligent
+- ✅ Logging exhaustif
+- ✅ Tests automatisés
+- ✅ Documentation claire
+- ✅ Code review systématique
+
+---
+
+## 🎓 Ressources et références
+
+### Documentation officielle
+- [Pandas](https://pandas.pydata.org/docs/)
+- [NumPy](https://numpy.org/doc/)
+- [Plotly](https://plotly.com/python/)
+- [Dash](https://dash.plotly.com/)
+- [SQLAlchemy](https://docs.sqlalchemy.org/)
+- [Pydantic](https://docs.pydantic.dev/)
+
+### APIs
+- [Binance API](https://binance-docs.github.io/apidocs/)
+- [Alpha Vantage](https://www.alphavantage.co/documentation/)
+- [Trading Economics](https://docs.tradingeconomics.com/)
+- [FRED API](https://fred.stlouisfed.org/docs/api/fred/)
+
+### Indicateurs techniques
+- [Investopedia](https://www.investopedia.com/terms/t/technicalindicator.asp)
+- [TradingView Pine Script](https://www.tradingview.com/pine-script-docs/)
+
+---
+
+## 🎯 Rappels importants pour Claude
+
+1. **Modularité** : Respecter STRICTEMENT l'architecture modulaire des indicateurs
+2. **Précision** : Utiliser Decimal pour prix, valider avec 15+ tests par indicateur
+3. **Performance** : Vectoriser avec numpy/pandas, pas de loops Python
+4. **Robustesse** : Gérer TOUTES les erreurs, timeout sur APIs, retry logic
+5. **Documentation** : Docstrings Google style, type hints obligatoires
+6. **Tests** : Coverage > 80%, tests unitaires pour chaque indicateur
+7. **Sécurité** : Jamais de credentials en dur, validation inputs
+8. **Async** : Utiliser async/await pour toutes opérations I/O
+9. **Logging** : Logger.info/debug/error, jamais print()
+10. **Git** : Commits conventionnels, branches feature/fix
+
+---
+
+**Version** : 1.0
+**Dernière mise à jour** : Projet analysé depuis GitHub
+**Auteur** : Documentation générée pour THEBOT trading bot
