@@ -756,6 +756,10 @@ class CryptoModule:
                 sma_period = 20
                 ema_enabled = True  
                 ema_period = 50
+                sr_enabled = True
+                sr_strength = 2
+                                fibonacci_enabled = False
+                fibonacci_swing = 20  # Valeur par défaut
                 
                 # Ajouter SMA si activé
                 if sma_enabled and sma_period:
