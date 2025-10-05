@@ -876,9 +876,9 @@ class CryptoModule:
                     margin=dict(l=0, r=0, t=30, b=0)
                 )
                 
-                # Configurer les axes
-                fig.update_yaxes(title_text="Prix (USDT)", row=1, col=1)
-                fig.update_yaxes(title_text="Volume", row=2, col=1)
+                # Configurer les axes sans labels encombrants
+                fig.update_yaxes(title_text="", row=1, col=1)  # Supprimer "Prix (USDT)"
+                fig.update_yaxes(title_text="", row=2, col=1)  # Supprimer "Volume"
                 fig.update_xaxes(title_text="Date", row=2, col=1)
                 
                 # Supprimer le mini-graphique de zoom
@@ -969,6 +969,49 @@ class CryptoModule:
                     rsi_fig.add_hline(y=70, line=dict(color='#ff4444', dash='dash', width=1))
                     rsi_fig.add_hline(y=30, line=dict(color='#00ff88', dash='dash', width=1))
                     rsi_fig.add_hline(y=50, line=dict(color='#888888', dash='dot', width=1))
+                    
+                    # Tooltips invisibles pour expliquer chaque niveau RSI
+                    # Tooltip niveau 70 (surachat)
+                    rsi_fig.add_trace(go.Scatter(
+                        x=[data.index[0]], y=[70],
+                        mode='markers',
+                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
+                        hovertemplate='<b>Niveau 70 - Seuil Surachat</b><br>' +
+                                     'Signal: Prix potentiellement trop élevé<br>' +
+                                     'Action: Zone de prudence pour les achats<br>' +
+                                     'Risque: Possible correction baissière<br>' +
+                                     '<extra></extra>',
+                        showlegend=False,
+                        name='Seuil 70'
+                    ))
+                    
+                    # Tooltip niveau 30 (survente)
+                    rsi_fig.add_trace(go.Scatter(
+                        x=[data.index[0]], y=[30],
+                        mode='markers',
+                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
+                        hovertemplate='<b>Niveau 30 - Seuil Survente</b><br>' +
+                                     'Signal: Prix potentiellement sous-évalué<br>' +
+                                     'Action: Zone d\'opportunité d\'achat<br>' +
+                                     'Potentiel: Possible rebond haussier<br>' +
+                                     '<extra></extra>',
+                        showlegend=False,
+                        name='Seuil 30'
+                    ))
+                    
+                    # Tooltip niveau 50 (neutre)
+                    rsi_fig.add_trace(go.Scatter(
+                        x=[data.index[0]], y=[50],
+                        mode='markers',
+                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
+                        hovertemplate='<b>Niveau 50 - Ligne Neutre</b><br>' +
+                                     'Signal: Équilibre acheteurs/vendeurs<br>' +
+                                     'Tendance: Ni haussière ni baissière<br>' +
+                                     'Interprétation: Zone d\'indécision<br>' +
+                                     '<extra></extra>',
+                        showlegend=False,
+                        name='Ligne neutre'
+                    ))
                 
                 if not rsi_enabled:
                     rsi_fig.add_annotation(
@@ -984,7 +1027,7 @@ class CryptoModule:
                     height=200,
                     margin=dict(l=0, r=0, t=30, b=0),
                     yaxis_range=[0, 100],
-                    showlegend=False  # Pas de légende nécessaire
+                    showlegend=False
                 )
                 
                 # ATR Chart Professionnel avec zones de volatilité
@@ -1053,6 +1096,37 @@ class CryptoModule:
                     # Lignes de niveaux sans annotations
                     atr_fig.add_hline(y=atr_p25, line=dict(color='#00ff88', dash='dash', width=1))
                     atr_fig.add_hline(y=atr_p75, line=dict(color='#ff4444', dash='dash', width=1))
+                    
+                    # Tooltips invisibles pour expliquer chaque niveau ATR
+                    # Tooltip seuil faible (P25)
+                    atr_fig.add_trace(go.Scatter(
+                        x=[data.index[0]], y=[atr_p25],
+                        mode='markers',
+                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
+                        hovertemplate=f'<b>Seuil Volatilité Faible: {atr_p25:.3f} USDT</b><br>' +
+                                     'Signification: Marché calme et stable<br>' +
+                                     'Mouvement: Prix varie peu (±' + f'{atr_p25:.0f}' + ' USDT)<br>' +
+                                     'Stratégie: Idéal pour positions long terme<br>' +
+                                     'Stop-loss: ±' + f'{atr_p25*2:.0f}' + ' USDT suggéré<br>' +
+                                     '<extra></extra>',
+                        showlegend=False,
+                        name='Seuil faible'
+                    ))
+                    
+                    # Tooltip seuil élevé (P75)
+                    atr_fig.add_trace(go.Scatter(
+                        x=[data.index[0]], y=[atr_p75],
+                        mode='markers',
+                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
+                        hovertemplate=f'<b>Seuil Volatilité Élevée: {atr_p75:.3f} USDT</b><br>' +
+                                     'Signification: Marché agité et imprévisible<br>' +
+                                     'Mouvement: Prix varie beaucoup (±' + f'{atr_p75:.0f}' + ' USDT)<br>' +
+                                     'Stratégie: Attention aux positions importantes<br>' +
+                                     'Stop-loss: ±' + f'{atr_p75*2:.0f}' + ' USDT suggéré<br>' +
+                                     '<extra></extra>',
+                        showlegend=False,
+                        name='Seuil élevé'
+                    ))
                 
                 if not atr_enabled:
                     atr_fig.add_annotation(
@@ -1067,7 +1141,7 @@ class CryptoModule:
                     template='plotly_dark',
                     height=200,
                     margin=dict(l=0, r=0, t=30, b=0),
-                    showlegend=False  # Pas de légende nécessaire
+                    showlegend=False
                 )
                 
                 return rsi_fig, atr_fig  # Retourner seulement RSI et ATR
