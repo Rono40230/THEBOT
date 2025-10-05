@@ -426,11 +426,12 @@ class THEBOTDashApp:
             'minHeight': '100vh'
         })
         
-        # CSS personnalisé pour les modals IA et Alertes
+        # CSS personnalisé pour toutes les modals
         try:
             from dash_modules.components.ai_trading_modal import ai_trading_modal
             from dash_modules.components.price_alerts_modal import price_alerts_modal
             from dash_modules.components.alerts_notifications import alerts_notification_component
+            from dash_modules.components.indicators_modal import indicators_modal
             from dash_modules.core.alerts_monitor import start_alerts_monitoring, stop_alerts_monitoring
             
             modal_css = ""
@@ -446,6 +447,11 @@ class THEBOTDashApp:
             # CSS pour les notifications d'alertes
             modal_css += "\n" + alerts_notification_component.get_custom_css()
             print("✅ CSS Notifications Alertes ajouté")
+            
+            # CSS pour la modal des indicateurs
+            if indicators_modal:
+                modal_css += "\n" + indicators_modal.get_custom_css()
+                print("✅ CSS Modal Indicateurs ajouté")
             
             if modal_css:
                 self.app.index_string = f'''
@@ -1133,14 +1139,24 @@ class THEBOTDashApp:
                         )
                 
                 elif active_tab in ['crypto', 'forex', 'stocks']:
-                    # Modules de marché : utiliser leur layout complet
+                    # Modules de marché
                     if active_tab in self.modules:
-                        return (
-                            self.modules[active_tab].get_layout(),
-                            self.modules[active_tab].get_sidebar(),
-                            3,  # Sidebar
-                            9   # Contenu principal
-                        )
+                        if active_tab == 'crypto':
+                            # Crypto en pleine largeur (nouvelle interface)
+                            return (
+                                self.modules[active_tab].get_layout(),
+                                self.modules[active_tab].get_sidebar(),  # Contient les dropdowns cachés
+                                0,  # Pas de sidebar visible
+                                12  # Pleine largeur
+                            )
+                        else:
+                            # Forex et Stocks gardent l'ancienne interface avec sidebar
+                            return (
+                                self.modules[active_tab].get_layout(),
+                                self.modules[active_tab].get_sidebar(),
+                                3,  # Sidebar
+                                9   # Contenu principal
+                            )
                     else:
                         # Fallback si module non disponible
                         return (
@@ -1438,6 +1454,7 @@ class THEBOTDashApp:
             """Callback principal pour la surveillance des alertes"""
             try:
                 from dash_modules.core.alerts_monitor import alerts_monitor
+                from dash_modules.core.alerts_manager import alerts_manager
                 from dash_modules.components.alerts_notifications import alerts_notification_component
                 
                 # Démarrer le monitoring s'il n'est pas actif
@@ -1467,7 +1484,7 @@ class THEBOTDashApp:
                 new_status = {
                     'active': alerts_monitor.monitoring_active,
                     'last_check': alerts_monitor.last_check_time.isoformat() if alerts_monitor.last_check_time else None,
-                    'alerts_count': len(alerts_monitor.alerts_manager.get_all_alerts())
+                    'alerts_count': len(alerts_manager.get_all_alerts())
                 }
                 
                 return notification_components, new_status

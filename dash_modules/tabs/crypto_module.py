@@ -124,10 +124,42 @@ class CryptoModule:
             )
         ], className="mb-4")
     
-    def create_price_display(self):
-        """Crée la fenêtre d'affichage du prix en temps réel"""
+    def create_enhanced_price_display(self):
+        """Crée la barre de contrôle complète avec prix, recherche, timeframe et boutons"""
         return dbc.Card([
             dbc.CardBody([
+                # Première ligne : Recherche d'actif et Timeframe
+                dbc.Row([
+                    dbc.Col([
+                        dcc.Dropdown(
+                            id='crypto-symbol-search',
+                            options=[{'label': symbol, 'value': symbol} for symbol in self.get_symbols_list()],
+                            value=self.current_symbol,
+                            placeholder="🔍 Rechercher un actif crypto...",
+                            searchable=True,
+                            className="mb-2"
+                        )
+                    ], width=8),
+                    dbc.Col([
+                        dcc.Dropdown(
+                            id='crypto-timeframe-selector',
+                            options=[
+                                {'label': '🔥 1m', 'value': '1m'},
+                                {'label': '⚡ 5m', 'value': '5m'},
+                                {'label': '📊 15m', 'value': '15m'},
+                                {'label': '📈 1h', 'value': '1h'},
+                                {'label': '📅 4h', 'value': '4h'},
+                                {'label': '🏛️ 1D', 'value': '1d'},
+                                {'label': '📆 1W', 'value': '1w'},
+                                {'label': '🗓️ 1M', 'value': '1M'}
+                            ],
+                            value=self.current_timeframe,
+                            className="mb-2"
+                        )
+                    ], width=4)
+                ]),
+                
+                # Deuxième ligne : Prix et informations
                 dbc.Row([
                     dbc.Col([
                         html.Span(
@@ -155,9 +187,9 @@ class CryptoModule:
                                 className="fw-bold"
                             )
                         ])
-                    ], width=6),
+                    ], width=7),
                     dbc.Col([
-                        # Boutons IA et Alertes côte à côte
+                        # Trio de boutons : IA, Alertes, Indicateurs
                         dbc.ButtonGroup([
                             dbc.Button(
                                 [html.I(className="fas fa-brain me-2"), "AI Analysis"],
@@ -170,9 +202,15 @@ class CryptoModule:
                                 id="manage-alerts-btn",
                                 color="success",
                                 size="sm"
+                            ),
+                            dbc.Button(
+                                [html.I(className="fas fa-chart-line me-2"), "Indicators"],
+                                id="manage-indicators-btn",
+                                color="info",
+                                size="sm"
                             )
                         ], className="float-end")
-                    ], width=6, className="text-end")
+                    ], width=5, className="text-end")
                 ], align="center")
             ], className="py-2 px-3")
         ], className="mb-2 border-0 shadow-sm", style={'backgroundColor': '#f8f9fa'})
@@ -381,52 +419,31 @@ class CryptoModule:
         ])
 
     def get_sidebar(self):
-        """Retourne la sidebar complète avec composants modal IA"""
-        return dbc.Card([
-            dbc.CardBody([
-                
-                # Recherche d'actif
-                self.create_search_component(),
-                
-                # Timeframe
-                self.create_timeframe_component(),
-                
-                # Technical Indicators
-                self.create_technical_indicators_component(),
-                
-                # AI Analysis
-                self.create_ai_analysis_component(),
-                
-                # Smart Alerts
-                self.create_smart_alerts_component(),
-                
-                # Dropdowns cachés pour le modal IA (nécessaires pour les callbacks)
-                html.Div([
-                    dcc.Dropdown(
-                        id='crypto-symbol-dropdown', 
-                        options=[{'label': symbol, 'value': symbol} for symbol in self.popular_symbols],
-                        value=self.current_symbol,
-                        style={'display': 'none'}
-                    ),
-                    dcc.Dropdown(
-                        id='crypto-timeframe-dropdown',
-                        options=[
-                            {'label': '1m', 'value': '1m'},
-                            {'label': '5m', 'value': '5m'},
-                            {'label': '15m', 'value': '15m'},
-                            {'label': '1h', 'value': '1h'},
-                            {'label': '4h', 'value': '4h'},
-                            {'label': '1d', 'value': '1d'},
-                            {'label': '1w', 'value': '1w'},
-                            {'label': '1M', 'value': '1M'}
-                        ],
-                        value=self.current_timeframe,
-                        style={'display': 'none'}
-                    )
-                ], style={'display': 'none'})
-                
-            ])
-        ], className="h-100", style={'backgroundColor': '#1f2937'})
+        """Retourne None car nous utilisons maintenant le layout pleine largeur"""
+        # IMPORTANT: Garde les dropdowns cachés pour les callbacks du modal IA
+        return html.Div([
+            dcc.Dropdown(
+                id='crypto-symbol-dropdown', 
+                options=[{'label': symbol, 'value': symbol} for symbol in self.popular_symbols],
+                value=self.current_symbol,
+                style={'display': 'none'}
+            ),
+            dcc.Dropdown(
+                id='crypto-timeframe-dropdown',
+                options=[
+                    {'label': '1m', 'value': '1m'},
+                    {'label': '5m', 'value': '5m'},
+                    {'label': '15m', 'value': '15m'},
+                    {'label': '1h', 'value': '1h'},
+                    {'label': '4h', 'value': '4h'},
+                    {'label': '1d', 'value': '1d'},
+                    {'label': '1w', 'value': '1w'},
+                    {'label': '1M', 'value': '1M'}
+                ],
+                value=self.current_timeframe,
+                style={'display': 'none'}
+            )
+        ], style={'display': 'none'})
 
     def create_main_chart(self):
         """Crée le graphique principal avec candlesticks et prix en direct"""
@@ -543,17 +560,17 @@ class CryptoModule:
         ], className="g-3")
 
     def get_layout(self):
-        """Retourne le layout principal avec modal IA intégré"""
+        """Retourne le layout principal en pleine largeur avec modal IA, Alertes et Indicateurs"""
         layout_components = [
             
-            # Affichage du prix en temps réel
+            # Barre de contrôle complète (prix + recherche + timeframe + boutons)
             dbc.Row([
                 dbc.Col([
-                    self.create_price_display()
+                    self.create_enhanced_price_display()
                 ], width=12)
             ]),
             
-            # Graphique principal
+            # Graphique principal en pleine largeur
             dbc.Row([
                 dbc.Col([
                     self.create_main_chart()
@@ -574,6 +591,14 @@ class CryptoModule:
             # Ajouter le Store pour les alertes
             layout_components.append(alerts_store)
         
+        # Ajouter la modal des indicateurs
+        try:
+            from ..components.indicators_modal import indicators_modal, indicators_store
+            layout_components.append(indicators_modal.create_modal())
+            layout_components.append(indicators_store)
+        except ImportError:
+            print("⚠️ Modal des indicateurs non disponible")
+        
         return html.Div(layout_components, className="p-3")
     
     def setup_callbacks(self, app):
@@ -588,6 +613,14 @@ class CryptoModule:
         if ALERTS_MODAL_AVAILABLE and register_alerts_modal_callbacks:
             register_alerts_modal_callbacks(app)
             print("✅ Callbacks Modal Alertes enregistrés")
+            
+        # Enregistrer les callbacks de la modal des indicateurs
+        try:
+            from ..components.indicators_modal import register_indicators_modal_callbacks
+            register_indicators_modal_callbacks(app)
+            print("✅ Callbacks Modal Indicateurs enregistrés")
+        except ImportError:
+            print("⚠️ Callbacks modal indicateurs non disponibles")
             
         # Ajouter les dropdowns nécessaires pour le modal
         if AI_MODAL_AVAILABLE:
@@ -675,23 +708,10 @@ class CryptoModule:
         @app.callback(
             Output('crypto-main-chart', 'figure'),
             [Input('crypto-symbol-search', 'value'),
-             Input('crypto-timeframe-selector', 'value'),
-             Input('crypto-sma-switch', 'value'),
-             Input('crypto-sma-period', 'value'),
-             Input('crypto-ema-switch', 'value'),
-             Input('crypto-ema-period', 'value'),
-             # Nouveaux inputs pour indicateurs structurels
-             Input('crypto-sr-switch', 'value'),
-             Input('crypto-sr-strength', 'value'),
-             Input('crypto-fibonacci-switch', 'value'),
-             Input('crypto-fibonacci-swing', 'value'),
-             Input('crypto-pivot-switch', 'value'),
-             Input('crypto-pivot-method', 'value')]
+             Input('crypto-timeframe-selector', 'value')]
         )
-        def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period,
-                             sr_enabled, sr_strength, fibonacci_enabled, fibonacci_swing,
-                             pivot_enabled, pivot_method):
-            """Met à jour le graphique principal avec indicateurs structurels"""
+        def update_main_chart(symbol, timeframe):
+            """Met à jour le graphique principal"""
             try:
                 # CORRECTION: Être strict sur le symbole, pas de fallback
                 if not symbol:
@@ -730,6 +750,12 @@ class CryptoModule:
                     increasing_line_color='#00ff88',
                     decreasing_line_color='#ff4444'
                 ))
+                
+                # Valeurs par défaut pour les indicateurs (à connecter plus tard via modal)
+                sma_enabled = True
+                sma_period = 20
+                ema_enabled = True  
+                ema_period = 50
                 
                 # Ajouter SMA si activé
                 if sma_enabled and sma_period:
@@ -819,13 +845,9 @@ class CryptoModule:
              Output('crypto-volume-chart', 'figure'),
              Output('crypto-atr-chart', 'figure')],
             [Input('crypto-symbol-search', 'value'),
-             Input('crypto-timeframe-selector', 'value'),
-             Input('crypto-rsi-switch', 'value'),
-             Input('crypto-rsi-period', 'value'),
-             Input('crypto-atr-switch', 'value'),
-             Input('crypto-atr-period', 'value')]
+             Input('crypto-timeframe-selector', 'value')]
         )
-        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period):
+        def update_secondary_charts(symbol, timeframe):
             """Met à jour les graphiques secondaires"""
             try:
                 # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
@@ -835,7 +857,14 @@ class CryptoModule:
                 # Mettre à jour le symbole courant pour synchronisation
                 if symbol != self.current_symbol:
                     self.current_symbol = symbol
-                    print(f"🔄 Graphiques secondaires: symbole synchronisé vers {symbol}")
+                
+                # Valeurs par défaut pour les indicateurs
+                rsi_enabled = True
+                rsi_period = 14
+                atr_enabled = True
+                atr_period = 14
+                
+                print(f"🔄 Graphiques secondaires: symbole synchronisé vers {symbol}")
                     
                 data = self.current_data if not self.current_data.empty else self.load_market_data(symbol, timeframe)
                 

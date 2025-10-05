@@ -208,38 +208,12 @@ class AlertsMonitor:
         
         logger.info(f"🔍 Vérification forcée terminée - {len(active_alerts)} alertes vérifiées")
 
-    def get_pending_notifications(self):
-        """Récupérer les notifications en attente"""
-        # Rediriger vers le notification_manager
-        return notification_manager.get_pending_notifications()
-    
-    def mark_notifications_displayed(self, notifications):
-        """Marquer les notifications comme affichées"""
-        # Rediriger vers le notification_manager
-        return notification_manager.mark_notifications_displayed(notifications)
-    
-    def add_pending_notification(self, alert, trigger_price, current_price):
-        """Ajouter une notification en attente"""
-        # Rediriger vers le notification_manager
-        return notification_manager.add_pending_notification(alert, trigger_price, current_price)
-    
-    def add_pending_notification(self, alert, trigger_price, current_price):
-        """Ajouter une notification en attente"""
-        # Rediriger vers le notification_manager
-        return notification_manager.add_pending_notification(alert, trigger_price, current_price)
-    
-    def add_pending_notification(self, alert, trigger_price, current_price):
-        """Ajouter une notification en attente"""
-        # Rediriger vers le notification_manager
-        return notification_manager.add_pending_notification(alert, trigger_price, current_price)
-
 class AlertsNotificationManager:
     """Gestionnaire des notifications d'alertes"""
     
     def __init__(self):
         self.notification_history = []
         self.max_history = 50
-        self.pending_notifications = []  # Ajout de l'attribut manquant
     
     def browser_notification(self, alert_data: Dict):
         """Notification dans le navigateur (pour Dash)"""
@@ -345,4 +319,3 @@ def stop_alerts_monitoring():
 def get_monitoring_status():
     """Fonction helper pour récupérer le statut"""
     return alerts_monitor.get_status()
-
