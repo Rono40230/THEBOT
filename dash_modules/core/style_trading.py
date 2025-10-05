@@ -93,7 +93,7 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"method": "standard", "period": "daily"},
                 visual={"pivot_color": "#8E44AD", "resistance_colors": ["#E74C3C", "#C0392B", "#922B21"], 
-                       "support_colors": ["#27AE60", "#1E8449", "#145A32"], "line_width": 1, "line_style": "dotted"}
+                       "support_colors": ["#27AE60", "#1E8449", "#145A32"], "line_width": 1, "line_style": "dot"}
             ),
             
             # Oscillateurs - Très sensibles

@@ -863,7 +863,7 @@ class CryptoModule:
                             'transparency': fibonacci_transparency or 0.8
                         },
                         'pivot': {
-                            'line_style': pivot_line_style or 'dotted',
+                            'line_style': pivot_line_style or 'dot',
                             'line_width': pivot_line_width or 2
                         }
                     }
@@ -1343,7 +1343,7 @@ class CryptoModule:
             print(f"⚠️ Erreur calcul Fibonacci: {e}")
             return {'retracement_levels': [], 'extension_levels': []}
     
-    def calculate_pivot_points_simple(self, data, method='standard', line_style='dotted', line_width=2):
+    def calculate_pivot_points_simple(self, data, method='standard', line_style='dot', line_width=2):
         """Version simplifiée du calcul Pivot Points"""
         try:
             if len(data) < 2:
@@ -1471,7 +1471,7 @@ class CryptoModule:
                 results['pivot_points'] = self.calculate_pivot_points_simple(
                     data, 
                     method=pivot_method or 'standard',
-                    line_style=pivot_visual.get('line_style', 'dotted'),
+                    line_style=pivot_visual.get('line_style', 'dot'),
                     line_width=pivot_visual.get('line_width', 2)
                 )
                 
