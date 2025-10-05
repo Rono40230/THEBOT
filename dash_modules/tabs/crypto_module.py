@@ -449,7 +449,7 @@ class CryptoModule:
         """Crée le graphique principal avec candlesticks et prix en direct"""
         return dcc.Graph(
             id='crypto-main-chart',
-            style={'height': '500px'},
+            style={'height': '600px'},  # Augmenté pour accommoder le volume
             config={
                 'displayModeBar': True,
                 'displaylogo': False,
@@ -461,7 +461,7 @@ class CryptoModule:
         )
 
     def create_secondary_charts(self):
-        """Crée les 3 graphiques secondaires (RSI, Volume, ATR)"""
+        """Crée les 2 graphiques secondaires (RSI, ATR) - Volume intégré au graphique principal"""
         return dbc.Row([
             
             # RSI Chart
@@ -471,16 +471,7 @@ class CryptoModule:
                     style={'height': '200px'},
                     config={'displayModeBar': False}
                 )
-            ], width=4),
-            
-            # Volume Chart
-            dbc.Col([
-                dcc.Graph(
-                    id='crypto-volume-chart',
-                    style={'height': '200px'},
-                    config={'displayModeBar': False}
-                )
-            ], width=4),
+            ], width=6),  # Élargi à 6 colonnes au lieu de 4
             
             # ATR Chart
             dbc.Col([
@@ -489,7 +480,7 @@ class CryptoModule:
                     style={'height': '200px'},
                     config={'displayModeBar': False}
                 )
-            ], width=4)
+            ], width=6)  # Élargi à 6 colonnes au lieu de 4
             
         ])
 
@@ -736,10 +727,16 @@ class CryptoModule:
                         x=0.5, y=0.5, showarrow=False
                     )
                 
-                # Créer le graphique candlestick
-                fig = go.Figure()
+                # Créer des subplots : graphique principal + volume
+                fig = make_subplots(
+                    rows=2, cols=1,
+                    shared_xaxes=True,
+                    vertical_spacing=0.03,
+                    subplot_titles=('Prix', 'Volume'),
+                    row_heights=[0.75, 0.25]  # 75% pour prix, 25% pour volume
+                )
                 
-                # Candlesticks
+                # Candlesticks avec tooltip enrichi
                 fig.add_trace(go.Candlestick(
                     x=data.index,
                     open=data['open'],
@@ -748,8 +745,42 @@ class CryptoModule:
                     close=data['close'],
                     name=symbol,
                     increasing_line_color='#00ff88',
-                    decreasing_line_color='#ff4444'
-                ))
+                    decreasing_line_color='#ff4444',
+                    hoverinfo='all',
+                    showlegend=True
+                ), row=1, col=1)
+                
+                # Volume bipolaire amélioré : une seule série avec couleurs conditionnelles
+                volume_values = []
+                volume_colors = []
+                volume_signals = []
+                
+                for i, (close, open_price, vol) in enumerate(zip(data['close'], data['open'], data['volume'])):
+                    if close >= open_price:  # Chandelier haussier
+                        volume_values.append(vol)
+                        volume_colors.append('#00ff88')
+                        volume_signals.append('Pression acheteuse')
+                    else:  # Chandelier baissier
+                        volume_values.append(-vol)  # Volume négatif pour visualisation
+                        volume_colors.append('#ff4444')
+                        volume_signals.append('Pression vendeuse')
+                
+                # Volume unique avec tooltip enrichi
+                fig.add_trace(go.Bar(
+                    x=data.index,
+                    y=volume_values,
+                    name='Volume',
+                    marker_color=volume_colors,
+                    opacity=0.7,
+                    showlegend=False,
+                    hovertemplate='<b>Volume</b><br>' +
+                                 '<b>Date</b>: %{x}<br>' +
+                                 '<b>Volume</b>: %{text:,.0f}<br>' +
+                                 '<b>Signal</b>: %{customdata}<br>' +
+                                 '<extra></extra>',
+                    text=[abs(vol) for vol in volume_values],  # Valeurs absolues pour affichage
+                    customdata=volume_signals
+                ), row=2, col=1)
                 
                 # Valeurs par défaut pour les indicateurs (à connecter plus tard via modal)
                 sma_enabled = True
@@ -758,10 +789,10 @@ class CryptoModule:
                 ema_period = 50
                 sr_enabled = True
                 sr_strength = 2
-                                fibonacci_enabled = False
+                fibonacci_enabled = False
                 fibonacci_swing = 20  # Valeur par défaut
                 
-                # Ajouter SMA si activé
+                # Ajouter SMA si activé (sur le graphique principal) avec tooltip
                 if sma_enabled and sma_period:
                     sma = data['close'].rolling(window=sma_period).mean()
                     fig.add_trace(go.Scatter(
@@ -769,10 +800,16 @@ class CryptoModule:
                         y=sma,
                         mode='lines',
                         name=f'SMA {sma_period}',
-                        line=dict(color='#ffa500', width=2)
-                    ))
+                        line=dict(color='#ffa500', width=2),
+                        hovertemplate='<b>SMA %{fullData.name}</b><br>' +
+                                     '<b>Date</b>: %{x}<br>' +
+                                     '<b>Valeur</b>: %{y:.2f}<br>' +
+                                     '<b>Type</b>: Moyenne mobile simple<br>' +
+                                     '<b>Période</b>: ' + str(sma_period) + ' périodes<br>' +
+                                     '<extra></extra>'
+                    ), row=1, col=1)
                 
-                # Ajouter EMA si activé
+                # Ajouter EMA si activé (sur le graphique principal) avec tooltip
                 if ema_enabled and ema_period:
                     ema = data['close'].ewm(span=ema_period).mean()
                     fig.add_trace(go.Scatter(
@@ -780,8 +817,15 @@ class CryptoModule:
                         y=ema,
                         mode='lines',
                         name=f'EMA {ema_period}',
-                        line=dict(color='#00bfff', width=2)
-                    ))
+                        line=dict(color='#00bfff', width=2),
+                        hovertemplate='<b>EMA %{fullData.name}</b><br>' +
+                                     '<b>Date</b>: %{x}<br>' +
+                                     '<b>Valeur</b>: %{y:.2f}<br>' +
+                                     '<b>Type</b>: Moyenne mobile exponentielle<br>' +
+                                     '<b>Période</b>: ' + str(ema_period) + ' périodes<br>' +
+                                     '<b>Réactivité</b>: Plus sensible que SMA<br>' +
+                                     '<extra></extra>'
+                    ), row=1, col=1)
                 
                 # === INDICATEURS STRUCTURELS (PHASE 1) ===
                 # Calculer et ajouter les indicateurs structurels
@@ -827,12 +871,18 @@ class CryptoModule:
                 fig.update_layout(
                     title=f"{symbol} - {timeframe}",
                     template='plotly_dark',
-                    xaxis_title="Date",
-                    yaxis_title="Prix (USDT)",
-                    height=500,
+                    height=600,  # Augmenté pour 2 subplots
                     showlegend=True,
                     margin=dict(l=0, r=0, t=30, b=0)
                 )
+                
+                # Configurer les axes
+                fig.update_yaxes(title_text="Prix (USDT)", row=1, col=1)
+                fig.update_yaxes(title_text="Volume", row=2, col=1)
+                fig.update_xaxes(title_text="Date", row=2, col=1)
+                
+                # Supprimer le mini-graphique de zoom
+                fig.update_xaxes(rangeslider_visible=False)
                 
                 return fig
                 
@@ -846,17 +896,16 @@ class CryptoModule:
         
         @app.callback(
             [Output('crypto-rsi-chart', 'figure'),
-             Output('crypto-volume-chart', 'figure'),
              Output('crypto-atr-chart', 'figure')],
             [Input('crypto-symbol-search', 'value'),
              Input('crypto-timeframe-selector', 'value')]
         )
         def update_secondary_charts(symbol, timeframe):
-            """Met à jour les graphiques secondaires"""
+            """Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal"""
             try:
                 # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
                 if not symbol:
-                    return go.Figure(), go.Figure(), go.Figure()
+                    return go.Figure(), go.Figure()
                 
                 # Mettre à jour le symbole courant pour synchronisation
                 if symbol != self.current_symbol:
@@ -878,21 +927,48 @@ class CryptoModule:
                         xref="paper", yref="paper",
                         x=0.5, y=0.5, showarrow=False
                     )
-                    return empty_fig, empty_fig, empty_fig
+                    return empty_fig, empty_fig  # Retourner seulement 2 figures
                 
-                # RSI Chart
+                # RSI Chart Professionnel
                 rsi_fig = go.Figure()
                 if rsi_enabled and rsi_period and rsi_period > 0:
                     rsi = self.calculate_rsi(data['close'], rsi_period)
+                    
+                    # Zones d'arrière-plan colorées avec tooltips explicatifs
+                    # Zone surachat (70-100) - Rouge
+                    rsi_fig.add_hrect(y0=70, y1=100, fillcolor="rgba(255, 0, 0, 0.1)", 
+                                      line_width=0)
+                    # Zone survente (0-30) - Vert
+                    rsi_fig.add_hrect(y0=0, y1=30, fillcolor="rgba(0, 255, 0, 0.1)", 
+                                      line_width=0)
+                    # Zone neutre (30-70) - Gris léger
+                    rsi_fig.add_hrect(y0=30, y1=70, fillcolor="rgba(128, 128, 128, 0.05)", 
+                                      line_width=0)
+                    
+                    # Ligne RSI principale avec tooltip enrichi
                     rsi_fig.add_trace(go.Scatter(
                         x=data.index,
                         y=rsi,
                         mode='lines',
                         name='RSI',
-                        line=dict(color='#ff6b6b', width=2)
+                        line=dict(color='#00bfff', width=2),
+                        showlegend=False,  # Masquer de la légende
+                        hovertemplate='<b>RSI</b>: %{y:.1f}<br>' +
+                                     '<b>Date</b>: %{x}<br>' +
+                                     '<b>Signal</b>: %{customdata}<br>' +
+                                     '<extra></extra>',
+                        customdata=[
+                            'Surachat - Possible baisse' if val >= 70 
+                            else 'Survente - Possible hausse' if val <= 30 
+                            else 'Zone neutre' 
+                            for val in rsi
+                        ]
                     ))
-                    rsi_fig.add_hline(y=70, line=dict(color='red', dash='dash'))
-                    rsi_fig.add_hline(y=30, line=dict(color='green', dash='dash'))
+                    
+                    # Lignes de niveaux critiques sans annotations
+                    rsi_fig.add_hline(y=70, line=dict(color='#ff4444', dash='dash', width=1))
+                    rsi_fig.add_hline(y=30, line=dict(color='#00ff88', dash='dash', width=1))
+                    rsi_fig.add_hline(y=50, line=dict(color='#888888', dash='dot', width=1))
                 
                 if not rsi_enabled:
                     rsi_fig.add_annotation(
@@ -907,35 +983,76 @@ class CryptoModule:
                     template='plotly_dark',
                     height=200,
                     margin=dict(l=0, r=0, t=30, b=0),
-                    yaxis_range=[0, 100]
+                    yaxis_range=[0, 100],
+                    showlegend=False  # Pas de légende nécessaire
                 )
                 
-                # Volume Chart
-                volume_fig = go.Figure()
-                volume_fig.add_trace(go.Bar(
-                    x=data.index,
-                    y=data['volume'],
-                    name='Volume',
-                    marker_color='#4ecdc4'
-                ))
-                volume_fig.update_layout(
-                    title="Volume",
-                    template='plotly_dark',
-                    height=200,
-                    margin=dict(l=0, r=0, t=30, b=0)
-                )
-                
-                # ATR Chart
+                # ATR Chart Professionnel avec zones de volatilité
                 atr_fig = go.Figure()
                 if atr_enabled and atr_period and atr_period > 0:
                     atr = self.calculate_atr(data, atr_period)
+                    
+                    # Calculer percentiles pour zones de volatilité
+                    atr_p25 = atr.quantile(0.25)
+                    atr_p75 = atr.quantile(0.75)
+                    atr_max = atr.max()
+                    
+                    # Zones de volatilité avec tooltips explicatifs
+                    # Volatilité faible (0 - P25) - Vert
+                    atr_fig.add_hrect(y0=0, y1=atr_p25, fillcolor="rgba(0, 255, 0, 0.1)", 
+                                      line_width=0)
+                    # Volatilité normale (P25 - P75) - Jaune
+                    atr_fig.add_hrect(y0=atr_p25, y1=atr_p75, fillcolor="rgba(255, 255, 0, 0.1)", 
+                                      line_width=0)
+                    # Volatilité élevée (P75 - Max) - Rouge
+                    atr_fig.add_hrect(y0=atr_p75, y1=atr_max, fillcolor="rgba(255, 0, 0, 0.1)", 
+                                      line_width=0)
+                    
+                    # Ligne ATR avec gradient de couleur selon intensité
+                    colors = ['#00ff88' if val <= atr_p25 else '#ffaa00' if val <= atr_p75 else '#ff4444' 
+                             for val in atr]
+                    
+                    # ATR principal avec tooltip enrichi
                     atr_fig.add_trace(go.Scatter(
                         x=data.index,
                         y=atr,
                         mode='lines',
                         name='ATR',
-                        line=dict(color='#95e1d3', width=2)
+                        line=dict(color='#00bfff', width=2),
+                        showlegend=False,  # Masquer de la légende
+                        hovertemplate='<b>ATR</b>: %{y:.4f}<br>' +
+                                     '<b>Date</b>: %{x}<br>' +
+                                     '<b>Volatilité</b>: %{customdata}<br>' +
+                                     '<b>Stop suggéré</b>: ±%{text:.4f}<br>' +
+                                     '<extra></extra>',
+                        customdata=[
+                            'Faible - Marché calme' if val <= atr_p25 
+                            else 'Normale - Conditions habituelles' if val <= atr_p75 
+                            else 'Élevée - Marché agité' 
+                            for val in atr
+                        ],
+                        text=atr * 2  # Stop loss suggéré à 2x ATR
                     ))
+                    
+                    # ATR lissé avec tooltip explicatif
+                    atr_smooth = atr.rolling(window=5).mean()
+                    atr_fig.add_trace(go.Scatter(
+                        x=data.index,
+                        y=atr_smooth,
+                        mode='lines',
+                        name='ATR Lissé',
+                        line=dict(color='#ffa500', width=1, dash='dot'),
+                        opacity=0.7,
+                        showlegend=False,  # Masquer de la légende
+                        hovertemplate='<b>ATR Lissé</b>: %{y:.4f}<br>' +
+                                     '<b>Date</b>: %{x}<br>' +
+                                     '<b>Tendance</b>: Volatilité moyenne sur 5 périodes<br>' +
+                                     '<extra></extra>'
+                    ))
+                    
+                    # Lignes de niveaux sans annotations
+                    atr_fig.add_hline(y=atr_p25, line=dict(color='#00ff88', dash='dash', width=1))
+                    atr_fig.add_hline(y=atr_p75, line=dict(color='#ff4444', dash='dash', width=1))
                 
                 if not atr_enabled:
                     atr_fig.add_annotation(
@@ -946,13 +1063,14 @@ class CryptoModule:
                     )
                 
                 atr_fig.update_layout(
-                    title="ATR",
+                    title="ATR - Volatilité",
                     template='plotly_dark',
                     height=200,
-                    margin=dict(l=0, r=0, t=30, b=0)
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    showlegend=False  # Pas de légende nécessaire
                 )
                 
-                return rsi_fig, volume_fig, atr_fig
+                return rsi_fig, atr_fig  # Retourner seulement RSI et ATR
                 
             except Exception as e:
                 print(f"❌ Erreur graphiques secondaires: {e}")
@@ -961,7 +1079,7 @@ class CryptoModule:
                     xref="paper", yref="paper",
                     x=0.5, y=0.5, showarrow=False
                 )
-                return empty_fig, empty_fig, empty_fig
+                return empty_fig, empty_fig  # Retourner seulement 2 figures
 
     def calculate_rsi(self, prices, period=14):
         """Calcule le RSI"""
@@ -1228,7 +1346,7 @@ class CryptoModule:
         Ajoute les niveaux structurels au graphique principal
         
         Args:
-            fig: Figure Plotly
+            fig: Figure Plotly (avec subplots)
             structural_data: Données des indicateurs structurels
         """
         if not structural_data or not any(structural_data.values()):
@@ -1239,7 +1357,7 @@ class CryptoModule:
             if structural_data.get('support_resistance'):
                 sr_data = structural_data['support_resistance']
                 
-                # Supports
+                # Supports (ajoutés au subplot prix - row=1)
                 for level in sr_data.get('support_levels', []):
                     fig.add_hline(
                         y=level['y'],
@@ -1249,10 +1367,11 @@ class CryptoModule:
                             dash='solid'
                         ),
                         annotation_text=level['label'],
-                        annotation_position="right"
+                        annotation_position="right",
+                        row=1, col=1  # Spécifier le subplot prix
                     )
                 
-                # Résistances
+                # Résistances (ajoutées au subplot prix - row=1)
                 for level in sr_data.get('resistance_levels', []):
                     fig.add_hline(
                         y=level['y'],
@@ -1262,7 +1381,8 @@ class CryptoModule:
                             dash='solid'
                         ),
                         annotation_text=level['label'],
-                        annotation_position="right"
+                        annotation_position="right",
+                        row=1, col=1  # Spécifier le subplot prix
                     )
             
             # Fibonacci
@@ -1279,7 +1399,8 @@ class CryptoModule:
                             dash=level['line_dash']
                         ),
                         annotation_text=level['label'],
-                        annotation_position="left"
+                        annotation_position="left",
+                        row=1, col=1  # Spécifier le subplot prix
                     )
                 
                 # Extensions
@@ -1292,7 +1413,8 @@ class CryptoModule:
                             dash=level['line_dash']
                         ),
                         annotation_text=level['label'],
-                        annotation_position="left"
+                        annotation_position="left",
+                        row=1, col=1  # Spécifier le subplot prix
                     )
             
             # Pivot Points
@@ -1308,7 +1430,8 @@ class CryptoModule:
                             dash=level['line_dash']
                         ),
                         annotation_text=level['label'],
-                        annotation_position="top right"
+                        annotation_position="top right",
+                        row=1, col=1  # Spécifier le subplot prix
                     )
             
         except Exception as e:
