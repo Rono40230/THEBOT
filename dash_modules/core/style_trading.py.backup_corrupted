@@ -16,6 +16,107 @@ class IndicatorConfig:
 
 
 class TradingStyleManager:
+                    "opacity_active": 30,  # Opacité standard
+                    "opacity_tested": 20,
+                    "max_blocks_display": 15,  # Nombre standard
+                    # Signaux - Complets
+                    "signal_generation": True,
+                    "proximity_alerts": False,  # Alertes optionnelles
+                    "alert_distance": 0.1,  # Distance standard
+                    "confluence_with_fvg": True,  # Confluence FVG
+                    "fibonacci_confluence": True  # Confluence Fibonacci
+                },
+                visual={"bullish_color": "#2E8B57", "bearish_color": "#DC143C", "opacity": 0.3}
+            )lass
+
+
+@dataclass
+class IndicatorConfig:
+    """Configuration d'un indi                },
+                visual={"bullish_color": "#1F5F3F", "bearish_color": "#8B0000", "opacity": 0.25}
+            ),
+            
+            # Order Blocks - Smart Money Swing Trading
+            "order_blocks": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Swing Trading: Focus qualité
+                    "lookback_period": 50,  # Lookback plus long
+                    "min_volume_ratio": 2.0,  # Volume élevé requis
+                    "strength_threshold": 0.7,  # Seuil élevé pour qualité
+                    "impulse_threshold": 2.0,  # Impulsions fortes seulement
+                    "min_block_size": 0.5,  # Blocs significatifs seulement
+                    "max_block_age": 200,  # Durée de vie longue
+                    # Détection - Stricte
+                    "volume_confirmation": True,  # Confirmation volume obligatoire
+                    "structure_validation": True,  # Structure importante
+                    "imbalance_detection": True,  # Détection imbalances
+                    "retest_validation": True,  # Validation retests
+                    "session_filter": True,  # Filtre session actif
+                    "trend_alignment": True,  # Alignement tendance important
+                    # Visualisation - Détaillée
+                    "show_labels": True,  # Labels détaillés
+                    "show_strength": True,  # Force très importante
+                    "show_retest_count": True,  # Compteur retests
+                    "bullish_color": "#1F5F3F",
+                    "bearish_color": "#8B0000",
+                    "opacity_active": 35,  # Plus visible
+                    "opacity_tested": 25,
+                    "max_blocks_display": 12,  # Focus sur qualité
+                    # Signaux - Sélectifs
+                    "signal_generation": True,
+                    "proximity_alerts": False,  # Pas d'alertes fréquentes
+                    "alert_distance": 0.2,  # Distance plus large
+                    "confluence_with_fvg": True,  # Confluence importante
+                    "fibonacci_confluence": True  # Fibonacci très important
+                },
+                visual={"bullish_color": "#1F5F3F", "bearish_color": "#8B0000", "opacity": 0.35}
+            )eur spécifique"""
+    enabled: bool
+    parameters: Dict[str, Any]
+                    },
+                visual={"bullish_color": "#0F3F1F", "bearish_color": "#4B0000", "opacity": 0.3}
+            ),
+            
+            # Order Blocks - Smart Money Position Trading
+            "order_blocks": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Position Trading: Majeurs seulement
+                    "lookback_period": 100,  # Lookback très long
+                    "min_volume_ratio": 3.0,  # Volume institutionnel requis
+                    "strength_threshold": 0.8,  # Seuil très élevé
+                    "impulse_threshold": 2.5,  # Impulsions majeures seulement
+                    "min_block_size": 1.0,  # Gros blocs seulement
+                    "max_block_age": 500,  # Très longue durée de vie
+                    # Détection - Très stricte
+                    "volume_confirmation": True,  # Confirmation obligatoire
+                    "structure_validation": True,  # Structure critique
+                    "imbalance_detection": True,  # Imbalances importantes
+                    "retest_validation": True,  # Retests obligatoires
+                    "session_filter": True,  # Session importante
+                    "trend_alignment": True,  # Alignement critique
+                    # Visualisation - Conservatrice
+                    "show_labels": True,  # Labels complets
+                    "show_strength": True,  # Force critique
+                    "show_retest_count": True,  # Historique important
+                    "bullish_color": "#0F3F1F",
+                    "bearish_color": "#4B0000",
+                    "opacity_active": 40,  # Très visible
+                    "opacity_tested": 30,
+                    "max_blocks_display": 8,  # Focus extrême sur qualité
+                    # Signaux - Conservateurs
+                    "signal_generation": True,
+                    "proximity_alerts": False,  # Pas d'alertes fréquentes
+                    "alert_distance": 0.5,  # Distance très large
+                    "confluence_with_fvg": True,  # Confluence essentielle
+                    "fibonacci_confluence": True  # Fibonacci essentiel
+                },
+                visual={"bullish_color": "#0F3F1F", "bearish_color": "#4B0000", "opacity": 0.4}
+            )ual: Dict[str, Any]
+
+
+class TradingStyleManager:
     """Gestionnaire des styles de trading avec paramètres optimisés"""
     
     TRADING_STYLES = {
@@ -136,30 +237,41 @@ class TradingStyleManager:
                 visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.15}
             ),
             
-            # Smart Money - Order Blocks (Scalping)
+            # Order Blocks - Smart Money Scalping
             "order_blocks": IndicatorConfig(
                 enabled=True,
                 parameters={
-                    # Base - Scalping: ULTRA permissif pour crypto volatil
-                    "lookback_period": 5,  # Très court
-                    "strong_threshold": 0.05,  # 5% seulement
-                    "weak_threshold": 0.02,  # 2% ultra-bas
-                    "max_age_bars": 20,  # Courte durée
-                    # Détection - ULTRA permissive
-                    "min_body_size": 0.0001,  # 0.01% minimum
-                    "volume_confirmation": False,  # Désactivé
-                    "min_impulse_strength": 0.01,  # 1% seulement
-                    "max_wick_ratio": 3.0,  # Très permissif wicks
-                    "min_impulse_bars": 1,  # 1 barre suffit
-                    "max_impulse_bars": 5,  # Recherche courte
-                    "volume_multiplier": 0.1,  # 10% volume moyen
-                    # Affichage - Compact
-                    "show_labels": False,
-                    "show_retest_count": True,
-                    "opacity_active": 0.25,
-                    "opacity_broken": 0.1
+                    # Base - Scalping: Très réactif
+                    "lookback_period": 10,  # Lookback court pour signaux récents
+                    "min_volume_ratio": 1.2,  # Volume minimum plus bas
+                    "strength_threshold": 0.3,  # Seuil bas pour plus de blocs
+                    "impulse_threshold": 1.2,  # Impulsions plus petites acceptées
+                    "min_block_size": 0.1,  # Micro-blocs acceptés
+                    "max_block_age": 30,  # Expiration rapide
+                    # Détection - Permissive
+                    "volume_confirmation": False,  # Pas de confirmation volume
+                    "structure_validation": False,  # Structure moins stricte
+                    "imbalance_detection": True,  # Détection imbalances
+                    "retest_validation": True,  # Validation retests
+                    "session_filter": False,  # Pas de filtre session
+                    "trend_alignment": False,  # Pas d'alignement tendance
+                    # Visualisation - Compact
+                    "show_labels": False,  # Pas de labels (encombrement)
+                    "show_strength": True,  # Force importante
+                    "show_retest_count": False,  # Pas de compteur retests
+                    "bullish_color": "#27AE60",
+                    "bearish_color": "#E74C3C",
+                    "opacity_active": 15,  # Très transparent
+                    "opacity_tested": 10,
+                    "max_blocks_display": 8,  # Limité pour éviter encombrement
+                    # Signaux - Actifs
+                    "signal_generation": True,
+                    "proximity_alerts": True,  # Alertes proximitté importantes
+                    "alert_distance": 0.05,  # Distance alerte très proche
+                    "confluence_with_fvg": True,  # Confluence avec FVG
+                    "fibonacci_confluence": False  # Fibonacci moins utile
                 },
-                visual={"bullish_color": "#2ECC71", "bearish_color": "#E67E22", "opacity": 0.25}
+                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.15}
             )
         }
     
@@ -234,32 +346,6 @@ class TradingStyleManager:
                     "max_zones": 15  # Max 15 zones affichées
                 },
                 visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.2}
-            ),
-            
-                        # Smart Money - Order Blocks (Day Trading)
-            "order_blocks": IndicatorConfig(
-                enabled=True,
-                parameters={
-                    # Base - Day Trading: Permissif pour crypto
-                    "lookback_period": 10,  # Court
-                    "strong_threshold": 0.1,  # 10% permissif
-                    "weak_threshold": 0.05,  # 5% très bas
-                    "max_age_bars": 50,  # Durée raisonnable
-                    # Détection - Permissive
-                    "min_body_size": 0.0003,  # 0.03% minimum
-                    "volume_confirmation": False,  # Désactivé
-                    "min_impulse_strength": 0.03,  # 3% impulse
-                    "max_wick_ratio": 2.0,  # Permissif wicks
-                    "min_impulse_bars": 1,
-                    "max_impulse_bars": 8,
-                    "volume_multiplier": 0.2,  # 20% volume moyen
-                    # Affichage
-                    "show_labels": True,
-                    "show_retest_count": True,
-                    "opacity_active": 0.3,
-                    "opacity_broken": 0.15
-                },
-                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.3}
             )
         }
     
@@ -334,32 +420,6 @@ class TradingStyleManager:
                     "max_zones": 20  # Max 20 zones affichées
                 },
                 visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.25}
-            ),
-            
-            # Smart Money - Order Blocks (Swing Trading)
-            "order_blocks": IndicatorConfig(
-                enabled=True,
-                parameters={
-                    # Base - Swing: Sélectif mais réaliste pour crypto
-                    "lookback_period": 25,  # Adapté au swing crypto
-                    "strong_threshold": 0.4,  # Réaliste pour crypto
-                    "weak_threshold": 0.2,  # Seuil faible adapté
-                    "max_age_bars": 150,  # Durée de vie raisonnable
-                    # Détection - Équilibrée pour crypto
-                    "min_body_size": 0.002,  # 0.2% minimum
-                    "volume_confirmation": False,  # Simplifié
-                    "min_impulse_strength": 0.15,  # 15% impulse
-                    "max_wick_ratio": 0.8,  # Plus permissif
-                    "min_impulse_bars": 2,  # Minimum 2 barres
-                    "max_impulse_bars": 15,  # Recherche étendue
-                    "volume_multiplier": 0.7,  # 70% volume moyen
-                    # Affichage - Détaillé
-                    "show_labels": True,  # Labels complets
-                    "show_retest_count": True,  # Historique retests
-                    "opacity_active": 0.4,  # Plus visible
-                    "opacity_broken": 0.2   # Visible même cassés
-                },
-                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.4}
             )
         }
     
@@ -434,32 +494,6 @@ class TradingStyleManager:
                     "max_zones": 25  # Max 25 zones affichées
                 },
                 visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.3}
-            ),
-            
-            # Smart Money - Order Blocks (Position Trading)
-            "order_blocks": IndicatorConfig(
-                enabled=True,
-                parameters={
-                    # Base - Position: Sélectif mais détectable en crypto
-                    "lookback_period": 40,  # Long mais raisonnable
-                    "strong_threshold": 0.5,  # Élevé mais atteignable
-                    "weak_threshold": 0.25,  # Seuil faible réaliste
-                    "max_age_bars": 300,  # Longue durée de vie
-                    # Détection - Sélective mais réaliste
-                    "min_body_size": 0.003,  # 0.3% minimum
-                    "volume_confirmation": False,  # Simplifié
-                    "min_impulse_strength": 0.2,  # 20% impulse
-                    "max_wick_ratio": 0.6,  # Sélectif mais pas impossible
-                    "min_impulse_bars": 2,  # Minimum 2 barres
-                    "max_impulse_bars": 20,  # Recherche longue
-                    "volume_multiplier": 0.8,  # 80% volume moyen
-                    # Affichage - Permanent
-                    "show_labels": True,  # Toutes les infos
-                    "show_retest_count": True,  # Historique complet
-                    "opacity_active": 0.5,  # Très visible
-                    "opacity_broken": 0.3   # Reste visible longtemps
-                },
-                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.5}
             )
         }
     

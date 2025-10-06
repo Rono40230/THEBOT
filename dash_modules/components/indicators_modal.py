@@ -101,9 +101,36 @@ class IndicatorsModal:
             },
             'order_blocks': {
                 'enabled': False,
+                'trading_style': 'day_trading',
+                # Paramètres de base
                 'lookback_period': 20,
                 'min_volume_ratio': 1.5,
-                'strength_threshold': 0.6
+                'strength_threshold': 0.6,
+                'impulse_threshold': 1.5,
+                'min_block_size': 0.2,
+                'max_block_age': 100,
+                # Détection avancée
+                'volume_confirmation': True,
+                'structure_validation': True,
+                'imbalance_detection': True,
+                'retest_validation': True,
+                'session_filter': False,
+                'trend_alignment': False,
+                # Visualisation
+                'show_labels': True,
+                'show_strength': True,
+                'show_retest_count': True,
+                'bullish_color': '#2E8B57',
+                'bearish_color': '#DC143C',
+                'opacity_active': 30,
+                'opacity_tested': 20,
+                'max_blocks_display': 15,
+                # Signaux et alertes
+                'signal_generation': True,
+                'proximity_alerts': False,
+                'alert_distance': 0.1,
+                'confluence_with_fvg': False,
+                'fibonacci_confluence': False
             },
             'liquidity_zones': {
                 'enabled': False,
@@ -1438,7 +1465,7 @@ class IndicatorsModal:
             dbc.Row([
                 dbc.Col([
                     html.H6([
-                        "Order Blocks",
+                        "📦 Order Blocks",
                         html.I(className="fas fa-layer-group ms-2", 
                                id="ob-tooltip-target",
                                style={"color": "#e83e8c", "cursor": "pointer"})
@@ -1464,78 +1491,39 @@ class IndicatorsModal:
             ]),
             
             dbc.Collapse([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Label([
-                            "Période Lookback",
-                            html.I(className="fas fa-question-circle ms-1", 
-                                   id="ob-lookback-tooltip",
-                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
-                        ], className="fw-bold"),
-                        dbc.Tooltip([
-                            "👀 Nombre de bougies à analyser", html.Br(),
-                            "⚡ Court: 10-15 pour signaux récents", html.Br(),
-                            "📊 Standard: 20-30 équilibre qualité/réactivité", html.Br(),
-                            "🎯 Long: 50+ pour niveaux historiques"
-                        ], target="ob-lookback-tooltip", placement="top"),
-                        dbc.Input(
-                            id="indicators-ob-lookback",
-                            type="number",
-                            value=20,
-                            min=5,
-                            max=100,
-                            step=5,
-                            size="sm"
-                        )
-                    ], width=4),
-                    dbc.Col([
-                        dbc.Label([
-                            "Ratio Volume Min",
-                            html.I(className="fas fa-question-circle ms-1", 
-                                   id="ob-volume-tooltip",
-                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
-                        ], className="fw-bold"),
-                        dbc.Tooltip([
-                            "📊 Volume minimum vs moyenne pour validation", html.Br(),
-                            "💼 1.2x: Légèrement au-dessus de la moyenne", html.Br(),
-                            "🎯 1.5x: Volume significatif (recommandé)", html.Br(),
-                            "💥 2.0x+: Volume exceptionnel, très fiable"
-                        ], target="ob-volume-tooltip", placement="top"),
-                        dbc.Input(
-                            id="indicators-ob-volume-ratio",
-                            type="number",
-                            value=1.5,
-                            min=1.0,
-                            max=5.0,
-                            step=0.1,
-                            size="sm"
-                        )
-                    ], width=4),
-                    dbc.Col([
-                        dbc.Label([
-                            "Seuil Force",
-                            html.I(className="fas fa-question-circle ms-1", 
-                                   id="ob-strength-tooltip",
-                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
-                        ], className="fw-bold"),
-                        dbc.Tooltip([
-                            "💪 Force minimale pour afficher l'Order Block", html.Br(),
-                            "🎯 0.3: Tous les blocs détectés", html.Br(),
-                            "📊 0.6: Blocs de qualité moyenne", html.Br(),
-                            "⭐ 0.8: Seulement les blocs très forts"
-                        ], target="ob-strength-tooltip", placement="top"),
-                        dbc.Input(
-                            id="indicators-ob-strength-threshold",
-                            type="number",
-                            value=0.6,
-                            min=0.1,
-                            max=1.0,
-                            step=0.1,
-                            size="sm"
-                        )
-                    ], width=4)
-                ], className="mt-2")
-            ], id="indicators-ob-collapse", is_open=False)
+                # Onglets pour organiser les paramètres Order Blocks
+                dbc.Tabs([
+                    
+                    # Onglet Configuration de Base
+                    dbc.Tab(label="⚙️ Base", tab_id="ob-base", children=[
+                        html.Div([
+                            self._create_ob_base_params()
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Détection Avancée
+                    dbc.Tab(label="🔍 Détection", tab_id="ob-detection", children=[
+                        html.Div([
+                            self._create_ob_detection_params()
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Visualisation
+                    dbc.Tab(label="🎨 Visuel", tab_id="ob-visual", children=[
+                        html.Div([
+                            self._create_ob_visual_params()
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Signaux & Alertes
+                    dbc.Tab(label="🔔 Signaux", tab_id="ob-signals", children=[
+                        html.Div([
+                            self._create_ob_signals_params()
+                        ], className="p-3")
+                    ])
+                    
+                ], id="ob-tabs", active_tab="ob-base", className="mt-3")
+            ], id="indicators-ob-collapse", is_open=True)
         ])
     
     def _create_liquidity_zones_section(self) -> html.Div:
@@ -2119,6 +2107,459 @@ class IndicatorsModal:
             ], className="mt-3")
         ])
     
+    # ========================================
+    # METHODS POUR ORDER BLOCKS TABS
+    # ========================================
+    
+    def _create_ob_base_params(self) -> html.Div:
+        """Paramètres de base Order Blocks"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "📊 Période Lookback",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-lookback-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "👀 Nombre de bougies à analyser", html.Br(),
+                        "⚡ Court: 10-15 pour signaux récents", html.Br(),
+                        "📊 Standard: 20-30 équilibre qualité/réactivité", html.Br(),
+                        "🎯 Long: 50+ pour niveaux historiques"
+                    ], target="ob-lookback-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-lookback",
+                        type="number",
+                        value=20,
+                        min=5,
+                        max=100,
+                        step=5,
+                        size="sm"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label([
+                        "🔊 Ratio Volume Min",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-volume-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📊 Volume minimum vs moyenne pour validation", html.Br(),
+                        "💼 1.2x: Légèrement au-dessus", html.Br(),
+                        "📈 1.5x: Volume significatif (recommandé)", html.Br(),
+                        "🚀 2.0x+: Volume institutionnel fort"
+                    ], target="ob-volume-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-volume-ratio",
+                        type="number",
+                        value=1.5,
+                        min=1.0,
+                        max=5.0,
+                        step=0.1,
+                        size="sm"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "💪 Seuil de Force",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-strength-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "💪 Score minimum pour valider un bloc", html.Br(),
+                        "🎯 0.3-0.5: Blocs faibles mais nombreux", html.Br(),
+                        "📊 0.6-0.7: Équilibre qualité/quantité", html.Br(),
+                        "🏆 0.8+: Seulement blocs très forts"
+                    ], target="ob-strength-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-strength",
+                        type="number",
+                        value=0.6,
+                        min=0.1,
+                        max=1.0,
+                        step=0.1,
+                        size="sm"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label([
+                        "⚡ Seuil Impulsion",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-impulse-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "⚡ Force minimum du mouvement impulsif", html.Br(),
+                        "📈 1.2x: Mouvements légers", html.Br(),
+                        "🚀 1.5x: Impulsions significatives", html.Br(),
+                        "💥 2.0x+: Breakouts puissants seulement"
+                    ], target="ob-impulse-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-impulse",
+                        type="number",
+                        value=1.5,
+                        min=1.0,
+                        max=3.0,
+                        step=0.1,
+                        size="sm"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "📏 Taille Min. Bloc (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-minsize-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📏 Taille minimum du bloc en % du prix", html.Br(),
+                        "🔍 0.1%: Tous les micro-blocs", html.Br(),
+                        "📊 0.2%: Blocs significatifs", html.Br(),
+                        "🎯 0.5%+: Seulement gros blocs"
+                    ], target="ob-minsize-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-min-size",
+                        type="number",
+                        value=0.2,
+                        min=0.05,
+                        max=2.0,
+                        step=0.05,
+                        size="sm"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label([
+                        "⏰ Âge Max (bougies)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-maxage-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "⏰ Combien de temps un bloc reste actif", html.Br(),
+                        "⚡ 50: Blocs récents seulement", html.Br(),
+                        "📊 100: Durée standard", html.Br(),
+                        "🏛️ 200+: Niveaux historiques"
+                    ], target="ob-maxage-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-max-age",
+                        type="number",
+                        value=100,
+                        min=20,
+                        max=500,
+                        step=10,
+                        size="sm"
+                    )
+                ], width=6)
+            ])
+        ])
+    
+    def _create_ob_detection_params(self) -> html.Div:
+        """Paramètres de détection avancée Order Blocks"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6("🔍 Validations Avancées", className="text-info fw-bold mb-3")
+                ], width=12)
+            ]),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "Confirmation Volume",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-vol-conf-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📊 Valide le volume au moment de formation", html.Br(),
+                        "✅ Activé: Blocs avec volume significatif", html.Br(),
+                        "❌ Désactivé: Tous blocs structurels"
+                    ], target="ob-vol-conf-tooltip", placement="top"),
+                    dbc.Switch(
+                        id="indicators-ob-volume-conf",
+                        value=True,
+                        className="mt-1"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label([
+                        "Validation Structure",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-struct-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🏗️ Vérifie la structure de marché", html.Br(),
+                        "✅ Activé: Blocs dans tendance cohérente", html.Br(),
+                        "❌ Désactivé: Tous blocs valides"
+                    ], target="ob-struct-tooltip", placement="top"),
+                    dbc.Switch(
+                        id="indicators-ob-structure-val",
+                        value=True,
+                        className="mt-1"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("Détection Imbalances", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-imbalance",
+                        value=True,
+                        className="mt-1"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label("Validation Retest", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-retest",
+                        value=True,
+                        className="mt-1"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("Filtre Session", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-session",
+                        value=False,
+                        className="mt-1"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label("Alignement Tendance", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-trend",
+                        value=False,
+                        className="mt-1"
+                    )
+                ], width=6)
+            ])
+        ])
+    
+    def _create_ob_visual_params(self) -> html.Div:
+        """Paramètres de visualisation Order Blocks"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6("🎨 Affichage", className="text-info fw-bold mb-3")
+                ], width=12)
+            ]),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("🏷️ Afficher Labels", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-show-labels",
+                        value=True,
+                        className="mt-1"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label("💪 Afficher Force", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-show-strength",
+                        value=True,
+                        className="mt-1"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "🟢 Couleur Bullish",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-bull-color-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🟢 Couleur des Order Blocks haussiers", html.Br(),
+                        "💡 Choisissez une couleur facilement visible"
+                    ], target="ob-bull-color-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-bullish-color",
+                        type="color",
+                        value="#2E8B57",
+                        size="sm",
+                        className="mt-1"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label([
+                        "🔴 Couleur Bearish",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-bear-color-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🔴 Couleur des Order Blocks baissiers", html.Br(),
+                        "💡 Contraste avec couleur bullish"
+                    ], target="ob-bear-color-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-bearish-color",
+                        type="color",
+                        value="#DC143C",
+                        size="sm",
+                        className="mt-1"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "👁️ Opacité (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-opacity-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "👁️ Transparence des zones Order Blocks", html.Br(),
+                        "🔅 10-20%: Très discret", html.Br(),
+                        "📊 30-40%: Bien visible", html.Br(),
+                        "🔆 50%+: Très visible"
+                    ], target="ob-opacity-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-opacity",
+                        type="number",
+                        value=30,
+                        min=10,
+                        max=80,
+                        step=5,
+                        size="sm"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label([
+                        "📊 Max Blocs Affichés",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-maxdisp-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📊 Nombre maximum de blocs à afficher", html.Br(),
+                        "⚡ 5-10: Graphique épuré", html.Br(),
+                        "📈 15-20: Vue complète", html.Br(),
+                        "🔥 25+: Analyse détaillée"
+                    ], target="ob-maxdisp-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-max-display",
+                        type="number",
+                        value=15,
+                        min=5,
+                        max=50,
+                        step=5,
+                        size="sm"
+                    )
+                ], width=6)
+            ])
+        ])
+    
+    def _create_ob_signals_params(self) -> html.Div:
+        """Paramètres de signaux et alertes Order Blocks"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6("🔔 Signaux & Alertes", className="text-info fw-bold mb-3")
+                ], width=12)
+            ]),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("📈 Génération Signaux", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-signals",
+                        value=True,
+                        className="mt-1"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label("🚨 Alertes Proximité", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-alerts",
+                        value=False,
+                        className="mt-1"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "📏 Distance Alerte (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="ob-alert-dist-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📏 Distance du prix pour déclencher alerte", html.Br(),
+                        "🎯 0.05%: Très proche", html.Br(),
+                        "📊 0.1%: Distance standard", html.Br(),
+                        "📈 0.2%+: Anticipation large"
+                    ], target="ob-alert-dist-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-ob-alert-distance",
+                        type="number",
+                        value=0.1,
+                        min=0.01,
+                        max=1.0,
+                        step=0.01,
+                        size="sm"
+                    )
+                ], width=6),
+                dbc.Col([
+                    html.P("", className="invisible")  # Spacer
+                ], width=6)
+            ], className="mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("🎯 Confluence avec FVG", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-confluence-fvg",
+                        value=False,
+                        className="mt-1"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label("📐 Confluence Fibonacci", className="fw-bold"),
+                    dbc.Switch(
+                        id="indicators-ob-confluence-fib",
+                        value=False,
+                        className="mt-1"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            html.Hr(),
+            
+            dbc.Alert([
+                html.H6("💡 Conseils Order Blocks", className="fw-bold mb-2"),
+                html.P([
+                    "🎯 ", html.Strong("Zones de retournement"), ": Order Blocks marquent où les institutions ont placé leurs ordres"
+                ], className="mb-1"),
+                html.P([
+                    "📊 ", html.Strong("Confluence"), ": Combinez avec FVG et Fibonacci pour des signaux plus forts"
+                ], className="mb-1"),
+                html.P([
+                    "⚡ ", html.Strong("Retest"), ": Attendez le retour du prix sur le bloc pour une entrée"
+                ], className="mb-0")
+            ], color="info", className="mt-3")
+        ])
+
     def get_custom_css(self) -> str:
         """CSS personnalisé pour la modal des indicateurs"""
         return """
@@ -2224,7 +2665,8 @@ def register_indicators_modal_callbacks(app):
         ("indicators-pivot-switch", "indicators-pivot-collapse"),
         ("indicators-rsi-switch", "indicators-rsi-collapse"),
         ("indicators-atr-switch", "indicators-atr-collapse"),
-        ("indicators-fvg-switch", "indicators-fvg-collapse")
+        ("indicators-fvg-switch", "indicators-fvg-collapse"),
+        ("indicators-ob-switch", "indicators-ob-collapse")
     ]
     
     for switch_id, collapse_id in collapse_callbacks:
@@ -2363,7 +2805,23 @@ def register_indicators_modal_callbacks(app):
          Output("indicators-fvg-max-age", "value", allow_duplicate=True),
          Output("indicators-fvg-show-labels", "value", allow_duplicate=True),
          Output("indicators-fvg-opacity", "value", allow_duplicate=True),
-         Output("indicators-fvg-max-gaps-display", "value", allow_duplicate=True)],
+         Output("indicators-fvg-max-gaps-display", "value", allow_duplicate=True),
+         # Order Blocks - paramètres principaux synchronisés avec styles
+         Output("indicators-ob-switch", "value", allow_duplicate=True),
+         Output("indicators-ob-lookback", "value", allow_duplicate=True),
+         Output("indicators-ob-volume-ratio", "value", allow_duplicate=True),
+         Output("indicators-ob-strength", "value", allow_duplicate=True),
+         Output("indicators-ob-impulse", "value", allow_duplicate=True),
+         Output("indicators-ob-min-size", "value", allow_duplicate=True),
+         Output("indicators-ob-max-age", "value", allow_duplicate=True),
+         Output("indicators-ob-volume-conf", "value", allow_duplicate=True),
+         Output("indicators-ob-structure-val", "value", allow_duplicate=True),
+         Output("indicators-ob-show-labels", "value", allow_duplicate=True),
+         Output("indicators-ob-show-strength", "value", allow_duplicate=True),
+         Output("indicators-ob-bullish-color", "value", allow_duplicate=True),
+         Output("indicators-ob-bearish-color", "value", allow_duplicate=True),
+         Output("indicators-ob-opacity", "value", allow_duplicate=True),
+         Output("indicators-ob-max-display", "value", allow_duplicate=True)],
         [Input("indicators-trading-style", "value")],
         prevent_initial_call=True
     )
@@ -2371,7 +2829,7 @@ def register_indicators_modal_callbacks(app):
         """Applique automatiquement les paramètres selon le style de trading choisi"""
         if not selected_style or selected_style == "manuel":
             # Style manuel - ne change rien
-            return tuple([dash.no_update] * 48)  # Ajusté pour inclure MACD (7) + FVG (8) = 40 + 8 = 48
+            return tuple([dash.no_update] * 63)  # Ajusté pour inclure MACD (7) + FVG (8) + OB (15) = 40 + 8 + 15 = 63
         
         try:
             # Récupère la configuration pour ce style
@@ -2452,6 +2910,24 @@ def register_indicators_modal_callbacks(app):
             fvg_zones_opacity = fvg_config.parameters.get('zones_opacity', 0.2)
             fvg_max_zones = fvg_config.parameters.get('max_zones', 15)
             
+            # Order Blocks
+            ob_config = config.get('order_blocks', {})
+            ob_enabled = ob_config.enabled
+            ob_lookback = ob_config.parameters.get('lookback_period', 20)
+            ob_volume_ratio = ob_config.parameters.get('min_body_size', 0.002) * 1000  # Convertir en pourcentage
+            ob_strength = ob_config.parameters.get('strong_threshold', 0.7)
+            ob_impulse = ob_config.parameters.get('min_impulse_strength', 0.5) * 100  # Convertir en pourcentage
+            ob_min_size = ob_config.parameters.get('min_body_size', 0.002) * 100  # Convertir en pourcentage
+            ob_max_age = ob_config.parameters.get('max_age_bars', 100)
+            ob_volume_conf = ob_config.parameters.get('volume_confirmation', True)
+            ob_structure_val = ob_config.parameters.get('volume_confirmation', True)  # Utiliser même paramètre
+            ob_show_labels = ob_config.parameters.get('show_labels', True)
+            ob_show_strength = ob_config.parameters.get('show_retests', True)  # Utiliser retests pour strength
+            ob_bullish_color = ob_config.visual.get('bullish_color', '#2E8B57')
+            ob_bearish_color = ob_config.visual.get('bearish_color', '#DC143C')
+            ob_opacity = int(ob_config.parameters.get('opacity_active', 0.3) * 100)  # Convertir en pourcentage
+            ob_max_display = ob_config.parameters.get('max_age_bars', 100) // 5  # Approximation
+
             return (
                 sma_enabled, sma_period, sma_color,
                 ema_enabled, ema_period, ema_color,
@@ -2461,7 +2937,8 @@ def register_indicators_modal_callbacks(app):
                 rsi_enabled, rsi_period, rsi_overbought, rsi_oversold,
                 atr_enabled, atr_period, atr_multiplier,
                 macd_enabled, macd_fast, macd_slow, macd_signal, macd_color, macd_signal_color, macd_histogram,
-                fvg_enabled, fvg_min_gap_size, fvg_volume_confirmation, fvg_overlap_threshold, fvg_max_distance, fvg_show_labels, fvg_zones_opacity, fvg_max_zones
+                fvg_enabled, fvg_min_gap_size, fvg_volume_confirmation, fvg_overlap_threshold, fvg_max_distance, fvg_show_labels, fvg_zones_opacity, fvg_max_zones,
+                ob_enabled, ob_lookback, ob_volume_ratio, ob_strength, ob_impulse, ob_min_size, ob_max_age, ob_volume_conf, ob_structure_val, ob_show_labels, ob_show_strength, ob_bullish_color, ob_bearish_color, ob_opacity, ob_max_display
             )
             
         except Exception as e:
@@ -2476,20 +2953,111 @@ def register_indicators_modal_callbacks(app):
                 True, 14, 70, 30,  # RSI
                 True, 14, 2.0,  # ATR
                 True, 12, 26, 9, '#2196F3', '#FF5722', True,  # MACD
-                True, 0.002, True, 0.7, 100, True, 0.2, 15  # FVG (Day Trading defaults)
+                True, 0.002, True, 0.7, 100, True, 0.2, 15,  # FVG (Day Trading defaults)
+                True, 20, 1.5, 0.6, 1.5, 0.2, 100, True, True, True, True, '#2E8B57', '#DC143C', 30, 15  # Order Blocks
             )
+
+
+# Instance globale
+indicators_modal = IndicatorsModal()
+
+
+def register_indicators_modal_callbacks(app):
+    """Enregistrer les callbacks pour la modal des indicateurs"""
     
-    # Callback pour le bouton d'aide
+    # Callback pour ouvrir/fermer la modal
     @app.callback(
-        Output("indicators-help-collapse", "is_open"),
-        [Input("indicators-help-btn", "n_clicks")],
-        [State("indicators-help-collapse", "is_open")],
+        Output("indicators-modal", "is_open"),
+        [Input("manage-indicators-btn", "n_clicks"),
+         Input("indicators-close-btn", "n_clicks")],
+        [State("indicators-modal", "is_open")],
         prevent_initial_call=True
     )
-    def toggle_help(n_clicks, is_open):
-        """Afficher/masquer l'aide contextuelle"""
-        if n_clicks:
-            return not is_open
+    def toggle_indicators_modal(open_clicks, close_clicks, is_open):
+        """Gérer l'ouverture/fermeture de la modal"""
+        ctx = callback_context
+        if not ctx.triggered:
+            return False
+        
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        
+        if button_id == "manage-indicators-btn":
+            return True
+        elif button_id == "indicators-close-btn":
+            return False
+        
         return is_open
+
+    # Callback de synchronisation automatique des paramètres Order Blocks selon le style
+    @app.callback(
+        [Output('indicators-ob-lookback', 'value'),
+         Output('indicators-ob-strength', 'value'),
+         Output('indicators-ob-opacity', 'value')],
+        [Input('indicators-trading-style', 'value')],
+        prevent_initial_call=True
+    )
+    def sync_order_blocks_with_style(trading_style):
+        """Synchronise automatiquement les paramètres Order Blocks avec le style sélectionné"""
+        if not trading_style:
+            return dash.no_update, dash.no_update, dash.no_update
+        
+        try:
+            # Récupérer la configuration du style pour Order Blocks
+            style_config = trading_style_manager.get_style_config(trading_style)
+            ob_indicator_config = style_config.get('order_blocks')
+            
+            if ob_indicator_config and hasattr(ob_indicator_config, 'parameters'):
+                params = ob_indicator_config.parameters
+                
+                # Mettre à jour les contrôles avec les paramètres du style
+                lookback = params.get('lookback_period', 20)
+                strength = params.get('strong_threshold', 0.7)
+                opacity = int(params.get('opacity_active', 0.3) * 100)  # Convertir en pourcentage
+                
+                print(f"🔄 Sync Order Blocks avec style {trading_style}: lookback={lookback}, strength={strength}, opacity={opacity}")
+                
+                return lookback, strength, opacity
+            
+        except Exception as e:
+            print(f"❌ Erreur synchronisation Order Blocks: {e}")
+        
+        return dash.no_update, dash.no_update, dash.no_update
+
+    # Callback de synchronisation automatique FVG selon le style
+    @app.callback(
+        [Output('indicators-fvg-threshold', 'value'),
+         Output('indicators-fvg-max-age', 'value'),
+         Output('indicators-fvg-opacity', 'value')],
+        [Input('indicators-trading-style', 'value')],
+        prevent_initial_call=True
+    )
+    def sync_fvg_with_style(trading_style):
+        """Synchronise automatiquement les paramètres FVG avec le style sélectionné"""
+        if not trading_style:
+            return dash.no_update, dash.no_update, dash.no_update
+        
+        try:
+            # Récupérer la configuration du style pour FVG
+            style_config = trading_style_manager.get_style_config(trading_style)
+            fvg_indicator_config = style_config.get('fair_value_gaps')
+            
+            if fvg_indicator_config and hasattr(fvg_indicator_config, 'parameters'):
+                params = fvg_indicator_config.parameters
+                
+                # Mettre à jour les contrôles avec les paramètres du style
+                threshold = params.get('gap_threshold', 0.1)
+                max_age = params.get('max_gap_age', 50)
+                opacity = int(params.get('gap_opacity', 0.3) * 100)  # Convertir en pourcentage
+                
+                print(f"🔄 Sync FVG avec style {trading_style}: threshold={threshold}, max_age={max_age}, opacity={opacity}")
+                
+                return threshold, max_age, opacity
+            
+        except Exception as e:
+            print(f"❌ Erreur synchronisation FVG: {e}")
+        
+        return dash.no_update, dash.no_update, dash.no_update
+
+
 # Store pour sauvegarder la configuration des indicateurs
 indicators_store = dcc.Store(id='indicators-config-store', data=indicators_modal.indicators_config)

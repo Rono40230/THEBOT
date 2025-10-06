@@ -51,6 +51,7 @@ except Exception as e:
 
 # Smart Money Indicators - Import conditionnel
 SMART_MONEY_AVAILABLE = False
+ORDER_BLOCKS_AVAILABLE = False
 try:
     from src.thebot.indicators.smart_money.fair_value_gaps import create_fvg_analyzer, FVGConfig
     SMART_MONEY_AVAILABLE = True
@@ -58,6 +59,14 @@ try:
 except ImportError as e:
     print(f"⚠️ Smart Money indicators non disponibles: {e}")
     SMART_MONEY_AVAILABLE = False
+
+try:
+    from src.thebot.indicators.smart_money.order_blocks import create_order_blocks_indicator, get_order_blocks_signals, create_order_blocks_overlay
+    ORDER_BLOCKS_AVAILABLE = True
+    print("📦 Order Blocks Smart Money disponibles")
+except ImportError as e:
+    print(f"⚠️ Order Blocks non disponibles: {e}")
+    ORDER_BLOCKS_AVAILABLE = False
 
 class CryptoModule:
     """Module crypto moderne avec interface complète"""
@@ -765,7 +774,15 @@ class CryptoModule:
              Input('indicators-fvg-fibonacci-levels', 'value'),
              Input('indicators-fvg-session-filter', 'value'),
              Input('indicators-fvg-news-filter', 'value'),
-             Input('indicators-fvg-weekend-gaps', 'value')]
+             Input('indicators-fvg-weekend-gaps', 'value'),
+             # Smart Money Order Blocks Inputs
+             Input('indicators-ob-switch', 'value'),
+             Input('indicators-ob-lookback', 'value'),
+             Input('indicators-ob-strength', 'value'),
+             Input('indicators-ob-show-labels', 'value'),
+             Input('indicators-ob-opacity', 'value'),
+             # Trading Style Input pour synchronisation automatique
+             Input('indicators-trading-style', 'value')]
         )
         def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period, 
                              sr_enabled, sr_strength, sr_lookback, sr_support_color, sr_resistance_color, sr_line_style, sr_line_width,
@@ -778,7 +795,11 @@ class CryptoModule:
                              fvg_confluence_distance, fvg_structural_break_confirmation, fvg_retest_sensitivity, fvg_max_retest_count,
                              fvg_dynamic_opacity, fvg_strength_line_width, fvg_show_distance_to_price, fvg_max_gaps_display,
                              fvg_auto_alerts, fvg_alert_distance, fvg_rsi_confirmation, fvg_fibonacci_levels,
-                             fvg_session_filter, fvg_news_filter, fvg_weekend_gaps):
+                             fvg_session_filter, fvg_news_filter, fvg_weekend_gaps,
+                             # Order Blocks Parameters
+                             ob_enabled, ob_lookback, ob_strength, ob_show_labels, ob_opacity,
+                             # Trading Style Parameter
+                             trading_style):
             """Met à jour le graphique principal"""
             try:
                 # CORRECTION: Être strict sur le symbole, pas de fallback
@@ -1095,6 +1116,99 @@ class CryptoModule:
                             borderwidth=1
                         )
                 
+                # ==================== ORDER BLOCKS SMART MONEY ====================
+                # Configuration Order Blocks avec paramètres avancés
+                if ORDER_BLOCKS_AVAILABLE:
+                    # Initialiser ob_enabled en dehors du try pour éviter UnboundLocalError
+                    # 📦 Order Blocks Smart Money
+                    if ob_enabled:
+                        try:
+                            # Configuration basée sur le style de trading sélectionné
+                            from src.thebot.indicators.smart_money.order_blocks.config import OrderBlockConfig, OrderBlockType
+                            from dash_modules.core.style_trading import trading_style_manager
+                            
+                            # Style de trading (utiliser le paramètre reçu ou défaut)
+                            ob_trading_style = trading_style if trading_style else 'day_trading'
+                            
+                            # Récupérer la configuration du style pour Order Blocks
+                            style_config = trading_style_manager.get_style_config(ob_trading_style)
+                            
+                            # CORRECTION CRITIQUE: Accès correct aux paramètres
+                            ob_indicator_config = style_config.get('order_blocks')
+                            ob_style_params = ob_indicator_config.parameters if ob_indicator_config else {}
+                            
+                            print(f"🎯 Order Blocks Style: {ob_trading_style}")
+                            print(f"🔧 Style Params: lookback={ob_style_params.get('lookback_period')}, threshold={ob_style_params.get('strong_threshold')}")
+                            
+                            # Créer la configuration Order Blocks (priorité: utilisateur > style > défaut)
+                            ob_config = OrderBlockConfig(
+                                # Paramètres du style comme base, inputs utilisateur prioritaires
+                                lookback_period=ob_lookback if ob_lookback is not None else ob_style_params.get('lookback_period', 20),
+                                strong_threshold=ob_strength if ob_strength is not None else ob_style_params.get('strong_threshold', 0.7),
+                                weak_threshold=ob_style_params.get('weak_threshold', 0.3),
+                                max_age_bars=ob_style_params.get('max_age_bars', 100),
+                                # Paramètres de détection du style
+                                min_body_size=ob_style_params.get('min_body_size', 0.002),
+                                volume_confirmation=ob_style_params.get('volume_confirmation', True),
+                                min_impulse_strength=ob_style_params.get('min_impulse_strength', 0.5),
+                                max_wick_ratio=ob_style_params.get('max_wick_ratio', 0.5),
+                                # Paramètres d'impulsion CRITIQUES
+                                min_impulse_bars=ob_style_params.get('min_impulse_bars', 1),
+                                max_impulse_bars=ob_style_params.get('max_impulse_bars', 10),
+                                volume_multiplier=ob_style_params.get('volume_multiplier', 0.5),
+                                # Paramètres d'affichage (inputs utilisateur prioritaires)
+                                show_labels=ob_show_labels if ob_show_labels is not None else ob_style_params.get('show_labels', True),
+                                show_retest_count=ob_style_params.get('show_retest_count', True),
+                                opacity_active=(ob_opacity if ob_opacity is not None else ob_style_params.get('opacity_active', 0.3) * 100) / 100.0,
+                                opacity_broken=ob_style_params.get('opacity_broken', 0.15)
+                            )
+                            
+                            # Créer l'analyseur Order Blocks avec configuration complète
+                            from src.thebot.indicators.smart_money.order_blocks.calculator import OrderBlockCalculator
+                            from src.thebot.indicators.smart_money.order_blocks.plotter import OrderBlockPlotter
+                            
+                            ob_calculator = OrderBlockCalculator(ob_config)
+                            ob_plotter = OrderBlockPlotter(ob_config)
+                            
+                            # Analyser les Order Blocks
+                            order_blocks = ob_calculator.analyze_blocks(data)
+                            
+                            # Ajouter les Order Blocks au graphique
+                            if order_blocks:
+                                fig = ob_plotter.add_blocks_to_chart(fig, order_blocks, data)
+                                
+                                # Compter les Order Blocks actifs et forts
+                                active_blocks = [ob for ob in order_blocks if ob.is_active]
+                                strong_blocks = [ob for ob in order_blocks if ob.strength_score >= ob_config.strong_threshold]
+                                bullish_blocks = [ob for ob in active_blocks if ob.type == OrderBlockType.BULLISH]
+                                bearish_blocks = [ob for ob in active_blocks if ob.type == OrderBlockType.BEARISH]
+                                
+                                # Annotation informative avec détails avancés
+                                info_text = f"📦 OB: {len(active_blocks)} actifs ({len(bullish_blocks)}🟢/{len(bearish_blocks)}🔴)"
+                                if strong_blocks:
+                                    info_text += f" | {len(strong_blocks)} forts"
+                                
+                                fig.add_annotation(
+                                    text=info_text,
+                                    xref="paper", yref="paper",
+                                    x=0.02, y=0.14, xanchor="left", yanchor="bottom",
+                                    bgcolor="rgba(0,0,0,0.7)", font=dict(color="white", size=11),
+                                    bordercolor="rgba(255,255,255,0.2)", borderwidth=1
+                                )
+                                
+                                print(f"✅ Order Blocks: {len(order_blocks)} détectés, {len(active_blocks)} actifs")
+                            else:
+                                print("ℹ️ Aucun Order Block détecté")
+                        
+                        except Exception as e:
+                            print(f"❌ Erreur Order Blocks: {e}")
+                            fig.add_annotation(
+                                text="❌ Erreur Order Blocks",
+                                xref="paper", yref="paper",
+                                x=0.02, y=0.14, xanchor="left", yanchor="bottom",
+                                bgcolor="rgba(255,0,0,0.7)", font=dict(color="white", size=11)
+                            )
+                
                 # Style du graphique
                 fig.update_layout(
                     title=f"{symbol} - {timeframe}",
@@ -1130,6 +1244,8 @@ class CryptoModule:
              Input('crypto-timeframe-selector', 'value'),
              Input('indicators-rsi-switch', 'value'),
              Input('indicators-rsi-period', 'value'),
+             Input('indicators-rsi-overbought', 'value'),
+             Input('indicators-rsi-oversold', 'value'),
              Input('indicators-atr-switch', 'value'),
              Input('indicators-atr-period', 'value'),
              Input('indicators-atr-multiplier', 'value'),
@@ -1141,7 +1257,7 @@ class CryptoModule:
              Input('indicators-macd-signal-color', 'value'),
              Input('indicators-macd-histogram', 'value')]
         )
-        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period, atr_multiplier,
+        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, rsi_overbought, rsi_oversold, atr_enabled, atr_period, atr_multiplier,
                                    macd_enabled, macd_fast, macd_slow, macd_signal, 
                                    macd_color, macd_signal_color, macd_histogram):
             """Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal"""
@@ -1169,89 +1285,127 @@ class CryptoModule:
                     )
                     return empty_fig, empty_fig  # Retourner seulement 2 figures
                 
-                # RSI Chart Professionnel
+                # RSI Chart Professionnel avec signaux avancés
                 rsi_fig = go.Figure()
                 if rsi_enabled and rsi_period and rsi_period > 0:
-                    rsi = self.calculate_rsi(data['close'], rsi_period)
+                    # Calcul RSI avec signaux avancés
+                    from dash_modules.core.calculators import TechnicalCalculators
+                    calc = TechnicalCalculators()
+                    rsi_data = calc.calculate_rsi_signals(
+                        data['close'].tolist(), 
+                        period=rsi_period,
+                        overbought=rsi_overbought,
+                        oversold=rsi_oversold
+                    )
                     
-                    # Zones d'arrière-plan colorées avec tooltips explicatifs
-                    # Zone surachat (70-100) - Rouge
-                    rsi_fig.add_hrect(y0=70, y1=100, fillcolor="rgba(255, 0, 0, 0.1)", 
+                    rsi_values = rsi_data['rsi_values']
+                    signals = rsi_data['signals']
+                    signal_strength = rsi_data['signal_strength']
+                    signal_descriptions = rsi_data['signal_descriptions']
+                    
+                    # Zones d'arrière-plan colorées
+                    rsi_fig.add_hrect(y0=rsi_overbought, y1=100, fillcolor="rgba(255, 0, 0, 0.1)", 
                                       line_width=0)
-                    # Zone survente (0-30) - Vert
-                    rsi_fig.add_hrect(y0=0, y1=30, fillcolor="rgba(0, 255, 0, 0.1)", 
+                    rsi_fig.add_hrect(y0=0, y1=rsi_oversold, fillcolor="rgba(0, 255, 0, 0.1)", 
                                       line_width=0)
-                    # Zone neutre (30-70) - Gris léger
-                    rsi_fig.add_hrect(y0=30, y1=70, fillcolor="rgba(128, 128, 128, 0.05)", 
+                    rsi_fig.add_hrect(y0=rsi_oversold, y1=rsi_overbought, fillcolor="rgba(128, 128, 128, 0.05)", 
                                       line_width=0)
                     
-                    # Ligne RSI principale avec tooltip enrichi
+                    # Ligne RSI principale avec signaux dans tooltip
                     rsi_fig.add_trace(go.Scatter(
                         x=data.index,
-                        y=rsi,
+                        y=rsi_values,
                         mode='lines',
                         name='RSI',
                         line=dict(color='#00bfff', width=2),
-                        showlegend=False,  # Masquer de la légende
+                        showlegend=False,
                         hovertemplate='<b>RSI</b>: %{y:.1f}<br>' +
                                      '<b>Date</b>: %{x}<br>' +
                                      '<b>Signal</b>: %{customdata}<br>' +
                                      '<extra></extra>',
-                        customdata=[
-                            'Surachat - Possible baisse' if val >= 70 
-                            else 'Survente - Possible hausse' if val <= 30 
-                            else 'Zone neutre' 
-                            for val in rsi
-                        ]
+                        customdata=signal_descriptions
                     ))
                     
-                    # Lignes de niveaux critiques sans annotations
-                    rsi_fig.add_hline(y=70, line=dict(color='#ff4444', dash='dash', width=1))
-                    rsi_fig.add_hline(y=30, line=dict(color='#00ff88', dash='dash', width=1))
+                    # Ajouter les signaux de trading comme marqueurs
+                    for i, (signal, strength, desc) in enumerate(zip(signals, signal_strength, signal_descriptions)):
+                        if signal in ['buy', 'strong_buy'] and strength > 0.5:
+                            rsi_fig.add_trace(go.Scatter(
+                                x=[data.index[i]],
+                                y=[rsi_values[i]],
+                                mode='markers',
+                                marker=dict(
+                                    symbol='triangle-up',
+                                    size=12 + (strength * 8),  # Taille selon force
+                                    color='#00ff88',
+                                    line=dict(color='#004400', width=2)
+                                ),
+                                name='Signal Achat',
+                                showlegend=False,
+                                hovertemplate=f'<b>SIGNAL ACHAT</b><br>' +
+                                             f'Force: {strength:.1%}<br>' +
+                                             f'{desc}<br>' +
+                                             '<extra></extra>'
+                            ))
+                        elif signal in ['sell', 'strong_sell'] and strength > 0.5:
+                            rsi_fig.add_trace(go.Scatter(
+                                x=[data.index[i]],
+                                y=[rsi_values[i]],
+                                mode='markers',
+                                marker=dict(
+                                    symbol='triangle-down',
+                                    size=12 + (strength * 8),  # Taille selon force
+                                    color='#ff4444',
+                                    line=dict(color='#440000', width=2)
+                                ),
+                                name='Signal Vente',
+                                showlegend=False,
+                                hovertemplate=f'<b>SIGNAL VENTE</b><br>' +
+                                             f'Force: {strength:.1%}<br>' +
+                                             f'{desc}<br>' +
+                                             '<extra></extra>'
+                            ))
+                    
+                    # Ajouter signaux de divergence (losanges dorés)
+                    for i, is_divergence in enumerate(rsi_data['divergence_signals']):
+                        if is_divergence:
+                            rsi_fig.add_trace(go.Scatter(
+                                x=[data.index[i]],
+                                y=[rsi_values[i]],
+                                mode='markers',
+                                marker=dict(
+                                    symbol='diamond',
+                                    size=15,
+                                    color='#ffd700',
+                                    line=dict(color='#ffaa00', width=2)
+                                ),
+                                name='Divergence',
+                                showlegend=False,
+                                hovertemplate='<b>🔄 DIVERGENCE RSI</b><br>' +
+                                             'Signal de retournement potentiel<br>' +
+                                             f'{signal_descriptions[i]}<br>' +
+                                             '<extra></extra>'
+                            ))
+                    
+                    # Lignes de niveaux critiques
+                    rsi_fig.add_hline(y=rsi_overbought, line=dict(color='#ff4444', dash='dash', width=1))
+                    rsi_fig.add_hline(y=rsi_oversold, line=dict(color='#00ff88', dash='dash', width=1))
                     rsi_fig.add_hline(y=50, line=dict(color='#888888', dash='dot', width=1))
                     
-                    # Tooltips invisibles pour expliquer chaque niveau RSI
-                    # Tooltip niveau 70 (surachat)
-                    rsi_fig.add_trace(go.Scatter(
-                        x=[data.index[0]], y=[70],
-                        mode='markers',
-                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
-                        hovertemplate='<b>Niveau 70 - Seuil Surachat</b><br>' +
-                                     'Signal: Prix potentiellement trop élevé<br>' +
-                                     'Action: Zone de prudence pour les achats<br>' +
-                                     'Risque: Possible correction baissière<br>' +
-                                     '<extra></extra>',
-                        showlegend=False,
-                        name='Seuil 70'
-                    ))
-                    
-                    # Tooltip niveau 30 (survente)
-                    rsi_fig.add_trace(go.Scatter(
-                        x=[data.index[0]], y=[30],
-                        mode='markers',
-                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
-                        hovertemplate='<b>Niveau 30 - Seuil Survente</b><br>' +
-                                     'Signal: Prix potentiellement sous-évalué<br>' +
-                                     'Action: Zone d\'opportunité d\'achat<br>' +
-                                     'Potentiel: Possible rebond haussier<br>' +
-                                     '<extra></extra>',
-                        showlegend=False,
-                        name='Seuil 30'
-                    ))
-                    
-                    # Tooltip niveau 50 (neutre)
-                    rsi_fig.add_trace(go.Scatter(
-                        x=[data.index[0]], y=[50],
-                        mode='markers',
-                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
-                        hovertemplate='<b>Niveau 50 - Ligne Neutre</b><br>' +
-                                     'Signal: Équilibre acheteurs/vendeurs<br>' +
-                                     'Tendance: Ni haussière ni baissière<br>' +
-                                     'Interprétation: Zone d\'indécision<br>' +
-                                     '<extra></extra>',
-                        showlegend=False,
-                        name='Ligne neutre'
-                    ))
+                    # Annotations pour les seuils (plus discrètes)
+                    rsi_fig.add_annotation(
+                        x=data.index[-1], y=rsi_overbought,
+                        text=f"Surachat {rsi_overbought}",
+                        showarrow=False,
+                        xanchor="left",
+                        font=dict(size=10, color="#ff4444")
+                    )
+                    rsi_fig.add_annotation(
+                        x=data.index[-1], y=rsi_oversold,
+                        text=f"Survente {rsi_oversold}",
+                        showarrow=False,
+                        xanchor="left",
+                        font=dict(size=10, color="#00ff88")
+                    )
                 
                 if not rsi_enabled:
                     rsi_fig.add_annotation(

@@ -82,6 +82,122 @@ class TechnicalCalculators:
         
         return rsi.fillna(50).tolist()
     
+    def calculate_rsi_signals(self, prices: List[float], period: int = 14, 
+                             overbought: float = 70, oversold: float = 30) -> Dict[str, List]:
+        """
+        Calculer les signaux RSI avec détection de patterns avancés
+        
+        Returns:
+            Dict contenant les signaux RSI détaillés
+        """
+        if len(prices) < period + 10:  # Besoin de données suffisantes
+            return {
+                'rsi_values': [50.0] * len(prices),
+                'signals': ['neutral'] * len(prices),
+                'signal_strength': [0.0] * len(prices),
+                'overbought_signals': [False] * len(prices),
+                'oversold_signals': [False] * len(prices),
+                'divergence_signals': [False] * len(prices),
+                'crossover_signals': ['none'] * len(prices),
+                'signal_descriptions': [''] * len(prices)
+            }
+        
+        # Calcul RSI
+        rsi_values = self.calculate_rsi(prices, period)
+        prices_series = pd.Series(prices)
+        rsi_series = pd.Series(rsi_values)
+        
+        # Initialisation des signaux
+        signals = ['neutral'] * len(prices)
+        signal_strength = [0.0] * len(prices)
+        overbought_signals = [False] * len(prices)
+        oversold_signals = [False] * len(prices)
+        divergence_signals = [False] * len(prices)
+        crossover_signals = ['none'] * len(prices)
+        signal_descriptions = [''] * len(prices)
+        
+        for i in range(period + 5, len(prices)):
+            current_rsi = rsi_values[i]
+            prev_rsi = rsi_values[i-1]
+            current_price = prices[i]
+            prev_price = prices[i-1]
+            
+            # 1. Signaux de surachat/survente
+            if current_rsi >= overbought:
+                if prev_rsi < overbought:  # Entrée en zone de surachat
+                    overbought_signals[i] = True
+                    signals[i] = 'sell'
+                    signal_strength[i] = min(1.0, (current_rsi - overbought) / (100 - overbought))
+                    signal_descriptions[i] = f'🔴 RSI Surachat ({current_rsi:.1f})'
+                    
+            elif current_rsi <= oversold:
+                if prev_rsi > oversold:  # Entrée en zone de survente
+                    oversold_signals[i] = True
+                    signals[i] = 'buy'
+                    signal_strength[i] = min(1.0, (oversold - current_rsi) / oversold)
+                    signal_descriptions[i] = f'🟢 RSI Survente ({current_rsi:.1f})'
+            
+            # 2. Croisements de niveau 50 (ligne médiane)
+            if prev_rsi <= 50 and current_rsi > 50:
+                crossover_signals[i] = 'bullish_50'
+                if signals[i] == 'neutral':
+                    signals[i] = 'buy'
+                    signal_strength[i] = 0.3
+                    signal_descriptions[i] = f'📈 RSI > 50 ({current_rsi:.1f})'
+                    
+            elif prev_rsi >= 50 and current_rsi < 50:
+                crossover_signals[i] = 'bearish_50'
+                if signals[i] == 'neutral':
+                    signals[i] = 'sell'
+                    signal_strength[i] = 0.3
+                    signal_descriptions[i] = f'📉 RSI < 50 ({current_rsi:.1f})'
+            
+            # 3. Détection de divergences (simplifiée)
+            if i >= period + 10:
+                # Recherche de pics et creux récents
+                rsi_window = rsi_series[i-10:i+1]
+                price_window = prices_series[i-10:i+1]
+                
+                # Divergence haussière : prix fait un creux plus bas, RSI fait un creux plus haut
+                if (current_price == price_window.min() and 
+                    current_rsi > rsi_window.min() and 
+                    current_rsi < 40):
+                    divergence_signals[i] = True
+                    signals[i] = 'buy'
+                    signal_strength[i] = 0.8
+                    signal_descriptions[i] = f'🔄 Divergence Haussière RSI'
+                
+                # Divergence baissière : prix fait un pic plus haut, RSI fait un pic plus bas
+                elif (current_price == price_window.max() and 
+                      current_rsi < rsi_window.max() and 
+                      current_rsi > 60):
+                    divergence_signals[i] = True
+                    signals[i] = 'sell'
+                    signal_strength[i] = 0.8
+                    signal_descriptions[i] = f'🔄 Divergence Baissière RSI'
+            
+            # 4. Signaux de retournement extrême
+            if current_rsi >= 85:  # RSI très élevé
+                signals[i] = 'strong_sell'
+                signal_strength[i] = 1.0
+                signal_descriptions[i] = f'🔴 RSI Extrême ({current_rsi:.1f})'
+                
+            elif current_rsi <= 15:  # RSI très bas
+                signals[i] = 'strong_buy'
+                signal_strength[i] = 1.0
+                signal_descriptions[i] = f'🟢 RSI Extrême ({current_rsi:.1f})'
+        
+        return {
+            'rsi_values': rsi_values,
+            'signals': signals,
+            'signal_strength': signal_strength,
+            'overbought_signals': overbought_signals,
+            'oversold_signals': oversold_signals,
+            'divergence_signals': divergence_signals,
+            'crossover_signals': crossover_signals,
+            'signal_descriptions': signal_descriptions
+        }
+    
     def calculate_atr(self, highs: List[float], lows: List[float], 
                      closes: List[float], period: int = 14) -> List[float]:
         """Calculer Average True Range"""
