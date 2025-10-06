@@ -66,6 +66,50 @@ class IndicatorsModal:
                 'fast': 12,
                 'slow': 26,
                 'signal': 9
+            },
+            
+            # Smart Money Analysis
+            'fair_value_gaps': {
+                'enabled': False,
+                'gap_threshold': 0.1,
+                'volume_confirmation': True,
+                'max_gap_age': 50,
+                'min_gap_size': 0.05,
+                'trading_style': 'day_trading',
+                'show_gap_labels': True,
+                'gap_opacity': 30,
+                # Paramètres avancés
+                'volume_multiplier': 1.5,
+                'immediate_fill_threshold': 0.3,
+                'confluence_detection': True,
+                'confluence_distance': 0.5,
+                'structural_break_confirmation': False,
+                'price_action_filter': False,
+                'retest_sensitivity': 0.1,
+                'max_retest_count': 3,
+                'session_filter': True,
+                'news_filter': False,
+                'weekend_gaps': True,
+                'dynamic_opacity': True,
+                'strength_line_width': True,
+                'show_distance_to_price': True,
+                'max_gaps_display': 20,
+                'auto_alerts': False,
+                'alert_distance': 0.2,
+                'rsi_confirmation': False,
+                'fibonacci_levels': True
+            },
+            'order_blocks': {
+                'enabled': False,
+                'lookback_period': 20,
+                'min_volume_ratio': 1.5,
+                'strength_threshold': 0.6
+            },
+            'liquidity_zones': {
+                'enabled': False,
+                'zone_strength': 3,
+                'time_sensitivity': 'medium',
+                'volume_confirmation': True
             }
         }
     
@@ -158,19 +202,25 @@ class IndicatorsModal:
                             "• SMA = Tendance générale", html.Br(),
                             "• EMA = Signaux précoces", html.Br(),
                             "• Croisement = Signal d'entrée"
-                        ], width=4),
+                        ], width=3),
                         dbc.Col([
                             html.Strong("📏 Niveaux:"), html.Br(),
                             "• Support = Zone d'achat", html.Br(),
                             "• Résistance = Zone de vente", html.Br(),
                             "• Fibonacci 61.8% = niveau clé"
-                        ], width=4),
+                        ], width=3),
                         dbc.Col([
                             html.Strong("📉 Oscillateurs:"), html.Br(),
                             "• RSI > 70 = Survente", html.Br(),
                             "• RSI < 30 = Sous-achat", html.Br(),
                             "• ATR = Taille des stops"
-                        ], width=4)
+                        ], width=3),
+                        dbc.Col([
+                            html.Strong("🧠 Smart Money:"), html.Br(),
+                            "• FVG = Zones magnétiques", html.Br(),
+                            "• Order Blocks = Niveaux institutionnels", html.Br(),
+                            "• Liquidity = Hunt & Reversal"
+                        ], width=3)
                     ]),
                     html.Hr(),
                     html.H6("💼 Exemples Concrets"),
@@ -181,14 +231,21 @@ class IndicatorsModal:
                             "• Fib 61.8%: Rebond vers 59300$", html.Br(),
                             "• Support: 48000$ (3 touches)", html.Br(),
                             "• RSI 25: Zone d'achat"
-                        ], width=6),
+                        ], width=4),
                         dbc.Col([
                             html.Strong("⚡ Stratégie Scalping:"), html.Br(),
                             "• Timeframe: 5min", html.Br(),
                             "• Entrée: Pivot + RSI inverse", html.Br(),
                             "• Stop: ATR×1.0 = 100$ sur BTC", html.Br(),
                             "• Target: R1 ou S1 selon direction"
-                        ], width=6)
+                        ], width=4),
+                        dbc.Col([
+                            html.Strong("🧠 Smart Money Setup:"), html.Br(),
+                            "• FVG à 63500$ non comblé", html.Br(),
+                            "• Order Block: 62000-62500$", html.Br(),
+                            "• Liquidity Hunt: Stops à 61800$", html.Br(),
+                            "• Entrée: Retest FVG + volume"
+                        ], width=4)
                     ])
                 ], color="info", className="mb-3")
             ], id="indicators-help-collapse", is_open=False),
@@ -225,6 +282,17 @@ class IndicatorsModal:
                             self._create_atr_section(),
                             html.Hr(),
                             self._create_macd_section()
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Smart Money Analysis
+                    dbc.Tab(label="🧠 Smart Money", tab_id="smart-money", children=[
+                        html.Div([
+                            self._create_fvg_section(),
+                            html.Hr(),
+                            self._create_order_blocks_section(),
+                            html.Hr(),
+                            self._create_liquidity_zones_section()
                         ], className="p-3")
                     ])
                     
@@ -1297,6 +1365,760 @@ class IndicatorsModal:
             ], id="indicators-macd-collapse", is_open=True)
         ])
     
+    def _create_fvg_section(self) -> html.Div:
+        """Section Fair Value Gaps (FVG) - Smart Money Analysis"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6([
+                        "Fair Value Gaps (FVG)",
+                        html.I(className="fas fa-brain ms-2", 
+                               id="fvg-tooltip-target",
+                               style={"color": "#6f42c1", "cursor": "pointer"})
+                    ], className="fw-bold text-primary"),
+                    dbc.Tooltip([
+                        html.Strong("🧠 Fair Value Gaps - Zones d'Inefficience"), html.Br(),
+                        "📊 Concept: Zones de prix non comblées révélant l'activité institutionnelle", html.Br(),
+                        "🎯 Formation: 3 bougies consécutives créant un gap de prix", html.Br(),
+                        "💼 Smart Money: Les institutions laissent ces gaps lors d'entrées massives", html.Br(),
+                        "📈 Usage: Zones de support/résistance futures très fiables", html.Br(),
+                        "🔄 Magnétisme: Le prix retourne souvent combler ces zones", html.Br(),
+                        "⚡ Signaux: Retests = opportunités d'entrée de qualité"
+                    ], target="fvg-tooltip-target", placement="right"),
+                    html.P("Zones de prix non comblées révélant l'activité institutionnelle", className="text-muted small")
+                ], width=8),
+                dbc.Col([
+                    dbc.Switch(
+                        id="indicators-fvg-switch",
+                        value=True,
+                        className="ms-auto"
+                    )
+                ], width=4, className="d-flex align-items-center justify-content-end")
+            ]),
+            
+            dbc.Collapse([
+                # Onglets pour organiser les paramètres FVG
+                dbc.Tabs([
+                    
+                    # Onglet Configuration de Base
+                    dbc.Tab(label="⚙️ Base", tab_id="fvg-base", children=[
+                        html.Div([
+                            self._create_fvg_base_params()
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Détection Avancée
+                    dbc.Tab(label="� Détection", tab_id="fvg-detection", children=[
+                        html.Div([
+                            self._create_fvg_detection_params()
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Visualisation
+                    dbc.Tab(label="🎨 Visuel", tab_id="fvg-visual", children=[
+                        html.Div([
+                            self._create_fvg_visual_params()
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Signaux & Alertes
+                    dbc.Tab(label="� Signaux", tab_id="fvg-signals", children=[
+                        html.Div([
+                            self._create_fvg_signals_params()
+                        ], className="p-3")
+                    ])
+                    
+                ], id="fvg-tabs", active_tab="fvg-base", className="mt-3")
+            ], id="indicators-fvg-collapse", is_open=True)
+        ])
+    
+    def _create_order_blocks_section(self) -> html.Div:
+        """Section Order Blocks - Smart Money Analysis"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6([
+                        "Order Blocks",
+                        html.I(className="fas fa-layer-group ms-2", 
+                               id="ob-tooltip-target",
+                               style={"color": "#e83e8c", "cursor": "pointer"})
+                    ], className="fw-bold text-primary"),
+                    dbc.Tooltip([
+                        html.Strong("📦 Order Blocks - Zones d'Ordres Institutionnels"), html.Br(),
+                        "💼 Concept: Zones où les institutions placent leurs gros ordres", html.Br(),
+                        "📊 Formation: Dernière bougie avant mouvement impulsif", html.Br(),
+                        "🎯 Smart Money: Révèle les niveaux d'entrée des institutions", html.Br(),
+                        "📈 Usage: Support/Résistance de très haute qualité", html.Br(),
+                        "🔄 Retest: Opportunités d'entrée dans le sens des institutions", html.Br(),
+                        "⚡ Fiabilité: Très élevée pour les retournements"
+                    ], target="ob-tooltip-target", placement="right"),
+                    html.P("Zones d'accumulation/distribution institutionnelle", className="text-muted small")
+                ], width=8),
+                dbc.Col([
+                    dbc.Switch(
+                        id="indicators-ob-switch",
+                        value=False,
+                        className="ms-auto"
+                    )
+                ], width=4, className="d-flex align-items-center justify-content-end")
+            ]),
+            
+            dbc.Collapse([
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label([
+                            "Période Lookback",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="ob-lookback-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "👀 Nombre de bougies à analyser", html.Br(),
+                            "⚡ Court: 10-15 pour signaux récents", html.Br(),
+                            "📊 Standard: 20-30 équilibre qualité/réactivité", html.Br(),
+                            "🎯 Long: 50+ pour niveaux historiques"
+                        ], target="ob-lookback-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-ob-lookback",
+                            type="number",
+                            value=20,
+                            min=5,
+                            max=100,
+                            step=5,
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "Ratio Volume Min",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="ob-volume-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Volume minimum vs moyenne pour validation", html.Br(),
+                            "💼 1.2x: Légèrement au-dessus de la moyenne", html.Br(),
+                            "🎯 1.5x: Volume significatif (recommandé)", html.Br(),
+                            "💥 2.0x+: Volume exceptionnel, très fiable"
+                        ], target="ob-volume-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-ob-volume-ratio",
+                            type="number",
+                            value=1.5,
+                            min=1.0,
+                            max=5.0,
+                            step=0.1,
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "Seuil Force",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="ob-strength-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "💪 Force minimale pour afficher l'Order Block", html.Br(),
+                            "🎯 0.3: Tous les blocs détectés", html.Br(),
+                            "📊 0.6: Blocs de qualité moyenne", html.Br(),
+                            "⭐ 0.8: Seulement les blocs très forts"
+                        ], target="ob-strength-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-ob-strength-threshold",
+                            type="number",
+                            value=0.6,
+                            min=0.1,
+                            max=1.0,
+                            step=0.1,
+                            size="sm"
+                        )
+                    ], width=4)
+                ], className="mt-2")
+            ], id="indicators-ob-collapse", is_open=False)
+        ])
+    
+    def _create_liquidity_zones_section(self) -> html.Div:
+        """Section Liquidity Zones - Smart Money Analysis"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6([
+                        "Liquidity Zones",
+                        html.I(className="fas fa-water ms-2", 
+                               id="lz-tooltip-target",
+                               style={"color": "#20c997", "cursor": "pointer"})
+                    ], className="fw-bold text-primary"),
+                    dbc.Tooltip([
+                        html.Strong("💧 Liquidity Zones - Zones de Liquidité"), html.Br(),
+                        "💼 Concept: Zones où les institutions collectent la liquidité", html.Br(),
+                        "📊 Formation: Accumulation d'ordres d'achat/vente", html.Br(),
+                        "🎯 Smart Money: Les gros acteurs ont besoin de liquidité", html.Br(),
+                        "📈 Usage: Niveaux de retournement probable", html.Br(),
+                        "🔄 Hunt: Les institutions 'chassent' les stops dans ces zones", html.Br(),
+                        "⚡ Reversal: Zones de retournement très efficaces"
+                    ], target="lz-tooltip-target", placement="right"),
+                    html.P("Zones de collecte de liquidité institutionnelle", className="text-muted small")
+                ], width=8),
+                dbc.Col([
+                    dbc.Switch(
+                        id="indicators-lz-switch",
+                        value=False,
+                        className="ms-auto"
+                    )
+                ], width=4, className="d-flex align-items-center justify-content-end")
+            ]),
+            
+            dbc.Collapse([
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label([
+                            "Force Zone",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="lz-strength-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "💪 Nombre de touches pour valider une zone", html.Br(),
+                            "📊 2: Zones testées au minimum", html.Br(),
+                            "🎯 3: Zones bien établies (recommandé)", html.Br(),
+                            "⭐ 4+: Zones très fortes et fiables"
+                        ], target="lz-strength-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-lz-zone-strength",
+                            type="number",
+                            value=3,
+                            min=2,
+                            max=10,
+                            step=1,
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "Sensibilité Temps",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="lz-time-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "⏰ Sensibilité temporelle pour les zones", html.Br(),
+                            "⚡ High: Zones récentes prioritaires", html.Br(),
+                            "📊 Medium: Équilibre récent/historique", html.Br(),
+                            "🎯 Low: Toutes les zones historiques"
+                        ], target="lz-time-tooltip", placement="top"),
+                        dbc.Select(
+                            id="indicators-lz-time-sensitivity",
+                            options=[
+                                {"label": "⚡ High", "value": "high"},
+                                {"label": "📊 Medium", "value": "medium"},
+                                {"label": "🎯 Low", "value": "low"}
+                            ],
+                            value="medium",
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "Confirmation Volume",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="lz-volume-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Valider avec analyse de volume", html.Br(),
+                            "💼 Smart Money: Volume confirme l'activité", html.Br(),
+                            "✅ Recommandé: Évite les fausses zones", html.Br(),
+                            "🎯 Qualité supérieure des signaux"
+                        ], target="lz-volume-tooltip", placement="top"),
+                        dbc.Switch(
+                            id="indicators-lz-volume-confirmation",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ], width=4)
+                ], className="mt-2")
+            ], id="indicators-lz-collapse", is_open=False)
+        ])
+    
+    def _create_fvg_base_params(self) -> html.Div:
+        """Paramètres de base pour FVG"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "Seuil du Gap (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-threshold-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📏 Taille minimale du gap pour validation", html.Br(),
+                        "⚡ Scalping: 0.05% - gaps très fins", html.Br(),
+                        "🌅 Day Trading: 0.1% - équilibre qualité/quantité", html.Br(),
+                        "📈 Swing: 0.2% - gaps significatifs seulement", html.Br(),
+                        "🏔️ Position: 0.5% - gaps majeurs uniquement"
+                    ], target="fvg-threshold-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-threshold",
+                        type="number",
+                        value=0.1,
+                        min=0.01,
+                        max=2.0,
+                        step=0.01,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    dbc.Label([
+                        "Taille Minimale (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-min-size-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📐 Taille absolue minimale du gap", html.Br(),
+                        "🎯 Évite les micro-gaps non significatifs", html.Br(),
+                        "⚡ Scalping: 0.02% minimum", html.Br(),
+                        "📊 Standard: 0.05% minimum"
+                    ], target="fvg-min-size-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-min-gap-size",
+                        type="number",
+                        value=0.05,
+                        min=0.01,
+                        max=1.0,
+                        step=0.01,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    dbc.Label([
+                        "Âge Maximum",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-age-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "⏰ Durée de vie maximale d'un gap", html.Br(),
+                        "🕐 En nombre de bougies", html.Br(),
+                        "⚡ Court terme: 20-30 bougies", html.Br(),
+                        "📊 Moyen terme: 50-100 bougies", html.Br(),
+                        "🎯 Long terme: 200+ bougies"
+                    ], target="fvg-age-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-max-age",
+                        type="number",
+                        value=50,
+                        min=10,
+                        max=500,
+                        step=5,
+                        size="sm"
+                    )
+                ], width=4)
+            ], className="mt-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "Confirmation Volume",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-volume-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📊 Valider les gaps avec le volume", html.Br(),
+                        "💼 Smart Money: Volume élevé = institutions", html.Br(),
+                        "✅ Recommandé: Filtre les faux gaps", html.Br(),
+                        "🎯 Qualité > Quantité des signaux"
+                    ], target="fvg-volume-tooltip", placement="top"),
+                    dbc.Switch(
+                        id="indicators-fvg-volume-confirmation",
+                        value=True,
+                        className="mt-2"
+                    )
+                ], width=6)
+            ], className="mt-3")
+        ])
+    
+    def _create_fvg_detection_params(self) -> html.Div:
+        """Paramètres de détection avancée pour FVG"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "Multiplicateur Volume",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-vol-multi-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📊 Volume requis vs moyenne pour validation", html.Br(),
+                        "💼 1.2x: Légèrement au-dessus moyenne", html.Br(),
+                        "🎯 1.5x: Volume significatif (recommandé)", html.Br(),
+                        "💥 2.0x+: Volume exceptionnel, très fiable"
+                    ], target="fvg-vol-multi-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-volume-multiplier",
+                        type="number",
+                        value=1.5,
+                        min=1.0,
+                        max=5.0,
+                        step=0.1,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    dbc.Label([
+                        "Seuil Remplissage (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-fill-threshold-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "⚡ % de remplissage immédiat accepté", html.Br(),
+                        "🎯 30%: Standard - gaps partiellement touchés OK", html.Br(),
+                        "🔒 10%: Strict - gaps presque intacts seulement", html.Br(),
+                        "🆓 50%: Tolérant - accepte remplissages partiels"
+                    ], target="fvg-fill-threshold-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-immediate-fill-threshold",
+                        type="number",
+                        value=30,
+                        min=5,
+                        max=80,
+                        step=5,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    dbc.Label([
+                        "Distance Confluence (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-confluence-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🎯 Distance max pour grouper les gaps", html.Br(),
+                        "📊 0.5%: Détecte zones de confluence", html.Br(),
+                        "💪 Confluence = niveau plus fort", html.Br(),
+                        "⚡ Gaps proches = activité institutionnelle"
+                    ], target="fvg-confluence-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-confluence-distance",
+                        type="number",
+                        value=0.5,
+                        min=0.1,
+                        max=2.0,
+                        step=0.1,
+                        size="sm"
+                    )
+                ], width=4)
+            ], className="mt-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "Sensibilité Retest (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-retest-sens-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🎯 Sensibilité pour détecter retests", html.Br(),
+                        "📊 0.1%: Standard - retests précis", html.Br(),
+                        "⚡ 0.05%: Très sensible - tous retests", html.Br(),
+                        "🎯 0.2%: Moins sensible - retests significatifs"
+                    ], target="fvg-retest-sens-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-retest-sensitivity",
+                        type="number",
+                        value=0.1,
+                        min=0.01,
+                        max=0.5,
+                        step=0.01,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    dbc.Label([
+                        "Max Retests",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-max-retest-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🔄 Nombre max de retests avant invalidation", html.Br(),
+                        "📊 3: Standard - gaps normalement testés", html.Br(),
+                        "⚡ 5: Scalping - gaps très actifs", html.Br(),
+                        "🎯 1: Position - gaps rarement retestés"
+                    ], target="fvg-max-retest-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-max-retest-count",
+                        type="number",
+                        value=3,
+                        min=1,
+                        max=10,
+                        step=1,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Détection Confluence", className="fw-bold"),
+                        dbc.Switch(
+                            id="indicators-fvg-confluence-detection",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ]),
+                    html.Div([
+                        dbc.Label("Cassure Structure", className="fw-bold mt-2"),
+                        dbc.Switch(
+                            id="indicators-fvg-structural-break-confirmation",
+                            value=False,
+                            className="mt-1"
+                        )
+                    ])
+                ], width=4)
+            ], className="mt-3")
+        ])
+    
+    def _create_fvg_visual_params(self) -> html.Div:
+        """Paramètres visuels pour FVG"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "Opacité (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-opacity-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🎨 Transparence des zones FVG", html.Br(),
+                        "👁️ 30%: Subtil, ne gêne pas la lecture", html.Br(),
+                        "📊 50%: Visible mais transparent", html.Br(),
+                        "🎯 70%: Très visible pour analyse"
+                    ], target="fvg-opacity-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-opacity",
+                        type="number",
+                        value=30,
+                        min=10,
+                        max=80,
+                        step=5,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    dbc.Label([
+                        "Max Gaps Affichés",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-max-display-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "📊 Limite d'affichage pour performance", html.Br(),
+                        "⚡ 15: Scalping - gaps récents", html.Br(),
+                        "📊 20: Day Trading - équilibre", html.Br(),
+                        "🎯 25+: Swing/Position - historique long"
+                    ], target="fvg-max-display-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-max-gaps-display",
+                        type="number",
+                        value=20,
+                        min=5,
+                        max=50,
+                        step=5,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Afficher Labels", className="fw-bold"),
+                        dbc.Switch(
+                            id="indicators-fvg-show-labels",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ]),
+                    html.Div([
+                        dbc.Label("Distance au Prix", className="fw-bold mt-2"),
+                        dbc.Switch(
+                            id="indicators-fvg-show-distance-to-price",
+                            value=True,
+                            className="mt-1"
+                        )
+                    ])
+                ], width=4)
+            ], className="mt-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Opacité Dynamique", className="fw-bold"),
+                        dbc.Tooltip([
+                            "🎨 Opacité variable selon l'âge du gap", html.Br(),
+                            "👴 Plus vieux = plus transparent", html.Br(),
+                            "👶 Plus récent = plus opaque", html.Br(),
+                            "💡 Améliore la lisibilité visuelle"
+                        ], target="indicators-fvg-dynamic-opacity", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-dynamic-opacity",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Épaisseur selon Force", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📏 Épaisseur de ligne selon force du gap", html.Br(),
+                            "💪 Plus fort = ligne plus épaisse", html.Br(),
+                            "📊 Identification visuelle rapide", html.Br(),
+                            "🎯 Met en évidence les gaps importants"
+                        ], target="indicators-fvg-strength-line-width", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-strength-line-width",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Niveaux Fibonacci", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Prioriser gaps aux niveaux Fibonacci", html.Br(),
+                            "🎯 38.2%, 50%, 61.8% = niveaux clés", html.Br(),
+                            "💪 Confluence Fib + FVG = très fort", html.Br(),
+                            "✨ Signaux de qualité supérieure"
+                        ], target="indicators-fvg-fibonacci-levels", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-fibonacci-levels",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4)
+            ], className="mt-3")
+        ])
+    
+    def _create_fvg_signals_params(self) -> html.Div:
+        """Paramètres signaux et alertes pour FVG"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label([
+                        "Distance Alerte (%)",
+                        html.I(className="fas fa-question-circle ms-1", 
+                               id="fvg-alert-distance-tooltip",
+                               style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                    ], className="fw-bold"),
+                    dbc.Tooltip([
+                        "🔔 Distance pour déclencher alerte", html.Br(),
+                        "⚡ 0.1%: Alertes très proches", html.Br(),
+                        "📊 0.2%: Standard - bon équilibre", html.Br(),
+                        "🎯 0.5%: Alertes anticipées"
+                    ], target="fvg-alert-distance-tooltip", placement="top"),
+                    dbc.Input(
+                        id="indicators-fvg-alert-distance",
+                        type="number",
+                        value=0.2,
+                        min=0.05,
+                        max=1.0,
+                        step=0.05,
+                        size="sm"
+                    )
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Alertes Automatiques", className="fw-bold"),
+                        dbc.Tooltip([
+                            "🔔 Générer alertes automatiques", html.Br(),
+                            "⚡ Notification quand prix approche gap", html.Br(),
+                            "🎯 Opportunités de trading en temps réel", html.Br(),
+                            "💡 Seulement pour gaps forts"
+                        ], target="indicators-fvg-auto-alerts", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-auto-alerts",
+                            value=False,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Confirmation RSI", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Confirmer avec niveaux RSI", html.Br(),
+                            "🎯 RSI survente + FVG bullish = signal fort", html.Br(),
+                            "📈 RSI surachat + FVG bearish = signal fort", html.Br(),
+                            "💡 Améliore qualité des signaux"
+                        ], target="indicators-fvg-rsi-confirmation", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-rsi-confirmation",
+                            value=False,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4)
+            ], className="mt-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Filtrage Sessions", className="fw-bold"),
+                        dbc.Tooltip([
+                            "🕐 Filtrer selon sessions de marché", html.Br(),
+                            "🌅 Londres/New York = plus volatiles", html.Br(),
+                            "📊 Gaps pendant chevauchements = forts", html.Br(),
+                            "💼 Activité institutionnelle concentrée"
+                        ], target="indicators-fvg-session-filter", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-session-filter",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Filtrage Actualités", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📰 Éviter gaps créés par actualités", html.Br(),
+                            "⚡ News = mouvements non institutionnels", html.Br(),
+                            "🎯 Focus sur gaps de structure pure", html.Br(),
+                            "💡 Améliore fiabilité des signaux"
+                        ], target="indicators-fvg-news-filter", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-news-filter",
+                            value=False,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4),
+                dbc.Col([
+                    html.Div([
+                        dbc.Label("Gaps Weekend", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📅 Inclure gaps de weekend", html.Br(),
+                            "🕐 Crypto: Marché 24/7, gaps valides", html.Br(),
+                            "📊 Forex: Gaps dimanche soir importants", html.Br(),
+                            "⚡ Peut créer opportunités uniques"
+                        ], target="indicators-fvg-weekend-gaps", placement="top"),
+                        dbc.Switch(
+                            id="indicators-fvg-weekend-gaps",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ])
+                ], width=4)
+            ], className="mt-3")
+        ])
+    
     def get_custom_css(self) -> str:
         """CSS personnalisé pour la modal des indicateurs"""
         return """
@@ -1401,7 +2223,8 @@ def register_indicators_modal_callbacks(app):
         ("indicators-fibonacci-switch", "indicators-fibonacci-collapse"),
         ("indicators-pivot-switch", "indicators-pivot-collapse"),
         ("indicators-rsi-switch", "indicators-rsi-collapse"),
-        ("indicators-atr-switch", "indicators-atr-collapse")
+        ("indicators-atr-switch", "indicators-atr-collapse"),
+        ("indicators-fvg-switch", "indicators-fvg-collapse")
     ]
     
     for switch_id, collapse_id in collapse_callbacks:
@@ -1531,7 +2354,16 @@ def register_indicators_modal_callbacks(app):
          Output("indicators-macd-signal", "value", allow_duplicate=True),
          Output("indicators-macd-color", "value", allow_duplicate=True),
          Output("indicators-macd-signal-color", "value", allow_duplicate=True),
-         Output("indicators-macd-histogram", "value", allow_duplicate=True)],
+         Output("indicators-macd-histogram", "value", allow_duplicate=True),
+         # Fair Value Gaps - paramètres principaux synchronisés avec styles
+         Output("indicators-fvg-switch", "value", allow_duplicate=True),
+         Output("indicators-fvg-min-gap-size", "value", allow_duplicate=True),
+         Output("indicators-fvg-volume-confirmation", "value", allow_duplicate=True),
+         Output("indicators-fvg-threshold", "value", allow_duplicate=True),
+         Output("indicators-fvg-max-age", "value", allow_duplicate=True),
+         Output("indicators-fvg-show-labels", "value", allow_duplicate=True),
+         Output("indicators-fvg-opacity", "value", allow_duplicate=True),
+         Output("indicators-fvg-max-gaps-display", "value", allow_duplicate=True)],
         [Input("indicators-trading-style", "value")],
         prevent_initial_call=True
     )
@@ -1539,7 +2371,7 @@ def register_indicators_modal_callbacks(app):
         """Applique automatiquement les paramètres selon le style de trading choisi"""
         if not selected_style or selected_style == "manuel":
             # Style manuel - ne change rien
-            return tuple([dash.no_update] * 40)  # Ajusté pour inclure MACD (7 paramètres)
+            return tuple([dash.no_update] * 48)  # Ajusté pour inclure MACD (7) + FVG (8) = 40 + 8 = 48
         
         try:
             # Récupère la configuration pour ce style
@@ -1609,6 +2441,17 @@ def register_indicators_modal_callbacks(app):
             macd_signal_color = macd_config.visual.get('signal_color', '#FF5722')
             macd_histogram = macd_config.visual.get('histogram', True)
             
+            # Fair Value Gaps
+            fvg_config = config.get('fvg', {})
+            fvg_enabled = fvg_config.enabled
+            fvg_min_gap_size = fvg_config.parameters.get('min_gap_size', 0.002)
+            fvg_volume_confirmation = fvg_config.parameters.get('volume_confirmation', True)
+            fvg_overlap_threshold = fvg_config.parameters.get('overlap_threshold', 0.7)
+            fvg_max_distance = fvg_config.parameters.get('max_distance', 100)
+            fvg_show_labels = fvg_config.parameters.get('show_labels', True)
+            fvg_zones_opacity = fvg_config.parameters.get('zones_opacity', 0.2)
+            fvg_max_zones = fvg_config.parameters.get('max_zones', 15)
+            
             return (
                 sma_enabled, sma_period, sma_color,
                 ema_enabled, ema_period, ema_color,
@@ -1617,7 +2460,8 @@ def register_indicators_modal_callbacks(app):
                 pivot_enabled, pivot_method, pivot_period, pivot_color, pivot_resistance_color, pivot_support_color, pivot_line_style, pivot_line_width,
                 rsi_enabled, rsi_period, rsi_overbought, rsi_oversold,
                 atr_enabled, atr_period, atr_multiplier,
-                macd_enabled, macd_fast, macd_slow, macd_signal, macd_color, macd_signal_color, macd_histogram
+                macd_enabled, macd_fast, macd_slow, macd_signal, macd_color, macd_signal_color, macd_histogram,
+                fvg_enabled, fvg_min_gap_size, fvg_volume_confirmation, fvg_overlap_threshold, fvg_max_distance, fvg_show_labels, fvg_zones_opacity, fvg_max_zones
             )
             
         except Exception as e:
@@ -1631,7 +2475,8 @@ def register_indicators_modal_callbacks(app):
                 True, 'standard', 'daily', '#8E44AD', '#E74C3C', '#27AE60', 'solid', 2,  # Pivot
                 True, 14, 70, 30,  # RSI
                 True, 14, 2.0,  # ATR
-                True, 12, 26, 9, '#2196F3', '#FF5722', True  # MACD
+                True, 12, 26, 9, '#2196F3', '#FF5722', True,  # MACD
+                True, 0.002, True, 0.7, 100, True, 0.2, 15  # FVG (Day Trading defaults)
             )
     
     # Callback pour le bouton d'aide

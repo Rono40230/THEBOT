@@ -110,6 +110,132 @@ class TechnicalCalculators:
         
         return atr.fillna(0).tolist()
     
+    def calculate_atr_signals(self, highs: List[float], lows: List[float], 
+                            closes: List[float], period: int = 14, 
+                            multiplier: float = 2.0) -> Dict[str, any]:
+        """Calculer ATR avec signaux de volatilité et tendance"""
+        
+        if len(closes) < period + 1:
+            return {
+                'atr': [0.0] * len(closes),
+                'atr_ma': [0.0] * len(closes),
+                'upper_threshold': [0.0] * len(closes),
+                'lower_threshold': [0.0] * len(closes),
+                'volatility_signals': [],
+                'trend_signals': [],
+                'expansion_signals': [],
+                'contraction_signals': []
+            }
+        
+        # Calcul ATR de base
+        atr_values = self.calculate_atr(highs, lows, closes, period)
+        atr_series = pd.Series(atr_values)
+        
+        # Moyenne mobile de l'ATR pour détecter les tendances de volatilité
+        atr_ma = atr_series.rolling(window=period//2).mean()
+        
+        # Seuils FIXES basés sur la moyenne globale de l'ATR
+        atr_global_mean = atr_series[period:].mean()  # Moyenne globale (sans NaN)
+        atr_global_std = atr_series[period:].std()    # Écart-type global
+        
+        # Seuils fixes et horizontaux
+        upper_threshold_value = atr_global_mean + (atr_global_std * multiplier)  # Seuil haute volatilité
+        lower_threshold_value = max(0, atr_global_mean - (atr_global_std * multiplier/2))  # Seuil basse volatilité (min 0)
+        
+        # Créer des séries constantes pour les seuils
+        upper_threshold = pd.Series([upper_threshold_value] * len(atr_values))
+        lower_threshold = pd.Series([lower_threshold_value] * len(atr_values))
+        
+        # Détection des signaux
+        volatility_signals = []
+        trend_signals = []
+        expansion_signals = []
+        contraction_signals = []
+        
+        for i in range(1, len(atr_values)):
+            if i < period:
+                continue
+                
+            current_atr = atr_values[i]
+            prev_atr = atr_values[i-1]
+            current_ma = atr_ma.iloc[i] if not pd.isna(atr_ma.iloc[i]) else 0
+            prev_ma = atr_ma.iloc[i-1] if not pd.isna(atr_ma.iloc[i-1]) else 0
+            
+            # Signal de haute volatilité (croisement vers le haut du seuil fixe)
+            if current_atr > upper_threshold_value and prev_atr <= upper_threshold_value:
+                volatility_signals.append({
+                    'index': i,
+                    'type': 'high_volatility',
+                    'value': current_atr,
+                    'threshold': upper_threshold_value,
+                    'description': 'Volatilité élevée détectée'
+                })
+            
+            # Signal de basse volatilité (croisement vers le bas du seuil fixe)
+            elif current_atr < lower_threshold_value and prev_atr >= lower_threshold_value:
+                volatility_signals.append({
+                    'index': i,
+                    'type': 'low_volatility', 
+                    'value': current_atr,
+                    'threshold': lower_threshold_value,
+                    'description': 'Volatilité faible détectée'
+                })
+            
+            # Tendance de volatilité croissante
+            if current_ma > prev_ma and prev_ma > 0:
+                if current_ma / prev_ma > 1.1:  # 10% d'augmentation
+                    trend_signals.append({
+                        'index': i,
+                        'type': 'volatility_increasing',
+                        'value': current_atr,
+                        'ma_value': current_ma,
+                        'description': 'Tendance de volatilité croissante'
+                    })
+            
+            # Tendance de volatilité décroissante  
+            elif current_ma < prev_ma and prev_ma > 0:
+                if current_ma / prev_ma < 0.9:  # 10% de diminution
+                    trend_signals.append({
+                        'index': i,
+                        'type': 'volatility_decreasing',
+                        'value': current_atr,
+                        'ma_value': current_ma,
+                        'description': 'Tendance de volatilité décroissante'
+                    })
+            
+            # Expansion de volatilité (forte augmentation soudaine)
+            if current_atr > prev_atr * 1.5:  # 50% d'augmentation
+                expansion_signals.append({
+                    'index': i,
+                    'type': 'volatility_expansion',
+                    'value': current_atr,
+                    'previous': prev_atr,
+                    'ratio': current_atr / prev_atr,
+                    'description': f'Expansion volatilité: +{((current_atr/prev_atr-1)*100):.1f}%'
+                })
+            
+            # Contraction de volatilité (forte diminution soudaine)
+            elif current_atr < prev_atr * 0.7:  # 30% de diminution
+                contraction_signals.append({
+                    'index': i,
+                    'type': 'volatility_contraction',
+                    'value': current_atr,
+                    'previous': prev_atr,
+                    'ratio': current_atr / prev_atr,
+                    'description': f'Contraction volatilité: {((current_atr/prev_atr-1)*100):.1f}%'
+                })
+        
+        return {
+            'atr': atr_values,
+            'atr_ma': atr_ma.fillna(0).tolist(),
+            'upper_threshold': upper_threshold.fillna(0).tolist(),
+            'lower_threshold': lower_threshold.fillna(0).tolist(),
+            'volatility_signals': volatility_signals,
+            'trend_signals': trend_signals,
+            'expansion_signals': expansion_signals,
+            'contraction_signals': contraction_signals
+        }
+    
     def calculate_bollinger_bands(self, prices: List[float], period: int = 20, 
                                  std_dev: float = 2.0) -> Dict[str, List[float]]:
         """Calculer Bollinger Bands"""

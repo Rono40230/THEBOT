@@ -111,6 +111,29 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"fast": 8, "slow": 21, "signal": 5},
                 visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
+            ),
+            
+            # Smart Money - Fair Value Gaps (Scalping)
+            "fvg": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Scalping: Réactif, nombreux gaps
+                    "min_gap_size": 0.001,  # 0.1% minimum
+                    "volume_confirmation": False,  # Pas de confirmation volume (trop restrictif)
+                    "overlap_threshold": 0.8,  # 80% overlap pour invalidation
+                    "max_distance": 50,  # Distance max en pips
+                    # Détection - Sensible
+                    "body_rejection": 0.3,  # 30% rejection minimum
+                    "wick_ratio": 0.6,  # 60% wick vs body
+                    "momentum_filter": True,  # Filtrage momentum
+                    "trend_alignment": False,  # Pas d'alignement tendance
+                    # Affichage - Compact
+                    "show_labels": False,  # Pas de labels (encombrement)
+                    "show_stats": True,  # Stats importantes
+                    "zones_opacity": 0.15,  # Transparence élevée
+                    "max_zones": 10  # Max 10 zones affichées
+                },
+                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.15}
             )
         }
     
@@ -162,6 +185,29 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"fast": 12, "slow": 26, "signal": 9},
                 visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
+            ),
+            
+            # Smart Money - Fair Value Gaps (Day Trading)
+            "fvg": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Day Trading: Équilibré
+                    "min_gap_size": 0.002,  # 0.2% minimum
+                    "volume_confirmation": True,  # Confirmation volume
+                    "overlap_threshold": 0.7,  # 70% overlap pour invalidation
+                    "max_distance": 100,  # Distance max en pips
+                    # Détection - Standard
+                    "body_rejection": 0.5,  # 50% rejection minimum
+                    "wick_ratio": 0.5,  # 50% wick vs body
+                    "momentum_filter": True,  # Filtrage momentum
+                    "trend_alignment": True,  # Alignement tendance
+                    # Affichage - Équilibré
+                    "show_labels": True,  # Labels utiles
+                    "show_stats": True,  # Stats importantes
+                    "zones_opacity": 0.2,  # Transparence modérée
+                    "max_zones": 15  # Max 15 zones affichées
+                },
+                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.2}
             )
         }
     
@@ -213,6 +259,29 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"fast": 12, "slow": 30, "signal": 12},
                 visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
+            ),
+            
+            # Smart Money - Fair Value Gaps (Swing Trading)
+            "fvg": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Swing Trading: Qualité prioritaire
+                    "min_gap_size": 0.005,  # 0.5% minimum
+                    "volume_confirmation": True,  # Confirmation volume obligatoire
+                    "overlap_threshold": 0.6,  # 60% overlap pour invalidation
+                    "max_distance": 200,  # Distance max en pips
+                    # Détection - Strict
+                    "body_rejection": 0.7,  # 70% rejection minimum
+                    "wick_ratio": 0.4,  # 40% wick vs body
+                    "momentum_filter": True,  # Filtrage momentum
+                    "trend_alignment": True,  # Alignement tendance obligatoire
+                    # Affichage - Qualité
+                    "show_labels": True,  # Labels importantes
+                    "show_stats": True,  # Stats importantes
+                    "zones_opacity": 0.25,  # Transparence faible
+                    "max_zones": 20  # Max 20 zones affichées
+                },
+                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.25}
             )
         }
     
@@ -264,6 +333,29 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"fast": 15, "slow": 35, "signal": 15},
                 visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
+            ),
+            
+            # Smart Money - Fair Value Gaps (Position Trading)
+            "fvg": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Position Trading: Gaps majeurs seulement
+                    "min_gap_size": 0.01,  # 1% minimum (très strict)
+                    "volume_confirmation": True,  # Confirmation volume obligatoire
+                    "overlap_threshold": 0.5,  # 50% overlap pour invalidation
+                    "max_distance": 500,  # Distance max en pips (large)
+                    # Détection - Très strict
+                    "body_rejection": 0.8,  # 80% rejection minimum
+                    "wick_ratio": 0.3,  # 30% wick vs body
+                    "momentum_filter": True,  # Filtrage momentum
+                    "trend_alignment": True,  # Alignement tendance obligatoire
+                    # Affichage - Minimaliste
+                    "show_labels": True,  # Labels importantes
+                    "show_stats": True,  # Stats importantes
+                    "zones_opacity": 0.3,  # Transparence faible
+                    "max_zones": 25  # Max 25 zones affichées
+                },
+                visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.3}
             )
         }
     

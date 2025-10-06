@@ -49,6 +49,16 @@ except Exception as e:
     print(f"⚠️ Indicateurs structurels indisponibles: {e}")
     STRUCTURAL_INDICATORS_AVAILABLE = False
 
+# Smart Money Indicators - Import conditionnel
+SMART_MONEY_AVAILABLE = False
+try:
+    from src.thebot.indicators.smart_money.fair_value_gaps import create_fvg_analyzer, FVGConfig
+    SMART_MONEY_AVAILABLE = True
+    print("🧠 Fair Value Gaps Smart Money disponibles")
+except ImportError as e:
+    print(f"⚠️ Smart Money indicators non disponibles: {e}")
+    SMART_MONEY_AVAILABLE = False
+
 class CryptoModule:
     """Module crypto moderne avec interface complète"""
     
@@ -728,12 +738,47 @@ class CryptoModule:
              Input('indicators-pivot-switch', 'value'),
              Input('indicators-pivot-method', 'value'),
              Input('indicators-pivot-line-style', 'value'),
-             Input('indicators-pivot-line-width', 'value')]
+             Input('indicators-pivot-line-width', 'value'),
+             # Smart Money FVG Inputs
+             Input('indicators-fvg-switch', 'value'),
+             Input('indicators-fvg-threshold', 'value'),
+             Input('indicators-fvg-max-age', 'value'),
+             Input('indicators-fvg-volume-confirmation', 'value'),
+             Input('indicators-fvg-show-labels', 'value'),
+             Input('indicators-fvg-opacity', 'value'),
+             # Paramètres avancés FVG
+             Input('indicators-fvg-min-gap-size', 'value'),
+             Input('indicators-fvg-volume-multiplier', 'value'),
+             Input('indicators-fvg-immediate-fill-threshold', 'value'),
+             Input('indicators-fvg-confluence-detection', 'value'),
+             Input('indicators-fvg-confluence-distance', 'value'),
+             Input('indicators-fvg-structural-break-confirmation', 'value'),
+             Input('indicators-fvg-retest-sensitivity', 'value'),
+             Input('indicators-fvg-max-retest-count', 'value'),
+             Input('indicators-fvg-dynamic-opacity', 'value'),
+             Input('indicators-fvg-strength-line-width', 'value'),
+             Input('indicators-fvg-show-distance-to-price', 'value'),
+             Input('indicators-fvg-max-gaps-display', 'value'),
+             Input('indicators-fvg-auto-alerts', 'value'),
+             Input('indicators-fvg-alert-distance', 'value'),
+             Input('indicators-fvg-rsi-confirmation', 'value'),
+             Input('indicators-fvg-fibonacci-levels', 'value'),
+             Input('indicators-fvg-session-filter', 'value'),
+             Input('indicators-fvg-news-filter', 'value'),
+             Input('indicators-fvg-weekend-gaps', 'value')]
         )
         def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period, 
                              sr_enabled, sr_strength, sr_lookback, sr_support_color, sr_resistance_color, sr_line_style, sr_line_width,
                              fibonacci_enabled, fibonacci_swing, fibonacci_line_style, fibonacci_line_width, fibonacci_transparency,
-                             pivot_enabled, pivot_method, pivot_line_style, pivot_line_width):
+                             pivot_enabled, pivot_method, pivot_line_style, pivot_line_width,
+                             # FVG Parameters
+                             fvg_enabled, fvg_threshold, fvg_max_age, fvg_volume_confirmation, fvg_show_labels, fvg_opacity,
+                             # FVG Advanced Parameters
+                             fvg_min_gap_size, fvg_volume_multiplier, fvg_immediate_fill_threshold, fvg_confluence_detection, 
+                             fvg_confluence_distance, fvg_structural_break_confirmation, fvg_retest_sensitivity, fvg_max_retest_count,
+                             fvg_dynamic_opacity, fvg_strength_line_width, fvg_show_distance_to_price, fvg_max_gaps_display,
+                             fvg_auto_alerts, fvg_alert_distance, fvg_rsi_confirmation, fvg_fibonacci_levels,
+                             fvg_session_filter, fvg_news_filter, fvg_weekend_gaps):
             """Met à jour le graphique principal"""
             try:
                 # CORRECTION: Être strict sur le symbole, pas de fallback
@@ -915,6 +960,141 @@ class CryptoModule:
                 except Exception as e:
                     print(f"⚠️ Erreur indicateurs structurels: {e}")
                 
+                # === SMART MONEY ANALYSIS - FAIR VALUE GAPS ===
+                try:
+                    if fvg_enabled and SMART_MONEY_AVAILABLE:
+                        # Valeurs par défaut pour éviter les erreurs
+                        fvg_threshold = fvg_threshold if fvg_threshold is not None else 0.1
+                        fvg_max_age = fvg_max_age if fvg_max_age is not None else 50
+                        # Style de trading par défaut pour FVG (sera synchronisé par la modal)
+                        fvg_trading_style = 'day_trading'
+                        fvg_volume_confirmation = fvg_volume_confirmation if fvg_volume_confirmation is not None else True
+                        fvg_show_labels = fvg_show_labels if fvg_show_labels is not None else True
+                        fvg_opacity = fvg_opacity if fvg_opacity is not None else 30
+                        
+                        # Paramètres avancés avec fallbacks
+                        fvg_min_gap_size = fvg_min_gap_size if fvg_min_gap_size is not None else 0.05
+                        fvg_volume_multiplier = fvg_volume_multiplier if fvg_volume_multiplier is not None else 1.5
+                        fvg_immediate_fill_threshold = fvg_immediate_fill_threshold if fvg_immediate_fill_threshold is not None else 0.3
+                        fvg_confluence_detection = fvg_confluence_detection if fvg_confluence_detection is not None else True
+                        fvg_confluence_distance = fvg_confluence_distance if fvg_confluence_distance is not None else 0.5
+                        fvg_structural_break_confirmation = fvg_structural_break_confirmation if fvg_structural_break_confirmation is not None else False
+                        fvg_retest_sensitivity = fvg_retest_sensitivity if fvg_retest_sensitivity is not None else 0.1
+                        fvg_max_retest_count = fvg_max_retest_count if fvg_max_retest_count is not None else 3
+                        fvg_dynamic_opacity = fvg_dynamic_opacity if fvg_dynamic_opacity is not None else True
+                        fvg_strength_line_width = fvg_strength_line_width if fvg_strength_line_width is not None else True
+                        fvg_show_distance_to_price = fvg_show_distance_to_price if fvg_show_distance_to_price is not None else True
+                        fvg_max_gaps_display = fvg_max_gaps_display if fvg_max_gaps_display is not None else 20
+                        fvg_auto_alerts = fvg_auto_alerts if fvg_auto_alerts is not None else False
+                        fvg_alert_distance = fvg_alert_distance if fvg_alert_distance is not None else 0.2
+                        fvg_rsi_confirmation = fvg_rsi_confirmation if fvg_rsi_confirmation is not None else False
+                        fvg_fibonacci_levels = fvg_fibonacci_levels if fvg_fibonacci_levels is not None else True
+                        fvg_session_filter = fvg_session_filter if fvg_session_filter is not None else True
+                        fvg_news_filter = fvg_news_filter if fvg_news_filter is not None else False
+                        fvg_weekend_gaps = fvg_weekend_gaps if fvg_weekend_gaps is not None else True
+                        
+                        # Configuration FVG complète avec paramètres avancés
+                        fvg_config = FVGConfig(
+                            gap_threshold=fvg_threshold,
+                            min_gap_size=fvg_min_gap_size,
+                            max_gap_age=fvg_max_age,
+                            volume_confirmation=fvg_volume_confirmation,
+                            volume_multiplier=fvg_volume_multiplier,
+                            immediate_fill_threshold=fvg_immediate_fill_threshold / 100.0,  # Convertir % en décimal
+                            confluence_detection=fvg_confluence_detection,
+                            confluence_distance=fvg_confluence_distance,
+                            structural_break_confirmation=fvg_structural_break_confirmation,
+                            retest_sensitivity=fvg_retest_sensitivity,
+                            max_retest_count=fvg_max_retest_count,
+                            session_filter=fvg_session_filter,
+                            news_filter=fvg_news_filter,
+                            weekend_gaps=fvg_weekend_gaps,
+                            dynamic_opacity=fvg_dynamic_opacity,
+                            strength_line_width=fvg_strength_line_width,
+                            show_distance_to_price=fvg_show_distance_to_price,
+                            max_gaps_display=fvg_max_gaps_display,
+                            auto_alerts=fvg_auto_alerts,
+                            alert_distance=fvg_alert_distance,
+                            rsi_confirmation=fvg_rsi_confirmation,
+                            fibonacci_levels=fvg_fibonacci_levels,
+                            show_gap_labels=fvg_show_labels,
+                            gap_opacity=fvg_opacity / 100.0
+                        )
+                        
+                        # Appliquer le preset du style de trading si spécifié
+                        if fvg_trading_style:
+                            from src.thebot.indicators.smart_money.fair_value_gaps import get_trading_style_preset, TradingStyle
+                            try:
+                                style_config = get_trading_style_preset(TradingStyle(fvg_trading_style))
+                                # Garder les paramètres utilisateur, mais utiliser les couleurs du preset
+                                fvg_config.bullish_gap_color = style_config.bullish_gap_color
+                                fvg_config.bearish_gap_color = style_config.bearish_gap_color
+                            except Exception as e:
+                                print(f"⚠️ Erreur preset FVG: {e}")
+                        
+                        # Créer l'analyseur FVG avec configuration complète
+                        fvg_analyzer = create_fvg_analyzer(fvg_trading_style, {
+                            'gap_threshold': fvg_threshold,
+                            'min_gap_size': fvg_min_gap_size,
+                            'volume_confirmation': fvg_volume_confirmation,
+                            'max_gap_age': fvg_max_age,
+                            'volume_multiplier': fvg_volume_multiplier,
+                            'confluence_detection': fvg_confluence_detection,
+                            'retest_sensitivity': fvg_retest_sensitivity
+                        })
+                        
+                        # Analyser les gaps
+                        gaps = fvg_analyzer.analyze_gaps(data)
+                        
+                        # Ajouter les gaps au graphique
+                        if gaps:
+                            fig = fvg_analyzer.create_visualization(fig, data.index.tolist())
+                            
+                            # Compter les gaps actifs et forts
+                            active_gaps = fvg_analyzer.get_active_gaps()
+                            strong_gaps = fvg_analyzer.get_strong_gaps()
+                            near_gaps = fvg_analyzer.get_gaps_near_price(
+                                float(data['close'].iloc[-1]), 
+                                fvg_alert_distance * 5  # Zone élargie pour affichage
+                            )
+                            
+                            # Annotation informative avec détails avancés
+                            info_text = f"🧠 FVG: {len(active_gaps)} actifs ({len(strong_gaps)} forts)"
+                            if near_gaps:
+                                info_text += f" | {len(near_gaps)} proches"
+                            if fvg_confluence_detection:
+                                info_text += " | Confluence✓"
+                            if fvg_rsi_confirmation:
+                                info_text += " | RSI✓"
+                            
+                            fig.add_annotation(
+                                text=info_text,
+                                xref="paper", yref="paper",
+                                x=0.02, y=0.94,
+                                showarrow=False,
+                                font=dict(color='#6f42c1', size=10),
+                                bgcolor='rgba(111, 66, 193, 0.1)',
+                                bordercolor='#6f42c1',
+                                borderwidth=1
+                            )
+                            
+                            print(f"✅ Fair Value Gaps Avancés: {len(gaps)} détectés, {len(active_gaps)} actifs, {len(strong_gaps)} forts")
+                        
+                except Exception as e:
+                    print(f"⚠️ Erreur Fair Value Gaps: {e}")
+                    # En cas d'erreur, ajouter une annotation d'information
+                    if fvg_enabled:
+                        fig.add_annotation(
+                            text="⚠️ FVG: Configuration en cours...",
+                            xref="paper", yref="paper",
+                            x=0.02, y=0.94,
+                            showarrow=False,
+                            font=dict(color='#ffc107', size=10),
+                            bgcolor='rgba(255, 193, 7, 0.1)',
+                            bordercolor='#ffc107',
+                            borderwidth=1
+                        )
+                
                 # Style du graphique
                 fig.update_layout(
                     title=f"{symbol} - {timeframe}",
@@ -952,6 +1132,7 @@ class CryptoModule:
              Input('indicators-rsi-period', 'value'),
              Input('indicators-atr-switch', 'value'),
              Input('indicators-atr-period', 'value'),
+             Input('indicators-atr-multiplier', 'value'),
              Input('indicators-macd-switch', 'value'),
              Input('indicators-macd-fast', 'value'),
              Input('indicators-macd-slow', 'value'),
@@ -960,7 +1141,7 @@ class CryptoModule:
              Input('indicators-macd-signal-color', 'value'),
              Input('indicators-macd-histogram', 'value')]
         )
-        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period,
+        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period, atr_multiplier,
                                    macd_enabled, macd_fast, macd_slow, macd_signal, 
                                    macd_color, macd_signal_color, macd_histogram):
             """Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal"""
@@ -1089,30 +1270,44 @@ class CryptoModule:
                     showlegend=False
                 )
                 
-                # ATR Chart Professionnel avec zones de volatilité
+                # ATR Chart Professionnel avec signaux de croisement et zones de volatilité
                 atr_fig = go.Figure()
                 if atr_enabled and atr_period and atr_period > 0:
-                    atr = self.calculate_atr(data, atr_period)
+                    # Utiliser le multiplier de l'interface (fallback à 2.0 si None)
+                    atr_multiplier_value = atr_multiplier if atr_multiplier is not None else 2.0
+                    atr_data = self.calculate_atr_signals(data, atr_period, atr_multiplier_value)
                     
-                    # Calculer percentiles pour zones de volatilité
-                    atr_p25 = atr.quantile(0.25)
-                    atr_p75 = atr.quantile(0.75)
-                    atr_max = atr.max()
+                    atr = pd.Series(atr_data['atr'])
+                    atr_ma = pd.Series(atr_data['atr_ma'])
+                    upper_threshold = pd.Series(atr_data['upper_threshold'])
+                    lower_threshold = pd.Series(atr_data['lower_threshold'])
                     
-                    # Zones de volatilité avec tooltips explicatifs
-                    # Volatilité faible (0 - P25) - Vert
-                    atr_fig.add_hrect(y0=0, y1=atr_p25, fillcolor="rgba(0, 255, 0, 0.1)", 
-                                      line_width=0)
-                    # Volatilité normale (P25 - P75) - Jaune
-                    atr_fig.add_hrect(y0=atr_p25, y1=atr_p75, fillcolor="rgba(255, 255, 0, 0.1)", 
-                                      line_width=0)
-                    # Volatilité élevée (P75 - Max) - Rouge
-                    atr_fig.add_hrect(y0=atr_p75, y1=atr_max, fillcolor="rgba(255, 0, 0, 0.1)", 
-                                      line_width=0)
+                    # Obtenir les valeurs fixes des seuils
+                    upper_value = upper_threshold.iloc[0] if len(upper_threshold) > 0 else atr.max() * 1.5
+                    lower_value = lower_threshold.iloc[0] if len(lower_threshold) > 0 else 0
                     
-                    # Ligne ATR avec gradient de couleur selon intensité
-                    colors = ['#00ff88' if val <= atr_p25 else '#ffaa00' if val <= atr_p75 else '#ff4444' 
-                             for val in atr]
+                    # Zones de volatilité avec rectangles horizontaux fixes
+                    # Zone de volatilité faible (0 à seuil bas) - Vert
+                    if lower_value > 0:
+                        atr_fig.add_hrect(
+                            y0=0, y1=lower_value,
+                            fillcolor="rgba(0, 255, 0, 0.1)",
+                            line_width=0
+                        )
+                    
+                    # Zone de volatilité normale (seuil bas à seuil haut) - Jaune
+                    atr_fig.add_hrect(
+                        y0=lower_value, y1=upper_value,
+                        fillcolor="rgba(255, 255, 0, 0.1)",
+                        line_width=0
+                    )
+                    
+                    # Zone de volatilité élevée (seuil haut à max) - Rouge
+                    atr_fig.add_hrect(
+                        y0=upper_value, y1=atr.max() * 1.2,
+                        fillcolor="rgba(255, 0, 0, 0.1)",
+                        line_width=0
+                    )
                     
                     # ATR principal avec tooltip enrichi
                     atr_fig.add_trace(go.Scatter(
@@ -1121,71 +1316,147 @@ class CryptoModule:
                         mode='lines',
                         name='ATR',
                         line=dict(color='#00bfff', width=2),
-                        showlegend=False,  # Masquer de la légende
+                        showlegend=False,
                         hovertemplate='<b>ATR</b>: %{y:.4f}<br>' +
                                      '<b>Date</b>: %{x}<br>' +
-                                     '<b>Volatilité</b>: %{customdata}<br>' +
-                                     '<b>Stop suggéré</b>: ±%{text:.4f}<br>' +
+                                     '<b>Stop suggéré</b>: ±%{customdata:.4f}<br>' +
                                      '<extra></extra>',
-                        customdata=[
-                            'Faible - Marché calme' if val <= atr_p25 
-                            else 'Normale - Conditions habituelles' if val <= atr_p75 
-                            else 'Élevée - Marché agité' 
-                            for val in atr
-                        ],
-                        text=atr * 2  # Stop loss suggéré à 2x ATR
+                        customdata=atr * 2  # Stop loss suggéré à 2x ATR
                     ))
                     
-                    # ATR lissé avec tooltip explicatif
-                    atr_smooth = atr.rolling(window=5).mean()
+                    # ATR Moyenne Mobile avec tooltip explicatif
                     atr_fig.add_trace(go.Scatter(
                         x=data.index,
-                        y=atr_smooth,
+                        y=atr_ma,
                         mode='lines',
-                        name='ATR Lissé',
+                        name='ATR Tendance',
                         line=dict(color='#ffa500', width=1, dash='dot'),
                         opacity=0.7,
-                        showlegend=False,  # Masquer de la légende
-                        hovertemplate='<b>ATR Lissé</b>: %{y:.4f}<br>' +
+                        showlegend=False,
+                        hovertemplate='<b>ATR Tendance</b>: %{y:.4f}<br>' +
                                      '<b>Date</b>: %{x}<br>' +
-                                     '<b>Tendance</b>: Volatilité moyenne sur 5 périodes<br>' +
+                                     '<b>Évolution</b>: Tendance de volatilité<br>' +
                                      '<extra></extra>'
                     ))
                     
-                    # Lignes de niveaux sans annotations
-                    atr_fig.add_hline(y=atr_p25, line=dict(color='#00ff88', dash='dash', width=1))
-                    atr_fig.add_hline(y=atr_p75, line=dict(color='#ff4444', dash='dash', width=1))
+                    # Seuils de volatilité HORIZONTAUX FIXES
+                    # Ligne de seuil haute volatilité (rouge)
+                    atr_fig.add_hline(
+                        y=upper_value,
+                        line=dict(color='#ff4444', dash='dash', width=2),
+                        annotation_text=f"Seuil Élevé: {upper_value:.4f}",
+                        annotation_position="top right"
+                    )
                     
-                    # Tooltips invisibles pour expliquer chaque niveau ATR
-                    # Tooltip seuil faible (P25)
-                    atr_fig.add_trace(go.Scatter(
-                        x=[data.index[0]], y=[atr_p25],
-                        mode='markers',
-                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
-                        hovertemplate=f'<b>Seuil Volatilité Faible: {atr_p25:.3f} USDT</b><br>' +
-                                     'Signification: Marché calme et stable<br>' +
-                                     'Mouvement: Prix varie peu (±' + f'{atr_p25:.0f}' + ' USDT)<br>' +
-                                     'Stratégie: Idéal pour positions long terme<br>' +
-                                     'Stop-loss: ±' + f'{atr_p25*2:.0f}' + ' USDT suggéré<br>' +
-                                     '<extra></extra>',
-                        showlegend=False,
-                        name='Seuil faible'
-                    ))
+                    # Ligne de seuil basse volatilité (vert)
+                    if lower_value > 0:
+                        atr_fig.add_hline(
+                            y=lower_value,
+                            line=dict(color='#00ff88', dash='dash', width=2),
+                            annotation_text=f"Seuil Faible: {lower_value:.4f}",
+                            annotation_position="bottom right"
+                        )
                     
-                    # Tooltip seuil élevé (P75)
-                    atr_fig.add_trace(go.Scatter(
-                        x=[data.index[0]], y=[atr_p75],
-                        mode='markers',
-                        marker=dict(size=0.1, color='rgba(0,0,0,0)'),
-                        hovertemplate=f'<b>Seuil Volatilité Élevée: {atr_p75:.3f} USDT</b><br>' +
-                                     'Signification: Marché agité et imprévisible<br>' +
-                                     'Mouvement: Prix varie beaucoup (±' + f'{atr_p75:.0f}' + ' USDT)<br>' +
-                                     'Stratégie: Attention aux positions importantes<br>' +
-                                     'Stop-loss: ±' + f'{atr_p75*2:.0f}' + ' USDT suggéré<br>' +
-                                     '<extra></extra>',
-                        showlegend=False,
-                        name='Seuil élevé'
-                    ))
+                    # === SIGNAUX DE CROISEMENT ATR ===
+                    
+                    # Signaux de haute volatilité (croix vers le haut)
+                    for signal in atr_data['volatility_signals']:
+                        if signal['type'] == 'high_volatility':
+                            atr_fig.add_trace(go.Scatter(
+                                x=[data.index[signal['index']]],
+                                y=[signal['value']],
+                                mode='markers',
+                                marker=dict(symbol='triangle-up', size=12, color='red'),
+                                name='⚠️ Volatilité Élevée',
+                                showlegend=False,
+                                hovertemplate=f'<b>🔺 {signal["description"]}</b><br>' +
+                                             f'ATR: {signal["value"]:.4f}<br>' +
+                                             f'Seuil: {signal["threshold"]:.4f}<br>' +
+                                             'Signal: Marché agité - Prudence!<br>' +
+                                             '<extra></extra>'
+                            ))
+                    
+                    # Signaux de basse volatilité (croix vers le bas)
+                    for signal in atr_data['volatility_signals']:
+                        if signal['type'] == 'low_volatility':
+                            atr_fig.add_trace(go.Scatter(
+                                x=[data.index[signal['index']]],
+                                y=[signal['value']],
+                                mode='markers',
+                                marker=dict(symbol='triangle-down', size=12, color='green'),
+                                name='📉 Volatilité Faible',
+                                showlegend=False,
+                                hovertemplate=f'<b>🔻 {signal["description"]}</b><br>' +
+                                             f'ATR: {signal["value"]:.4f}<br>' +
+                                             f'Seuil: {signal["threshold"]:.4f}<br>' +
+                                             'Signal: Marché calme - Stabilité<br>' +
+                                             '<extra></extra>'
+                            ))
+                    
+                    # Signaux d'expansion de volatilité (étoiles rouges)
+                    for signal in atr_data['expansion_signals']:
+                        atr_fig.add_trace(go.Scatter(
+                            x=[data.index[signal['index']]],
+                            y=[signal['value']],
+                            mode='markers',
+                            marker=dict(symbol='star', size=14, color='orangered'),
+                            name='💥 Expansion',
+                            showlegend=False,
+                            hovertemplate=f'<b>💥 {signal["description"]}</b><br>' +
+                                         f'ATR: {signal["value"]:.4f}<br>' +
+                                         f'Précédent: {signal["previous"]:.4f}<br>' +
+                                         f'Ratio: {signal["ratio"]:.2f}x<br>' +
+                                         'Signal: Explosion de volatilité!<br>' +
+                                         '<extra></extra>'
+                        ))
+                    
+                    # Signaux de contraction de volatilité (diamants bleus)
+                    for signal in atr_data['contraction_signals']:
+                        atr_fig.add_trace(go.Scatter(
+                            x=[data.index[signal['index']]],
+                            y=[signal['value']],
+                            mode='markers',
+                            marker=dict(symbol='diamond', size=12, color='lightblue'),
+                            name='💎 Contraction',
+                            showlegend=False,
+                            hovertemplate=f'<b>💎 {signal["description"]}</b><br>' +
+                                         f'ATR: {signal["value"]:.4f}<br>' +
+                                         f'Précédent: {signal["previous"]:.4f}<br>' +
+                                         f'Ratio: {signal["ratio"]:.2f}x<br>' +
+                                         'Signal: Compression de volatilité<br>' +
+                                         '<extra></extra>'
+                        ))
+                    
+                    # Signaux de tendance de volatilité (flèches)
+                    for signal in atr_data['trend_signals']:
+                        if signal['type'] == 'volatility_increasing':
+                            atr_fig.add_trace(go.Scatter(
+                                x=[data.index[signal['index']]],
+                                y=[signal['ma_value']],
+                                mode='markers',
+                                marker=dict(symbol='arrow-up', size=10, color='orange'),
+                                name='📈 Tendance Hausse',
+                                showlegend=False,
+                                hovertemplate=f'<b>📈 {signal["description"]}</b><br>' +
+                                             f'ATR: {signal["value"]:.4f}<br>' +
+                                             f'Tendance: {signal["ma_value"]:.4f}<br>' +
+                                             'Signal: Volatilité en hausse<br>' +
+                                             '<extra></extra>'
+                            ))
+                        elif signal['type'] == 'volatility_decreasing':
+                            atr_fig.add_trace(go.Scatter(
+                                x=[data.index[signal['index']]],
+                                y=[signal['ma_value']],
+                                mode='markers',
+                                marker=dict(symbol='arrow-down', size=10, color='lightgreen'),
+                                name='📉 Tendance Baisse',
+                                showlegend=False,
+                                hovertemplate=f'<b>📉 {signal["description"]}</b><br>' +
+                                             f'ATR: {signal["value"]:.4f}<br>' +
+                                             f'Tendance: {signal["ma_value"]:.4f}<br>' +
+                                             'Signal: Volatilité en baisse<br>' +
+                                             '<extra></extra>'
+                            ))
                 
                 if not atr_enabled:
                     atr_fig.add_annotation(
@@ -1341,6 +1612,35 @@ class CryptoModule:
             return atr
         except:
             return pd.Series([1] * len(data), index=data.index)
+
+    def calculate_atr_signals(self, data, period=14, multiplier=2.0):
+        """Calcule l'ATR avec signaux de croisement et volatilité"""
+        try:
+            from dash_modules.core.calculators import TechnicalCalculators
+            calculator = TechnicalCalculators()
+            
+            # Utiliser la nouvelle méthode du calculateur
+            return calculator.calculate_atr_signals(
+                highs=data['high'].tolist(),
+                lows=data['low'].tolist(),
+                closes=data['close'].tolist(),
+                period=period,
+                multiplier=multiplier
+            )
+        except Exception as e:
+            print(f"⚠️ Erreur calcul ATR signaux: {e}")
+            # Fallback vers ATR simple
+            atr_simple = self.calculate_atr(data, period)
+            return {
+                'atr': atr_simple.tolist(),
+                'atr_ma': atr_simple.rolling(window=period//2).mean().tolist(),
+                'upper_threshold': (atr_simple * (1 + multiplier)).tolist(),
+                'lower_threshold': (atr_simple * (1 - multiplier/2)).tolist(),
+                'volatility_signals': [],
+                'trend_signals': [],
+                'expansion_signals': [],
+                'contraction_signals': []
+            }
 
     def calculate_macd(self, prices, fast=12, slow=26, signal=9):
         """Calcule le MACD en utilisant le module dédié"""
