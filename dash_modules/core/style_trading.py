@@ -106,6 +106,11 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"period": 7, "multiplier": 1.0},
                 visual={"line_color": "#F39C12"}
+            ),
+            "macd": IndicatorConfig(
+                enabled=True,
+                parameters={"fast": 8, "slow": 21, "signal": 5},
+                visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
             )
         }
     
@@ -152,6 +157,11 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"period": 14, "multiplier": 2.0},
                 visual={"line_color": "#F39C12"}
+            ),
+            "macd": IndicatorConfig(
+                enabled=True,
+                parameters={"fast": 12, "slow": 26, "signal": 9},
+                visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
             )
         }
     
@@ -198,6 +208,11 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"period": 21, "multiplier": 3.0},
                 visual={"line_color": "#F39C12"}
+            ),
+            "macd": IndicatorConfig(
+                enabled=True,
+                parameters={"fast": 12, "slow": 30, "signal": 12},
+                visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
             )
         }
     
@@ -244,6 +259,11 @@ class TradingStyleManager:
                 enabled=True,
                 parameters={"period": 30, "multiplier": 4.0},
                 visual={"line_color": "#F39C12"}
+            ),
+            "macd": IndicatorConfig(
+                enabled=True,
+                parameters={"fast": 15, "slow": 35, "signal": 15},
+                visual={"macd_color": "#2196F3", "signal_color": "#FF5722", "histogram": True}
             )
         }
     

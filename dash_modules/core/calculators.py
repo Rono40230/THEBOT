@@ -127,30 +127,7 @@ class TechnicalCalculators:
             'lower': lower_band.fillna(0).tolist()
         }
     
-    def calculate_macd(self, prices: List[float], fast: int = 12, 
-                      slow: int = 26, signal: int = 9) -> Dict[str, List[float]]:
-        """Calculer MACD"""
-        
-        series = pd.Series(prices)
-        
-        # EMA rapide et lente
-        ema_fast = series.ewm(span=fast).mean()
-        ema_slow = series.ewm(span=slow).mean()
-        
-        # MACD line
-        macd_line = ema_fast - ema_slow
-        
-        # Signal line
-        signal_line = macd_line.ewm(span=signal).mean()
-        
-        # Histogram
-        histogram = macd_line - signal_line
-        
-        return {
-            'macd': macd_line.fillna(0).tolist(),
-            'signal': signal_line.fillna(0).tolist(),
-            'histogram': histogram.fillna(0).tolist()
-        }
+
     
     def calculate_stochastic(self, highs: List[float], lows: List[float], 
                            closes: List[float], k_period: int = 14, 

@@ -471,7 +471,7 @@ class CryptoModule:
                     style={'height': '200px'},
                     config={'displayModeBar': False}
                 )
-            ], width=6),  # Élargi à 6 colonnes au lieu de 4
+            ], width=4),  # Réduit à 4 colonnes pour 3 graphiques
             
             # ATR Chart
             dbc.Col([
@@ -480,7 +480,16 @@ class CryptoModule:
                     style={'height': '200px'},
                     config={'displayModeBar': False}
                 )
-            ], width=6)  # Élargi à 6 colonnes au lieu de 4
+            ], width=4),  # Réduit à 4 colonnes pour 3 graphiques
+            
+            # MACD Chart
+            dbc.Col([
+                dcc.Graph(
+                    id='crypto-macd-chart',
+                    style={'height': '200px'},
+                    config={'displayModeBar': False}
+                )
+            ], width=4)  # Nouveau graphique MACD
             
         ])
 
@@ -935,15 +944,25 @@ class CryptoModule:
         
         @app.callback(
             [Output('crypto-rsi-chart', 'figure'),
-             Output('crypto-atr-chart', 'figure')],
+             Output('crypto-atr-chart', 'figure'),
+             Output('crypto-macd-chart', 'figure')],
             [Input('crypto-symbol-search', 'value'),
              Input('crypto-timeframe-selector', 'value'),
              Input('indicators-rsi-switch', 'value'),
              Input('indicators-rsi-period', 'value'),
              Input('indicators-atr-switch', 'value'),
-             Input('indicators-atr-period', 'value')]
+             Input('indicators-atr-period', 'value'),
+             Input('indicators-macd-switch', 'value'),
+             Input('indicators-macd-fast', 'value'),
+             Input('indicators-macd-slow', 'value'),
+             Input('indicators-macd-signal', 'value'),
+             Input('indicators-macd-color', 'value'),
+             Input('indicators-macd-signal-color', 'value'),
+             Input('indicators-macd-histogram', 'value')]
         )
-        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period):
+        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, atr_enabled, atr_period,
+                                   macd_enabled, macd_fast, macd_slow, macd_signal, 
+                                   macd_color, macd_signal_color, macd_histogram):
             """Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal"""
             try:
                 # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
@@ -1062,7 +1081,7 @@ class CryptoModule:
                     )
                 
                 rsi_fig.update_layout(
-                    title="RSI",
+                    title="RSI - Surachat/Survente",
                     template='plotly_dark',
                     height=200,
                     margin=dict(l=0, r=0, t=30, b=0),
@@ -1184,7 +1203,110 @@ class CryptoModule:
                     showlegend=False
                 )
                 
-                return rsi_fig, atr_fig  # Retourner seulement RSI et ATR
+                # === GRAPHIQUE MACD ===
+                macd_fig = go.Figure()
+                
+                if macd_enabled and len(data) > max(macd_slow, 50):
+                    # Calculer MACD
+                    macd_data = self.calculate_macd(data['close'], macd_fast, macd_slow, macd_signal)
+                    
+                    # Histogramme MACD (barres)
+                    if macd_histogram:
+                        colors = ['green' if x >= 0 else 'red' for x in macd_data['histogram']]
+                        macd_fig.add_trace(go.Bar(
+                            x=data.index,
+                            y=macd_data['histogram'],
+                            name='Histogramme',
+                            marker_color=colors,
+                            opacity=0.6,
+                            showlegend=False,
+                            hovertemplate='<b>Histogramme</b>: %{y:.4f}<br>' +
+                                         '<b>Date</b>: %{x}<br>' +
+                                         '<b>Signal</b>: %{customdata}<br>' +
+                                         '<extra></extra>',
+                            customdata=[
+                                'Force haussière' if x > 0 else 'Force baissière' 
+                                for x in macd_data['histogram']
+                            ]
+                        ))
+                    
+                    # Ligne MACD
+                    macd_fig.add_trace(go.Scatter(
+                        x=data.index,
+                        y=macd_data['macd'],
+                        mode='lines',
+                        name='MACD',
+                        line=dict(color=macd_color, width=2),
+                        showlegend=False,
+                        hovertemplate='<b>MACD</b>: %{y:.4f}<br>' +
+                                     '<b>Date</b>: %{x}<br>' +
+                                     '<b>Calcul</b>: EMA(' + str(macd_fast) + ') - EMA(' + str(macd_slow) + ')<br>' +
+                                     '<extra></extra>'
+                    ))
+                    
+                    # Ligne Signal
+                    macd_fig.add_trace(go.Scatter(
+                        x=data.index,
+                        y=macd_data['signal'],
+                        mode='lines',
+                        name='Signal',
+                        line=dict(color=macd_signal_color, width=2),
+                        showlegend=False,
+                        hovertemplate='<b>Signal</b>: %{y:.4f}<br>' +
+                                     '<b>Date</b>: %{x}<br>' +
+                                     '<b>Calcul</b>: EMA(' + str(macd_signal) + ') du MACD<br>' +
+                                     '<extra></extra>'
+                    ))
+                    
+                    # Ligne zéro
+                    macd_fig.add_hline(y=0, line=dict(color='white', dash='dot', width=1))
+                    
+                    # Tooltips pour signaux
+                    # Crossover positif récent
+                    crossover_points = []
+                    for i in range(1, len(macd_data['macd'])):
+                        if (macd_data['macd'].iloc[i] > macd_data['signal'].iloc[i] and 
+                            macd_data['macd'].iloc[i-1] <= macd_data['signal'].iloc[i-1]):
+                            crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'achat'))
+                        elif (macd_data['macd'].iloc[i] < macd_data['signal'].iloc[i] and 
+                              macd_data['macd'].iloc[i-1] >= macd_data['signal'].iloc[i-1]):
+                            crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'vente'))
+                    
+                    # Afficher les 3 derniers crossovers
+                    for point in crossover_points[-3:]:
+                        color = 'lime' if point[2] == 'achat' else 'red'
+                        symbol = 'triangle-up' if point[2] == 'achat' else 'triangle-down'
+                        macd_fig.add_trace(go.Scatter(
+                            x=[point[0]], y=[point[1]],
+                            mode='markers',
+                            marker=dict(size=8, color=color, symbol=symbol),
+                            hovertemplate=f'<b>Signal {point[2].title()}</b><br>' +
+                                         f'Date: {point[0]}<br>' +
+                                         f'MACD: {point[1]:.4f}<br>' +
+                                         ('📈 MACD croise au-dessus du Signal' if point[2] == 'achat' else 
+                                          '📉 MACD croise en-dessous du Signal') + '<br>' +
+                                         '<extra></extra>',
+                            showlegend=False,
+                            name=f'Signal {point[2]}'
+                        ))
+                
+                if not macd_enabled:
+                    macd_fig.add_annotation(
+                        text="MACD désactivé",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, showarrow=False,
+                        font=dict(size=14, color="#666666")
+                    )
+                
+                macd_fig.update_layout(
+                    title="MACD - Convergence/Divergence",
+                    template='plotly_dark',
+                    height=200,
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    showlegend=False
+                )
+                
+                return rsi_fig, atr_fig, macd_fig  # Retourner les 3 figures
                 
             except Exception as e:
                 print(f"❌ Erreur graphiques secondaires: {e}")
@@ -1193,7 +1315,7 @@ class CryptoModule:
                     xref="paper", yref="paper",
                     x=0.5, y=0.5, showarrow=False
                 )
-                return empty_fig, empty_fig  # Retourner seulement 2 figures
+                return empty_fig, empty_fig, empty_fig  # Retourner 3 figures vides
 
     def calculate_rsi(self, prices, period=14):
         """Calcule le RSI"""
@@ -1219,6 +1341,79 @@ class CryptoModule:
             return atr
         except:
             return pd.Series([1] * len(data), index=data.index)
+
+    def calculate_macd(self, prices, fast=12, slow=26, signal=9):
+        """Calcule le MACD en utilisant le module dédié"""
+        try:
+            # Importer le module MACD
+            from src.thebot.indicators.momentum.macd import MACD, MACDConfig
+            
+            # Créer configuration
+            config = MACDConfig(
+                fast_period=fast,
+                slow_period=slow,
+                signal_period=signal,
+                source="close"
+            )
+            
+            # Créer indicateur MACD
+            macd = MACD(config)
+            
+            # Préparer données au format attendu
+            if isinstance(prices, (list, tuple)):
+                # Convertir liste en Series pandas avec index numérique
+                prices_series = pd.Series(prices)
+            else:
+                # Déjà une Series pandas
+                prices_series = prices
+            
+            data = pd.DataFrame({
+                'open': prices_series,
+                'high': prices_series * 1.01,  # Approximation si pas de données OHLC complètes
+                'low': prices_series * 0.99,
+                'close': prices_series,
+                'volume': [1000] * len(prices_series)
+            })
+            
+            # Calculer MACD
+            result = macd.calculate(data, include_signals=False)
+            
+            return result['data']  # Retourne {'macd', 'signal', 'histogram'}
+            
+        except Exception as e:
+            print(f"⚠️ Erreur MACD modulaire: {e}")
+            # Fallback vers calcul simple
+            return self._calculate_macd_fallback(prices, fast, slow, signal)
+    
+    def _calculate_macd_fallback(self, prices, fast=12, slow=26, signal=9):
+        """Calcul MACD de secours en cas d'erreur du module"""
+        try:
+            # EMA rapide et lente
+            ema_fast = prices.ewm(span=fast).mean()
+            ema_slow = prices.ewm(span=slow).mean()
+            
+            # Ligne MACD
+            macd_line = ema_fast - ema_slow
+            
+            # Ligne de signal (EMA du MACD)
+            signal_line = macd_line.ewm(span=signal).mean()
+            
+            # Histogramme (MACD - Signal)
+            histogram = macd_line - signal_line
+            
+            return {
+                'macd': macd_line,
+                'signal': signal_line,
+                'histogram': histogram
+            }
+        except Exception as e:
+            print(f"⚠️ Erreur calcul MACD fallback: {e}")
+            # Retourner des valeurs par défaut
+            return {
+                'macd': pd.Series([0] * len(prices), index=prices.index),
+                'signal': pd.Series([0] * len(prices), index=prices.index),
+                'histogram': pd.Series([0] * len(prices), index=prices.index)
+            }
 
     # === NOUVEAUX INDICATEURS STRUCTURELS (PHASE 1) ===
     

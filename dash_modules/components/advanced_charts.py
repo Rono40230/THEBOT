@@ -460,15 +460,49 @@ class AdvancedCharts:
         return rsi
     
     def calculate_macd(self, prices: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> Tuple[pd.Series, pd.Series, pd.Series]:
-        """Calcule le MACD"""
-        ema_fast = prices.ewm(span=fast).mean()
-        ema_slow = prices.ewm(span=slow).mean()
-        
-        macd_line = ema_fast - ema_slow
-        signal_line = macd_line.ewm(span=signal).mean()
-        histogram = macd_line - signal_line
-        
-        return macd_line, signal_line, histogram
+        """Calcule le MACD en utilisant le module dédié"""
+        try:
+            from src.thebot.indicators.momentum.macd import MACD, MACDConfig
+            
+            config = MACDConfig(
+                fast_period=fast,
+                slow_period=slow,
+                signal_period=signal,
+                source="close"
+            )
+            
+            macd_calculator = MACD(config)
+            
+            # Préparer DataFrame au format attendu
+            data = pd.DataFrame({
+                'open': prices,
+                'high': prices * 1.01,
+                'low': prices * 0.99,
+                'close': prices,
+                'volume': [1000] * len(prices)
+            })
+            
+            result = macd_calculator.calculate(data, include_signals=False)
+            
+            # Extraire les données et convertir en Series
+            result_data = result['data']
+            macd_line = pd.Series(result_data['macd'], index=prices.index)
+            signal_line = pd.Series(result_data['signal'], index=prices.index)
+            histogram = pd.Series(result_data['histogram'], index=prices.index)
+            
+            return macd_line, signal_line, histogram
+            
+        except Exception as e:
+            print(f"Erreur MACD module: {e}")
+            # Fallback vers ancienne méthode
+            ema_fast = prices.ewm(span=fast).mean()
+            ema_slow = prices.ewm(span=slow).mean()
+            
+            macd_line = ema_fast - ema_slow
+            signal_line = macd_line.ewm(span=signal).mean()
+            histogram = macd_line - signal_line
+            
+            return macd_line, signal_line, histogram
     
     def detect_support_resistance(self, data: pd.DataFrame, lookback: int = 20) -> Dict:
         """Détecte les niveaux de support et résistance"""

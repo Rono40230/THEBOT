@@ -497,17 +497,40 @@ class StrategiesModule(BaseMarketModule):
         return self._execute_backtest(data, config, 'Bollinger Bands')
     
     def _macd_strategy(self, data: pd.DataFrame, config: Dict) -> Dict:
-        """MACD Signal Strategy"""
-        # Calculate MACD
-        ema_fast = data['close'].ewm(span=12).mean()
-        ema_slow = data['close'].ewm(span=26).mean()
-        data['MACD'] = ema_fast - ema_slow
-        data['MACD_signal'] = data['MACD'].ewm(span=9).mean()
-        data['MACD_histogram'] = data['MACD'] - data['MACD_signal']
+        """MACD Signal Strategy utilisant le module dédié"""
+        try:
+            from src.thebot.indicators.momentum.macd import MACD, MACDConfig
+            
+            # Configuration par défaut pour stratégie
+            macd_config = MACDConfig(
+                fast_period=12,
+                slow_period=26,
+                signal_period=9,
+                source="close"
+            )
+            
+            macd_calculator = MACD(macd_config)
+            result = macd_calculator.calculate(data, include_signals=False)
+            
+            # Assigner aux colonnes du DataFrame
+            result_data = result['data']
+            data['MACD'] = pd.Series(result_data['macd'], index=data.index)
+            data['MACD_signal'] = pd.Series(result_data['signal'], index=data.index)
+            data['MACD_histogram'] = pd.Series(result_data['histogram'], index=data.index)
+            
+        except Exception as e:
+            print(f"Erreur module MACD en stratégie: {e}")
+            # Fallback vers calcul manuel
+            ema_fast = data['close'].ewm(span=12).mean()
+            ema_slow = data['close'].ewm(span=26).mean()
+            data['MACD'] = ema_fast - ema_slow
+            data['MACD_signal'] = data['MACD'].ewm(span=9).mean()
+            data['MACD_histogram'] = data['MACD'] - data['MACD_signal']
         
-        # Generate signals
+        # Generate signals (correction du warning pandas)
+        data = data.copy()  # Éviter le warning
         data['signal'] = 0
-        data['signal'][1:] = np.where(
+        data.loc[1:, 'signal'] = np.where(
             (data['MACD'][1:] > data['MACD_signal'][1:]) & 
             (data['MACD'][:-1].values <= data['MACD_signal'][:-1].values), 1, 0
         )

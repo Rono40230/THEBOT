@@ -1129,12 +1129,12 @@ class IndicatorsModal:
         ])
     
     def _create_macd_section(self) -> html.Div:
-        """Section MACD (pour futures extensions)"""
+        """Section MACD (Moving Average Convergence Divergence)"""
         return html.Div([
             dbc.Row([
                 dbc.Col([
                     html.H6([
-                        "MACD",
+                        "MACD (Moving Average Convergence Divergence)",
                         html.I(className="fas fa-info-circle ms-2", 
                                id="macd-tooltip-target",
                                style={"color": "#17a2b8", "cursor": "pointer"})
@@ -1148,18 +1148,153 @@ class IndicatorsModal:
                         "📊 Histogramme: MACD - Signal", html.Br(),
                         "🎯 Excellent pour détecter les changements de tendance"
                     ], target="macd-tooltip-target", placement="right"),
-                    html.P("Moving Average Convergence Divergence", className="text-muted small")
+                    html.P("Oscillateur de momentum avec ligne de signal", className="text-muted small")
                 ], width=8),
                 dbc.Col([
                     dbc.Switch(
                         id="indicators-macd-switch",
-                        value=False,
-                        disabled=True,  # Désactivé pour l'instant
+                        value=True,
                         className="ms-auto"
                     )
                 ], width=4, className="d-flex align-items-center justify-content-end")
             ]),
-            html.Small("🚧 Fonctionnalité en développement", className="text-warning")
+            
+            dbc.Collapse([
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label([
+                            "EMA Rapide",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="macd-fast-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "⚡ EMA rapide pour calcul MACD", html.Br(),
+                            "📊 Standard: 12 périodes", html.Br(),
+                            "🔄 Plus court = plus réactif", html.Br(),
+                            "📈 Trading intraday: 8-10", html.Br(),
+                            "📉 Swing trading: 12-15"
+                        ], target="macd-fast-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-macd-fast",
+                            type="number",
+                            value=12,
+                            min=5,
+                            max=50,
+                            step=1,
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "EMA Lente",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="macd-slow-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "🐌 EMA lente pour calcul MACD", html.Br(),
+                            "📊 Standard: 26 périodes", html.Br(),
+                            "📈 Doit être > EMA rapide", html.Br(),
+                            "🔄 Plus long = moins de bruit", html.Br(),
+                            "⚖️ Équilibre signal/stabilité"
+                        ], target="macd-slow-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-macd-slow",
+                            type="number",
+                            value=26,
+                            min=10,
+                            max=100,
+                            step=1,
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "Signal",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="macd-signal-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "📏 EMA de la ligne MACD", html.Br(),
+                            "📊 Standard: 9 périodes", html.Br(),
+                            "🎯 Crossover = signaux trading", html.Br(),
+                            "⚡ Plus court = signaux précoces", html.Br(),
+                            "🔄 Plus long = signaux confirmés"
+                        ], target="macd-signal-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-macd-signal",
+                            type="number",
+                            value=9,
+                            min=3,
+                            max=30,
+                            step=1,
+                            size="sm"
+                        )
+                    ], width=4)
+                ], className="mt-2"),
+                
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Label([
+                            "Couleur MACD",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="macd-color-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "🎨 Couleur de la ligne MACD", html.Br(),
+                            "📊 Ligne principale de l'oscillateur", html.Br(),
+                            "💡 Choisir couleur contrastante"
+                        ], target="macd-color-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-macd-color",
+                            type="color",
+                            value="#2196F3",
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "Couleur Signal",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="macd-signal-color-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "🎨 Couleur de la ligne de signal", html.Br(),
+                            "� EMA du MACD pour crossovers", html.Br(),
+                            "⚡ Souvent rouge ou orange"
+                        ], target="macd-signal-color-tooltip", placement="top"),
+                        dbc.Input(
+                            id="indicators-macd-signal-color",
+                            type="color",
+                            value="#FF5722",
+                            size="sm"
+                        )
+                    ], width=4),
+                    dbc.Col([
+                        dbc.Label([
+                            "Histogramme",
+                            html.I(className="fas fa-question-circle ms-1", 
+                                   id="macd-histogram-tooltip",
+                                   style={"color": "#6c757d", "cursor": "help", "fontSize": "0.8rem"})
+                        ], className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Afficher l'histogramme MACD", html.Br(),
+                            "📈 Vert: MACD > Signal", html.Br(),
+                            "📉 Rouge: MACD < Signal", html.Br(),
+                            "🎯 Montre la force du momentum"
+                        ], target="macd-histogram-tooltip", placement="top"),
+                        dbc.Switch(
+                            id="indicators-macd-histogram",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ], width=4)
+                ], className="mt-2")
+            ], id="indicators-macd-collapse", is_open=True)
         ])
     
     def get_custom_css(self) -> str:
@@ -1336,7 +1471,14 @@ def register_indicators_modal_callbacks(app):
          Output("indicators-rsi-oversold", "value", allow_duplicate=True),
          Output("indicators-atr-switch", "value", allow_duplicate=True),
          Output("indicators-atr-period", "value", allow_duplicate=True),
-         Output("indicators-atr-multiplier", "value", allow_duplicate=True)],
+         Output("indicators-atr-multiplier", "value", allow_duplicate=True),
+         Output("indicators-macd-switch", "value", allow_duplicate=True),
+         Output("indicators-macd-fast", "value", allow_duplicate=True),
+         Output("indicators-macd-slow", "value", allow_duplicate=True),
+         Output("indicators-macd-signal", "value", allow_duplicate=True),
+         Output("indicators-macd-color", "value", allow_duplicate=True),
+         Output("indicators-macd-signal-color", "value", allow_duplicate=True),
+         Output("indicators-macd-histogram", "value", allow_duplicate=True)],
         [Input("indicators-reset-btn", "n_clicks")],
         prevent_initial_call=True
     )
@@ -1344,8 +1486,9 @@ def register_indicators_modal_callbacks(app):
         """Réinitialiser tous les indicateurs aux valeurs par défaut"""
         if reset_clicks:
             # Valeurs par défaut correspondant au crypto_module
-            return True, 20, True, 12, False, 3, False, 20, False, "standard", False, 14, 70, 30, False, 14, 2.0
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return (True, 20, True, 12, False, 3, False, 20, False, "standard", False, 14, 70, 30, False, 14, 2.0,
+                   True, 12, 26, 9, "#2196F3", "#FF5722", True)  # MACD par défaut
+        return (dash.no_update,) * 23  # Ajuster le nombre pour inclure MACD
 
     # Callback pour l'application automatique des styles de trading
     @app.callback(
@@ -1381,7 +1524,14 @@ def register_indicators_modal_callbacks(app):
          Output("indicators-rsi-oversold", "value", allow_duplicate=True),
          Output("indicators-atr-switch", "value", allow_duplicate=True),
          Output("indicators-atr-period", "value", allow_duplicate=True),
-         Output("indicators-atr-multiplier", "value", allow_duplicate=True)],
+         Output("indicators-atr-multiplier", "value", allow_duplicate=True),
+         Output("indicators-macd-switch", "value", allow_duplicate=True),
+         Output("indicators-macd-fast", "value", allow_duplicate=True),
+         Output("indicators-macd-slow", "value", allow_duplicate=True),
+         Output("indicators-macd-signal", "value", allow_duplicate=True),
+         Output("indicators-macd-color", "value", allow_duplicate=True),
+         Output("indicators-macd-signal-color", "value", allow_duplicate=True),
+         Output("indicators-macd-histogram", "value", allow_duplicate=True)],
         [Input("indicators-trading-style", "value")],
         prevent_initial_call=True
     )
@@ -1389,7 +1539,7 @@ def register_indicators_modal_callbacks(app):
         """Applique automatiquement les paramètres selon le style de trading choisi"""
         if not selected_style or selected_style == "manuel":
             # Style manuel - ne change rien
-            return tuple([dash.no_update] * 33)
+            return tuple([dash.no_update] * 40)  # Ajusté pour inclure MACD (7 paramètres)
         
         try:
             # Récupère la configuration pour ce style
@@ -1449,6 +1599,16 @@ def register_indicators_modal_callbacks(app):
             atr_period = atr_config.parameters.get('period', 14)
             atr_multiplier = atr_config.parameters.get('multiplier', 2.0)
             
+            # MACD
+            macd_config = config.get('macd', {})
+            macd_enabled = macd_config.enabled
+            macd_fast = macd_config.parameters.get('fast', 12)
+            macd_slow = macd_config.parameters.get('slow', 26)
+            macd_signal = macd_config.parameters.get('signal', 9)
+            macd_color = macd_config.visual.get('macd_color', '#2196F3')
+            macd_signal_color = macd_config.visual.get('signal_color', '#FF5722')
+            macd_histogram = macd_config.visual.get('histogram', True)
+            
             return (
                 sma_enabled, sma_period, sma_color,
                 ema_enabled, ema_period, ema_color,
@@ -1456,7 +1616,8 @@ def register_indicators_modal_callbacks(app):
                 fib_enabled, fib_swing, fib_line_style, fib_line_width, fib_transparency,
                 pivot_enabled, pivot_method, pivot_period, pivot_color, pivot_resistance_color, pivot_support_color, pivot_line_style, pivot_line_width,
                 rsi_enabled, rsi_period, rsi_overbought, rsi_oversold,
-                atr_enabled, atr_period, atr_multiplier
+                atr_enabled, atr_period, atr_multiplier,
+                macd_enabled, macd_fast, macd_slow, macd_signal, macd_color, macd_signal_color, macd_histogram
             )
             
         except Exception as e:
@@ -1464,13 +1625,14 @@ def register_indicators_modal_callbacks(app):
             # En cas d'erreur, retourne les valeurs par défaut day trading
             return (
                 True, 20, '#2E86C1',  # SMA
-                    True, 12, '#E74C3C',  # EMA  
-                    True, 3, 50, '#27AE60', '#E74C3C', 'solid', 2,  # Support/Resistance
-                    True, 20, 'dash', 1, 20,  # Fibonacci
-                    True, 'standard', 'daily', '#8E44AD', '#E74C3C', '#27AE60', 'solid', 2,  # Pivot
-                    True, 14, 70, 30,  # RSI
-                    True, 14, 2.0  # ATR
-                )
+                True, 12, '#E74C3C',  # EMA  
+                True, 3, 50, '#27AE60', '#E74C3C', 'solid', 2,  # Support/Resistance
+                True, 20, 'dash', 1, 20,  # Fibonacci
+                True, 'standard', 'daily', '#8E44AD', '#E74C3C', '#27AE60', 'solid', 2,  # Pivot
+                True, 14, 70, 30,  # RSI
+                True, 14, 2.0,  # ATR
+                True, 12, 26, 9, '#2196F3', '#FF5722', True  # MACD
+            )
     
     # Callback pour le bouton d'aide
     @app.callback(
