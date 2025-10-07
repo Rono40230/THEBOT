@@ -255,175 +255,13 @@ class CryptoModule:
         ], className="mb-4")
 
     def create_technical_indicators_component(self):
-        """Crée le composant des indicateurs techniques (extensible)"""
+        """Composant indicateurs techniques simplifié - Contrôles déplacés vers modal"""
         return html.Div([
-            # SMA
             html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="crypto-sma-switch",
-                            label="SMA",
-                            value=self.default_indicators['sma']['enabled']
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="crypto-sma-period",
-                            type="number",
-                            value=self.default_indicators['sma']['period'],
-                            min=1, max=200, step=1,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], className="mb-2")
-            ]),
-            
-            # EMA
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="crypto-ema-switch",
-                            label="EMA",
-                            value=self.default_indicators['ema']['enabled']
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="crypto-ema-period",
-                            type="number",
-                            value=self.default_indicators['ema']['period'],
-                            min=1, max=200, step=1,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], className="mb-2")
-            ]),
-            
-            # RSI
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="crypto-rsi-switch",
-                            label="RSI",
-                            value=self.default_indicators['rsi']['enabled']
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="crypto-rsi-period",
-                            type="number",
-                            value=self.default_indicators['rsi']['period'],
-                            min=1, max=50, step=1,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], className="mb-2")
-            ]),
-            
-            # ATR
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="crypto-atr-switch",
-                            label="ATR",
-                            value=self.default_indicators['atr']['enabled']
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dbc.Input(
-                            id="crypto-atr-period",
-                            type="number",
-                            value=self.default_indicators['atr']['period'],
-                            min=1, max=50, step=1,
-                            size="sm"
-                        )
-                    ], width=6)
-                ], className="mb-2")
-            ]),
-            
-            # === INDICATEURS STRUCTURELS (PHASE 1) ===
-            html.Hr(className="my-3"),
-            html.H6("📊 Analyse Structurelle", className="text-primary mb-3"),
-            
-            # Support/Resistance
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="crypto-sr-switch",
-                            label="Support/Resistance",
-                            value=False
-                        )
-                    ], width=8),
-                    dbc.Col([
-                        dbc.Input(
-                            id="crypto-sr-strength",
-                            type="number",
-                            value=2,
-                            min=1, max=5, step=1,
-                            size="sm"
-                        )
-                    ], width=4)
-                ], className="mb-2")
-            ]),
-            
-            # Fibonacci
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="crypto-fibonacci-switch",
-                            label="Fibonacci",
-                            value=False
-                        )
-                    ], width=8),
-                    dbc.Col([
-                        dbc.Input(
-                            id="crypto-fibonacci-swing",
-                            type="number",
-                            value=2,
-                            min=1, max=5, step=1,
-                            size="sm"
-                        )
-                    ], width=4)
-                ], className="mb-2")
-            ]),
-            
-            # Pivot Points
-            html.Div([
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Switch(
-                            id="crypto-pivot-switch",
-                            label="Pivot Points",
-                            value=False
-                        )
-                    ], width=8),
-                    dbc.Col([
-                        dcc.Dropdown(
-                            id="crypto-pivot-method",
-                            options=[
-                                {'label': 'Standard', 'value': 'standard'},
-                                {'label': 'Fibonacci', 'value': 'fibonacci'},
-                                {'label': 'Camarilla', 'value': 'camarilla'}
-                            ],
-                            value='standard',
-                            style={'fontSize': '12px'}
-                        )
-                    ], width=4)
-                ], className="mb-2")
-            ]),
-            
-            html.Div([
-                html.Small("✨ Phase 1: Indicateurs Structurels Active", 
-                          className="text-success fst-italic")
-            ], className="mt-3")
-            
-        ], className="mb-4")
+                html.Small("🎛️ Indicateurs techniques disponibles via le bouton 'Indicateurs' dans la barre de prix", 
+                          className="text-info fst-italic")
+            ], className="mb-3")
+        ])
 
     def create_ai_analysis_component(self):
         """Composant IA simplifié - Retourné vide car contrôles déplacés"""
@@ -1264,7 +1102,7 @@ class CryptoModule:
             try:
                 # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
                 if not symbol:
-                    return go.Figure(), go.Figure()
+                    return go.Figure(), go.Figure(), go.Figure()
                 
                 # Mettre à jour le symbole courant pour synchronisation
                 if symbol != self.current_symbol:
@@ -1283,7 +1121,7 @@ class CryptoModule:
                         xref="paper", yref="paper",
                         x=0.5, y=0.5, showarrow=False
                     )
-                    return empty_fig, empty_fig  # Retourner seulement 2 figures
+                    return empty_fig, empty_fig, empty_fig  # 3 figures pour RSI, ATR, MACD
                 
                 # RSI Chart Professionnel avec signaux avancés
                 rsi_fig = go.Figure()
@@ -1408,6 +1246,12 @@ class CryptoModule:
                     )
                 
                 if not rsi_enabled:
+                    rsi_fig.add_annotation(
+                        text="RSI désactivé",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, showarrow=False,
+                        font=dict(size=14, color="#666666")
+                    )
                     rsi_fig.add_annotation(
                         text="RSI désactivé",
                         xref="paper", yref="paper",

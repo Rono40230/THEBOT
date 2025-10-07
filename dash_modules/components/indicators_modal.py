@@ -2656,28 +2656,91 @@ def register_indicators_modal_callbacks(app):
         
         return is_open
     
-    # Callbacks pour les collapses des sections
-    collapse_callbacks = [
-        ("indicators-sma-switch", "indicators-sma-collapse"),
-        ("indicators-ema-switch", "indicators-ema-collapse"),
-        ("indicators-sr-switch", "indicators-sr-collapse"),
-        ("indicators-fibonacci-switch", "indicators-fibonacci-collapse"),
-        ("indicators-pivot-switch", "indicators-pivot-collapse"),
-        ("indicators-rsi-switch", "indicators-rsi-collapse"),
-        ("indicators-atr-switch", "indicators-atr-collapse"),
-        ("indicators-fvg-switch", "indicators-fvg-collapse"),
-        ("indicators-ob-switch", "indicators-ob-collapse")
-    ]
+    # Callbacks individuels pour les collapses (pas de boucle pour éviter le problème de closure)
     
-    for switch_id, collapse_id in collapse_callbacks:
-        @app.callback(
-            Output(collapse_id, "is_open"),
-            [Input(switch_id, "value")],
-            prevent_initial_call=True
-        )
-        def toggle_collapse(enabled):
-            """Ouvrir/fermer la section quand l'indicateur est activé/désactivé"""
-            return enabled
+    @app.callback(
+        Output("indicators-sma-collapse", "is_open"),
+        [Input("indicators-sma-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_sma_collapse(enabled):
+        """Toggle SMA collapse"""
+        return enabled
+    
+    @app.callback(
+        Output("indicators-ema-collapse", "is_open"),
+        [Input("indicators-ema-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_ema_collapse(enabled):
+        """Toggle EMA collapse"""
+        return enabled
+    
+    @app.callback(
+        Output("indicators-sr-collapse", "is_open"),
+        [Input("indicators-sr-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_sr_collapse(enabled):
+        """Toggle Support/Résistance collapse"""
+        print(f"🔍 DEBUG SR COLLAPSE: enabled={enabled}, returning={enabled}")
+        return enabled
+    
+    @app.callback(
+        Output("indicators-fibonacci-collapse", "is_open"),
+        [Input("indicators-fibonacci-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_fibonacci_collapse(enabled):
+        """Toggle Fibonacci collapse"""
+        print(f"🔍 DEBUG FIBONACCI COLLAPSE: enabled={enabled}, returning={enabled}")
+        return enabled
+    
+    @app.callback(
+        Output("indicators-pivot-collapse", "is_open"),
+        [Input("indicators-pivot-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_pivot_collapse(enabled):
+        """Toggle Points Pivots collapse"""
+        print(f"🔍 DEBUG PIVOT COLLAPSE: enabled={enabled}, returning={enabled}")
+        return enabled
+    
+    @app.callback(
+        Output("indicators-rsi-collapse", "is_open"),
+        [Input("indicators-rsi-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_rsi_collapse(enabled):
+        """Toggle RSI collapse"""
+        return enabled
+    
+    @app.callback(
+        Output("indicators-atr-collapse", "is_open"),
+        [Input("indicators-atr-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_atr_collapse(enabled):
+        """Toggle ATR collapse"""
+        return enabled
+    
+    @app.callback(
+        Output("indicators-fvg-collapse", "is_open"),
+        [Input("indicators-fvg-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_fvg_collapse(enabled):
+        """Toggle FVG collapse"""
+        return enabled
+    
+    @app.callback(
+        Output("indicators-ob-collapse", "is_open"),
+        [Input("indicators-ob-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_ob_collapse(enabled):
+        """Toggle Order Blocks collapse"""
+        return enabled
     
     # Callback principal pour synchronisation INSTANTANÉE avec le graphique
     # Note: Cette version ne renvoie rien car les IDs crypto-xxx n'existent plus
@@ -2956,37 +3019,6 @@ def register_indicators_modal_callbacks(app):
                 True, 0.002, True, 0.7, 100, True, 0.2, 15,  # FVG (Day Trading defaults)
                 True, 20, 1.5, 0.6, 1.5, 0.2, 100, True, True, True, True, '#2E8B57', '#DC143C', 30, 15  # Order Blocks
             )
-
-
-# Instance globale
-indicators_modal = IndicatorsModal()
-
-
-def register_indicators_modal_callbacks(app):
-    """Enregistrer les callbacks pour la modal des indicateurs"""
-    
-    # Callback pour ouvrir/fermer la modal
-    @app.callback(
-        Output("indicators-modal", "is_open"),
-        [Input("manage-indicators-btn", "n_clicks"),
-         Input("indicators-close-btn", "n_clicks")],
-        [State("indicators-modal", "is_open")],
-        prevent_initial_call=True
-    )
-    def toggle_indicators_modal(open_clicks, close_clicks, is_open):
-        """Gérer l'ouverture/fermeture de la modal"""
-        ctx = callback_context
-        if not ctx.triggered:
-            return False
-        
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        
-        if button_id == "manage-indicators-btn":
-            return True
-        elif button_id == "indicators-close-btn":
-            return False
-        
-        return is_open
 
     # Callback de synchronisation automatique des paramètres Order Blocks selon le style
     @app.callback(
