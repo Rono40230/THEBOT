@@ -36,6 +36,7 @@ from dash_modules.tabs.forex_module import ForexModule
 from dash_modules.tabs.stocks_module import StocksModule
 from dash_modules.tabs.economic_news_module import EconomicNewsModule
 from dash_modules.tabs.crypto_news_module import CryptoNewsModule
+from dash_modules.tabs.announcements_calendar import AnnouncementsCalendarModule
 from dash_modules.tabs.strategies_module import StrategiesModule
 
 # Import style trading manager
@@ -116,11 +117,13 @@ class THEBOTDashApp:
                 'forex': ForexModule(calculators=shared_calculators),
                 'stocks': StocksModule(calculators=shared_calculators),
                 'economic_news': EconomicNewsModule(calculators=shared_calculators),
+                'announcements_calendar': AnnouncementsCalendarModule(calculators=shared_calculators),
                 'crypto_news': CryptoNewsModule(calculators=shared_calculators),
                 'strategies': StrategiesModule(calculators=shared_calculators)
             }
             
             print("✅ Modules modulaires initialisés avec succès")
+            print(f"🔍 DEBUG: Modules disponibles: {list(self.modules.keys())}")
             
             # Configuration unique des callbacks pour les modules qui en ont
             if 'crypto' in self.modules and hasattr(self.modules['crypto'], 'setup_callbacks'):
@@ -134,6 +137,10 @@ class THEBOTDashApp:
             if 'crypto_news' in self.modules and hasattr(self.modules['crypto_news'], 'setup_callbacks'):
                 self.modules['crypto_news'].setup_callbacks(self.app)
                 print("✅ Callbacks Crypto News configurés")
+            
+            if 'announcements_calendar' in self.modules and hasattr(self.modules['announcements_calendar'], 'setup_callbacks'):
+                self.modules['announcements_calendar'].setup_callbacks(self.app)
+                print("✅ Callbacks Announcements Calendar configurés")
             
             if 'strategies' in self.modules and hasattr(self.modules['strategies'], 'setup_callbacks'):
                 self.modules['strategies'].setup_callbacks(self.app)
@@ -456,6 +463,11 @@ class THEBOTDashApp:
                 modal_css += "\n" + indicators_modal.get_custom_css()
                 print("✅ CSS Modal Indicateurs ajouté")
             
+            # CSS pour le module calendrier
+            if 'announcements_calendar' in self.modules:
+                modal_css += "\n" + self.modules['announcements_calendar'].get_custom_css()
+                print("✅ CSS Module Calendrier ajouté")
+            
             if modal_css:
                 self.app.index_string = f'''
                 <!DOCTYPE html>
@@ -489,8 +501,9 @@ class THEBOTDashApp:
             # Navigation principale - Onglets modulaires
             dbc.Col([
                 dbc.Tabs([
-                    dbc.Tab(label="� News Éco", tab_id="economic_news"),
+                    dbc.Tab(label="📰 News Éco", tab_id="economic_news"),
                     dbc.Tab(label="🪙 News Crypto", tab_id="crypto_news"),
+                    dbc.Tab(label="📅 Calendrier", tab_id="announcements_calendar"),
                     dbc.Tab(label="₿ Crypto", tab_id="crypto"),
                     dbc.Tab(label="💱 Forex", tab_id="forex"),
                     dbc.Tab(label="📈 Stocks", tab_id="stocks"),
@@ -1134,6 +1147,16 @@ class THEBOTDashApp:
                             12  # Pleine largeur
                         )
                 
+                elif active_tab == 'announcements_calendar':
+                    # Announcements Calendar module : layout spécialisé
+                    if 'announcements_calendar' in self.modules:
+                        return (
+                            self.modules['announcements_calendar'].get_layout() if hasattr(self.modules['announcements_calendar'], 'get_layout') else html.Div("Calendrier Annonces en cours de développement"),
+                            html.Div(),  # Pas de sidebar pour calendar
+                            0,  # Pas de sidebar
+                            12  # Pleine largeur
+                        )
+                
                 elif active_tab == 'strategies':
                     # Strategies module : layout spécialisé
                     if 'strategies' in self.modules:
@@ -1146,15 +1169,34 @@ class THEBOTDashApp:
                 
                 elif active_tab in ['crypto', 'forex', 'stocks']:
                     # Modules de marché
+                    print(f"🔄 DEBUG: Processing market tab: {active_tab}")
                     if active_tab in self.modules:
+                        print(f"✅ DEBUG: Found module for {active_tab}")
                         if active_tab == 'crypto':
                             # Crypto en pleine largeur (nouvelle interface)
-                            return (
-                                self.modules[active_tab].get_layout(),
-                                self.modules[active_tab].get_sidebar(),  # Contient les dropdowns cachés
-                                0,  # Pas de sidebar visible
-                                12  # Pleine largeur
-                            )
+                            print("🔄 DEBUG: Generating crypto layout...")
+                            try:
+                                crypto_layout = self.modules[active_tab].get_layout()
+                                crypto_sidebar = self.modules[active_tab].get_sidebar()
+                                print("✅ DEBUG: Crypto layout and sidebar generated successfully")
+                                return (
+                                    crypto_layout,
+                                    crypto_sidebar,  # Contient les dropdowns cachés
+                                    0,  # Pas de sidebar visible
+                                    12  # Pleine largeur
+                                )
+                            except Exception as crypto_error:
+                                print(f"❌ DEBUG: Error generating crypto layout: {crypto_error}")
+                                import traceback
+                                traceback.print_exc()
+                                return (
+                                    html.Div([
+                                        dbc.Alert(f"Erreur module crypto: {crypto_error}", color="danger")
+                                    ]),
+                                    html.Div(),
+                                    0,
+                                    12
+                                )
                         else:
                             # Forex et Stocks gardent l'ancienne interface avec sidebar
                             return (
@@ -1165,9 +1207,12 @@ class THEBOTDashApp:
                             )
                     else:
                         # Fallback si module non disponible
+                        print(f"❌ DEBUG: Module {active_tab} not found in self.modules")
+                        print(f"❌ DEBUG: Available modules: {list(self.modules.keys())}")
                         return (
                             html.Div([
-                                dbc.Alert(f"Module {active_tab} non disponible", color="warning")
+                                dbc.Alert(f"Module {active_tab} non disponible", color="warning"),
+                                html.P(f"Modules disponibles: {list(self.modules.keys())}")
                             ]),
                             self.create_sidebar(),
                             3,
@@ -1351,15 +1396,21 @@ class THEBOTDashApp:
         )
         def toggle_api_config_modal(open_clicks, close_clicks, is_open):
             """Toggle API configuration modal"""
+            print(f"🔧 DEBUG API Modal: open_clicks={open_clicks}, close_clicks={close_clicks}, is_open={is_open}")
+            
             ctx = dash.callback_context
             if not ctx.triggered:
+                print("🔧 DEBUG API Modal: Aucun trigger")
                 return False
             
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+            print(f"🔧 DEBUG API Modal: button_id={button_id}")
             
             if button_id == "open-api-config-btn":
+                print("🔧 DEBUG API Modal: Ouverture demandée")
                 return True
             elif button_id == "close-config-btn":
+                print("🔧 DEBUG API Modal: Fermeture demandée")
                 return False
             
             return is_open
@@ -1374,10 +1425,11 @@ class THEBOTDashApp:
              State("api-key-fmp", "value"),
              State("api-key-twelve-data", "value"),
              State("api-key-huggingface", "value"),
+             State("api-key-finnhub", "value"),
              State("api-config-modal", "is_open")],
             prevent_initial_call=True
         )
-        def save_api_config(save_clicks, alpha_key, crypto_key, coin_key, fmp_key, twelve_key, hf_key, is_open):
+        def save_api_config(save_clicks, alpha_key, crypto_key, coin_key, fmp_key, twelve_key, hf_key, finnhub_key, is_open):
             """Save API configuration"""
             if save_clicks and is_open:
                 try:
@@ -1439,16 +1491,27 @@ class THEBOTDashApp:
                         if api_config.save_huggingface_key(hf_key.strip()):
                             saved_count += 1
                     
+                    # Finnhub (Economic Calendar)
+                    if finnhub_key and finnhub_key.strip():
+                        if api_config.save_finnhub_key(finnhub_key.strip()):
+                            saved_count += 1
+                    
                     # Sauvegarder la configuration
-                    api_config.save_config()
+                    save_success = api_config.save_config()
                     print(f"✅ API Configuration saved - {saved_count} clés mises à jour")
                     
-                    # Fermer la modal et rafraîchir
-                    return api_config.get_api_config_modal().children, False
+                    if save_success:
+                        # Force reload de la config pour éviter les problèmes de cache
+                        api_config._load_config()
+                        print("🔄 Configuration reloaded from file")
+                    
+                    # Fermer la modal et rafraîchir avec config fraîche
+                    fresh_modal = api_config.get_api_config_modal()
+                    return fresh_modal, False
                     
                 except Exception as e:
                     print(f"❌ Error saving API config: {e}")
-                    return api_config.get_api_config_modal().children, is_open
+                    return api_config.get_api_config_modal(), is_open
             
             return dash.no_update, dash.no_update
 
@@ -1572,7 +1635,7 @@ class THEBOTDashApp:
 def main():
     """Point d'entrée principal"""
     app = THEBOTDashApp()
-    app.run(debug=True, port=8050)
+    app.run(debug=True, port=8051)
 
 
 def create_dash_app(debug=False, port=8050):

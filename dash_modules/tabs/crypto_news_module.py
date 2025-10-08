@@ -33,6 +33,16 @@ except ImportError:
     print("⚠️ Smart AI Manager non disponible")
     AI_AVAILABLE = False
 
+# Import Phase 4 Components
+try:
+    from ..components.crypto_trends import crypto_trends
+    from ..components.top_performers import top_performers  
+    from ..components.fear_greed_gauge import fear_greed_gauge
+    PHASE4_COMPONENTS_AVAILABLE = True
+except ImportError:
+    print("⚠️ Phase 4 Components non disponibles")
+    PHASE4_COMPONENTS_AVAILABLE = False
+
 class CryptoNewsModule:
     """Module News Crypto alimenté exclusivement par RSS avec widgets AI complets"""
     
@@ -81,6 +91,38 @@ class CryptoNewsModule:
         except Exception as e:
             print(f"⚠️ Erreur traduction résumé crypto: {e}")
             return summary
+    
+    def _format_date(self, date_value):
+        """Formater une date pour l'affichage"""
+        if not date_value or date_value in ['N/A', 'Unknown Date', '']:
+            return "Date inconnue"
+        
+        try:
+            # Si c'est déjà une string formatée, la retourner
+            if isinstance(date_value, str):
+                # Essayer de parser différents formats
+                from datetime import datetime
+                try:
+                    # Format ISO avec timezone
+                    if 'T' in date_value and ('+' in date_value or 'Z' in date_value):
+                        dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                        return dt.strftime("%d/%m/%Y %H:%M")
+                    # Format ISO simple
+                    elif 'T' in date_value:
+                        dt = datetime.fromisoformat(date_value)
+                        return dt.strftime("%d/%m/%Y %H:%M")
+                    # Déjà formaté
+                    else:
+                        return date_value
+                except:
+                    return date_value
+            # Si c'est un objet datetime
+            elif hasattr(date_value, 'strftime'):
+                return date_value.strftime("%d/%m/%Y %H:%M")
+            else:
+                return str(date_value)
+        except Exception as e:
+            return "Date invalide"
 
     def get_rss_news(self) -> List[Dict]:
         """Récupérer les news depuis RSS Manager avec traduction"""
@@ -103,13 +145,17 @@ class CryptoNewsModule:
                     translated_title = self.translate_article_title(original_title)
                     translated_summary = self.translate_article_summary(original_summary)
                     
-                    # Créer article enrichi avec traduction
+                    # Créer article enrichi avec traduction et mapping des champs
                     enriched_article = {
                         **article,
                         'title': translated_title,
                         'original_title': original_title,
                         'summary': translated_summary,
-                        'original_summary': original_summary
+                        'original_summary': original_summary,
+                        # Mapper les champs de date pour uniformité
+                        'published_time': article.get('published_time') or article.get('published_date') or article.get('pubDate') or 'Unknown Date',
+                        # Mapper les champs de source
+                        'source': article.get('source') or article.get('source_name') or 'Unknown Source'
                     }
                     
                     crypto_news.append(enriched_article)
@@ -337,74 +383,90 @@ class CryptoNewsModule:
             return {'high': 20, 'medium': 50, 'low': 30}
     
     def get_layout(self) -> html.Div:
-        """Layout principal avec widgets AI crypto complets"""
+        """Layout principal avec widgets AI crypto optimisés"""
         return html.Div([
-            # AI Widgets Row
+            # AI Widgets Row Optimisée - Seulement les widgets fonctionnels
             dbc.Row([
-                # Sentiment Analysis Crypto
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="fas fa-brain me-2"),
-                            "Crypto Sentiment",
-                            dbc.Button([
-                                html.I(className="fas fa-sync-alt")
-                            ], id="refresh-crypto-news-btn", color="warning", size="sm", 
-                               className="float-end ms-2", style={'padding': '0.25rem 0.5rem'})
-                        ]),
-                        dbc.CardBody([
-                            dcc.Graph(id="crypto-sentiment-chart", style={'height': '300px'})
-                        ])
-                    ])
-                ], width=3),
-                
-                # Fear & Greed Index Crypto
+                # Fear & Greed Index Crypto - Gauge comme les news éco
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-thermometer-half me-2"),
-                            "Crypto Fear & Greed"
+                            "😨 Fear & Greed Index"
                         ]),
                         dbc.CardBody([
-                            html.Div(id="crypto-fear-greed-widget")
+                            dcc.Graph(id="crypto-fear-greed-gauge", style={'height': '200px'})
                         ])
                     ])
-                ], width=3),
+                ], width=4),
                 
-                # Trending Coins/Tokens
+                # Top Performers Crypto - Widget personnalisé
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-fire me-2"),
-                            "Trending Coins"
+                            html.I(className="fas fa-trophy me-2"),
+                            "🏆 Top Performers"
                         ]),
                         dbc.CardBody([
-                            html.Div(id="crypto-trending-coins")
+                            html.Div(id="crypto-trending-coins", children=[
+                                dbc.Row([
+                                    dbc.Col("BTC", width=4),
+                                    dbc.Col("$65,432", width=4, className="text-end"),
+                                    dbc.Col([html.I(className="fas fa-arrow-up text-success")], width=4, className="text-end")
+                                ], className="mb-2"),
+                                dbc.Row([
+                                    dbc.Col("ETH", width=4),
+                                    dbc.Col("$3,124", width=4, className="text-end"),
+                                    dbc.Col([html.I(className="fas fa-arrow-up text-success")], width=4, className="text-end")
+                                ], className="mb-2"),
+                                dbc.Row([
+                                    dbc.Col("SOL", width=4),
+                                    dbc.Col("$145", width=4, className="text-end"),
+                                    dbc.Col([html.I(className="fas fa-arrow-down text-danger")], width=4, className="text-end")
+                                ])
+                            ])
                         ])
                     ])
-                ], width=3),
+                ], width=4),
                 
-                # Price Impact Analysis
+                # Crypto Trends Analysis - Widget personnalisé
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-chart-line me-2"),
-                            "Price Impact"
+                            "📊 Crypto Trends"
                         ]),
                         dbc.CardBody([
-                            html.Div(id="crypto-price-impact-widget")
+                            html.Div(id="crypto-price-impact-widget", children=[
+                                html.Div([
+                                    html.H6("📈 DeFi en hausse", className="mb-1"),
+                                    html.P("Les protocoles décentralisés attirent plus d'attention", className="small text-muted")
+                                ], className="mb-3"),
+                                html.Div([
+                                    html.H6("📈 Adoption institutionnelle", className="mb-1"),
+                                    html.P("Les grandes entreprises s'intéressent aux cryptos", className="small text-muted")
+                                ], className="mb-3"),
+                                html.Div([
+                                    html.H6("⚡ Layer 2 Solutions", className="mb-1"),
+                                    html.P("Les solutions de mise à l'échelle gagnent du terrain", className="small text-muted")
+                                ])
+                            ])
                         ])
                     ])
-                ], width=3)
+                ], width=4)
             ], className="mb-4"),
             
-            # News Feed Principal
+            # News Feed Principal avec bouton refresh intégré
             dbc.Row([
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-rss me-2"),
-                            "Live RSS Crypto News Feed"
+                            "Live RSS Crypto News Feed",
+                            dbc.Button([
+                                html.I(className="fas fa-sync-alt")
+                            ], id="refresh-crypto-news-btn", color="warning", size="sm", 
+                               className="float-end ms-2", style={'padding': '0.25rem 0.5rem'})
                         ]),
                         dbc.CardBody([
                             html.Div(id="crypto-news-feed", style={'maxHeight': '600px', 'overflowY': 'auto'})
@@ -451,13 +513,17 @@ class CryptoNewsModule:
             # Analyser impact prix avec la liste
             price_impact = self.analyze_price_impact(articles)
             
-            return {
-                'news': articles,
+            # Format cohérent pour tous les widgets
+            news_data = {
+                'news': articles,  # Liste d'articles pour les widgets
                 'trending': trending,
                 'fear_greed': fear_greed,
                 'price_impact': price_impact,
+                'total': len(articles),
                 'timestamp': datetime.now().isoformat()
-            }, sentiment
+            }
+            
+            return news_data, sentiment
         
         @app.callback(
             Output('crypto-news-feed', 'children'),
@@ -504,10 +570,10 @@ class CryptoNewsModule:
                                           className="text-muted small mb-2"),
                                     html.Div([
                                         impact_badge,
-                                        dbc.Badge(article.get('source', 'RSS'), color="info", className="me-2"),
+                                        dbc.Badge(article.get('source', 'Unknown Source'), color="info", className="me-2"),
                                         html.Small([
                                             html.I(className="fas fa-clock me-1"),
-                                            str(article.get('published_time', 'N/A'))
+                                            self._format_date(article.get('published_time', article.get('published_date', 'Unknown Date')))
                                         ], className="text-muted me-3"),
                                         dbc.Button([
                                             html.I(className="fas fa-external-link-alt me-1"),
@@ -533,142 +599,342 @@ class CryptoNewsModule:
             return news_items
         
         @app.callback(
-            Output('crypto-sentiment-chart', 'figure'),
-            [Input('crypto-sentiment-store', 'data')]
-        )
-        def update_crypto_sentiment_chart(sentiment_data):
-            """Mettre à jour le graphique de sentiment crypto"""
-            if not sentiment_data:
-                sentiment_data = {'bullish': 40, 'neutral': 35, 'bearish': 25}
-            
-            # Graphique en donut crypto
-            fig = go.Figure(data=[
-                go.Pie(
-                    labels=['Bullish 🚀', 'Neutral ⚖️', 'Bearish 📉'],
-                    values=[sentiment_data.get('bullish', 0), 
-                           sentiment_data.get('neutral', 0), 
-                           sentiment_data.get('bearish', 0)],
-                    hole=0.5,
-                    marker_colors=['#22c55e', '#eab308', '#ef4444']
-                )
-            ])
-            
-            fig.update_layout(
-                title="Crypto Market Sentiment",
-                showlegend=True,
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font_color='white',
-                height=300
-            )
-            
-            return fig
-        
-        @app.callback(
-            Output('crypto-fear-greed-widget', 'children'),
+            Output('crypto-fear-greed-gauge', 'figure'),
             [Input('crypto-news-store', 'data')]
         )
-        def update_crypto_fear_greed_widget(news_data):
-            """Widget Fear & Greed crypto"""
-            if not news_data or not news_data.get('fear_greed'):
-                fear_greed = {'score': 50, 'classification': 'Neutral ⚖️', 'color': '#eab308'}
-            else:
-                fear_greed = news_data['fear_greed']
-            
-            return html.Div([
-                html.H1(str(fear_greed['score']), 
-                       className="text-center mb-2", 
-                       style={'color': fear_greed['color'], 'fontSize': '4rem'}),
-                html.H6(fear_greed['classification'], 
-                       className="text-center mb-3", 
-                       style={'color': fear_greed['color']}),
-                dbc.Progress(
-                    value=fear_greed['score'],
-                    color="success" if fear_greed['score'] > 60 else "warning" if fear_greed['score'] > 40 else "danger",
-                    style={'height': '10px'}
+        def update_crypto_fear_greed_gauge(news_data):
+            """Gauge Fear & Greed crypto basé sur l'analyse des vraies news"""
+            try:
+                # Calcul du score basé sur les vraies données RSS
+                if not news_data or not news_data.get('news'):
+                    # Valeurs par défaut
+                    fear_greed_score = 55
+                else:
+                    # Calculer le score basé sur les news réelles
+                    articles = news_data.get('news', [])
+                    
+                    # Analyser le sentiment des titres et résumés
+                    positive_words = [
+                        'pump', 'bull', 'bullish', 'rise', 'gain', 'up', 'rally', 'surge', 'profit',
+                        'moon', 'lambo', 'hodl', 'buy', 'long', 'green', 'breakout', 'ath'
+                    ]
+                    negative_words = [
+                        'dump', 'bear', 'bearish', 'fall', 'crash', 'down', 'drop', 'dip', 'loss',
+                        'rekt', 'sell', 'short', 'red', 'correction', 'fud', 'liquidation'
+                    ]
+                    
+                    positive_score = 0
+                    negative_score = 0
+                    total_articles = len(articles)
+                    
+                    for article in articles:
+                        title_lower = article.get('title', '').lower()
+                        summary_lower = article.get('summary', '').lower()
+                        text = f"{title_lower} {summary_lower}"
+                        
+                        # Compter les mots positifs et négatifs
+                        pos_count = sum(1 for word in positive_words if word in text)
+                        neg_count = sum(1 for word in negative_words if word in text)
+                        
+                        positive_score += pos_count
+                        negative_score += neg_count
+                    
+                    # Calculer le score Fear & Greed (0-100)
+                    if positive_score == 0 and negative_score == 0:
+                        fear_greed_score = 50  # Neutre si pas de sentiment détecté
+                    else:
+                        # Score basé sur le ratio positif/négatif
+                        total_sentiment = positive_score + negative_score
+                        positivity_ratio = positive_score / total_sentiment if total_sentiment > 0 else 0.5
+                        
+                        # Convertir en score 0-100 avec ajustement
+                        fear_greed_score = 30 + (positivity_ratio * 40)  # Entre 30 et 70 base
+                        
+                        # Bonus/malus selon l'intensité
+                        intensity = total_sentiment / total_articles if total_articles > 0 else 0
+                        if intensity > 2:  # Beaucoup de sentiment
+                            if positivity_ratio > 0.6:
+                                fear_greed_score += 20  # Très bullish
+                            elif positivity_ratio < 0.4:
+                                fear_greed_score -= 20  # Très bearish
+                    
+                    # Limiter entre 5 et 95
+                    fear_greed_score = max(5, min(95, fear_greed_score))
+                
+                # Déterminer la couleur et le texte
+                if fear_greed_score >= 75:
+                    bar_color = "#16a34a"  # Vert foncé
+                    classification = "Extreme Greed"
+                elif fear_greed_score >= 60:
+                    bar_color = "#22c55e"  # Vert
+                    classification = "Greed"
+                elif fear_greed_score >= 45:
+                    bar_color = "#eab308"  # Jaune
+                    classification = "Neutral"
+                elif fear_greed_score >= 25:
+                    bar_color = "#f97316"  # Orange
+                    classification = "Fear"
+                else:
+                    bar_color = "#dc2626"  # Rouge
+                    classification = "Extreme Fear"
+                
+                # Création du gauge Plotly
+                fig = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = fear_greed_score,
+                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    title = {'text': f"Crypto {classification}", 'font': {'color': 'white'}},
+                    number = {'font': {'color': 'white', 'size': 40}},
+                    gauge = {
+                        'axis': {
+                            'range': [None, 100],
+                            'tickcolor': 'white',
+                            'tickfont': {'color': 'white'}
+                        },
+                        'bar': {'color': bar_color, 'thickness': 0.8},
+                        'steps': [
+                            {'range': [0, 25], 'color': "#dc2626", 'name': 'Extreme Fear'},
+                            {'range': [25, 45], 'color': "#f97316", 'name': 'Fear'},
+                            {'range': [45, 60], 'color': "#eab308", 'name': 'Neutral'},
+                            {'range': [60, 75], 'color': "#22c55e", 'name': 'Greed'},
+                            {'range': [75, 100], 'color': "#16a34a", 'name': 'Extreme Greed'}
+                        ],
+                        'threshold': {
+                            'line': {'color': "white", 'width': 3},
+                            'thickness': 0.75,
+                            'value': 50
+                        }
+                    }
+                ))
+                
+                fig.update_layout(
+                    height=200,
+                    margin=dict(l=20, r=20, t=40, b=20),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
                 )
-            ])
+                
+                return fig
+                
+            except Exception as e:
+                print(f"❌ Erreur Fear & Greed Gauge: {e}")
+                # Gauge par défaut en cas d'erreur
+                fig = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = 50,
+                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    title = {'text': "Crypto Neutral", 'font': {'color': 'white'}},
+                    number = {'font': {'color': 'white', 'size': 40}},
+                    gauge = {
+                        'axis': {'range': [None, 100], 'tickcolor': 'white'},
+                        'bar': {'color': "#eab308"},
+                        'steps': [
+                            {'range': [0, 25], 'color': "#dc2626"},
+                            {'range': [25, 45], 'color': "#f97316"},
+                            {'range': [45, 60], 'color': "#eab308"},
+                            {'range': [60, 75], 'color': "#22c55e"},
+                            {'range': [75, 100], 'color': "#16a34a"}
+                        ]
+                    }
+                ))
+                fig.update_layout(
+                    height=200,
+                    margin=dict(l=20, r=20, t=40, b=20),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
+                )
+                return fig
         
         @app.callback(
             Output('crypto-trending-coins', 'children'),
             [Input('crypto-news-store', 'data')]
         )
         def update_crypto_trending_coins(news_data):
-            """Widget coins tendance"""
-            if not news_data or not news_data.get('trending'):
-                return html.P("Aucun coin tendance", className="text-muted text-center")
-            
-            trending_items = []
-            for coin in news_data['trending'][:6]:
-                # Couleur selon sentiment
-                if coin.get('sentiment') == 'positive':
-                    text_color = "text-success"
-                    icon = "fas fa-arrow-up"
-                else:
-                    text_color = "text-warning"
-                    icon = "fas fa-minus"
+            """Widget coins tendance basé sur les mentions dans les news"""
+            try:
+                if not news_data or not news_data.get('news'):
+                    # Données de démonstration
+                    return html.Div([
+                        dbc.Row([
+                            dbc.Col("BTC", width=4),
+                            dbc.Col("$65,432", width=4, className="text-end"),
+                            dbc.Col([html.I(className="fas fa-arrow-up text-success")], width=4, className="text-end")
+                        ], className="mb-2"),
+                        dbc.Row([
+                            dbc.Col("ETH", width=4),  
+                            dbc.Col("$3,124", width=4, className="text-end"),
+                            dbc.Col([html.I(className="fas fa-arrow-up text-success")], width=4, className="text-end")
+                        ], className="mb-2"),
+                        dbc.Row([
+                            dbc.Col("SOL", width=4),
+                            dbc.Col("$145", width=4, className="text-end"),
+                            dbc.Col([html.I(className="fas fa-arrow-down text-danger")], width=4, className="text-end")
+                        ])
+                    ])
                 
-                trending_items.append(
+                # Analyser les articles pour extraire les mentions de cryptos
+                articles = news_data.get('news', [])
+                crypto_mentions = Counter()
+                crypto_sentiment = {}
+                
+                # Liste des cryptos principales à chercher
+                major_cryptos = {
+                    'bitcoin': 'BTC', 'btc': 'BTC',
+                    'ethereum': 'ETH', 'eth': 'ETH', 
+                    'solana': 'SOL', 'sol': 'SOL',
+                    'cardano': 'ADA', 'ada': 'ADA',
+                    'ripple': 'XRP', 'xrp': 'XRP',
+                    'binance': 'BNB', 'bnb': 'BNB'
+                }
+                
+                positive_words = ['pump', 'bull', 'rise', 'gain', 'up', 'rally', 'surge', 'profit']
+                negative_words = ['dump', 'bear', 'fall', 'crash', 'down', 'drop', 'dip', 'loss']
+                
+                for article in articles:
+                    title_lower = article.get('title', '').lower()
+                    summary_lower = article.get('summary', '').lower()
+                    text = f"{title_lower} {summary_lower}"
+                    
+                    for word, symbol in major_cryptos.items():
+                        if word in text:
+                            crypto_mentions[symbol] += 1
+                            
+                            # Analyser le sentiment pour cette crypto
+                            positive_score = sum(1 for pw in positive_words if pw in text)
+                            negative_score = sum(1 for nw in negative_words if nw in text)
+                            
+                            if symbol not in crypto_sentiment:
+                                crypto_sentiment[symbol] = {'positive': 0, 'negative': 0}
+                            
+                            crypto_sentiment[symbol]['positive'] += positive_score
+                            crypto_sentiment[symbol]['negative'] += negative_score
+                
+                # Créer les éléments d'affichage
+                trending_items = []
+                for symbol, mentions in crypto_mentions.most_common(6):
+                    sentiment = crypto_sentiment.get(symbol, {'positive': 0, 'negative': 0})
+                    
+                    if sentiment['positive'] > sentiment['negative']:
+                        icon = "fas fa-arrow-up text-success"
+                        text_color = "text-success"
+                    elif sentiment['negative'] > sentiment['positive']:
+                        icon = "fas fa-arrow-down text-danger"
+                        text_color = "text-danger"
+                    else:
+                        icon = "fas fa-minus text-warning"
+                        text_color = "text-warning"
+                    
+                    trending_items.append(
+                        dbc.Row([
+                            dbc.Col(html.Span(symbol, className=f"fw-bold {text_color}"), width=4),
+                            dbc.Col(html.Span(f"{mentions} mentions", className="small"), width=5, className="text-end"),
+                            dbc.Col([html.I(className=icon)], width=3, className="text-end")
+                        ], className="mb-2")
+                    )
+                
+                return html.Div(trending_items[:6] if trending_items else [
+                    html.P("Pas assez de données crypto", className="text-muted text-center")
+                ])
+                
+            except Exception as e:
+                print(f"❌ Erreur Top Performers: {e}")
+                # Fallback en cas d'erreur
+                return html.Div([
                     dbc.Row([
-                        dbc.Col([
-                            html.Span(coin['coin'], className=f"fw-bold {text_color}")
-                        ], width=7),
-                        dbc.Col([
-                            dbc.Badge(coin['mentions'], color="warning", className="me-1"),
-                            html.I(className=f"{icon} {text_color}")
-                        ], width=5, className="text-end")
-                    ], className="mb-2")
-                )
-            
-            return trending_items
+                        dbc.Col("BTC", width=4),
+                        dbc.Col("Analyse...", width=5, className="text-end"),
+                        dbc.Col([html.I(className="fas fa-sync-alt fa-spin text-info")], width=3, className="text-end")
+                    ])
+                ])
         
         @app.callback(
             Output('crypto-price-impact-widget', 'children'),
             [Input('crypto-news-store', 'data')]
         )
-        def update_crypto_price_impact_widget(news_data):
-            """Widget impact prix"""
-            if not news_data or not news_data.get('price_impact'):
-                price_impact = {'high': 20, 'medium': 50, 'low': 30}
-            else:
-                price_impact = news_data['price_impact']
-            
-            return html.Div([
-                html.H6("Price Impact Analysis", className="text-center mb-3"),
+        def update_crypto_trends_widget(news_data):
+            """Widget tendances crypto basé sur l'analyse des news"""
+            try:
+                if not news_data or not news_data.get('news'):
+                    # Tendances génériques de démonstration
+                    return html.Div([
+                        html.Div([
+                            html.H6("🚀 DeFi en hausse", className="mb-1"),
+                            html.P("Les protocoles décentralisés attirent plus d'attention", className="small text-muted")
+                        ], className="mb-3"),
+                        html.Div([
+                            html.H6("📈 Adoption institutionnelle", className="mb-1"),
+                            html.P("Les grandes entreprises s'intéressent aux cryptos", className="small text-muted")
+                        ], className="mb-3"),
+                        html.Div([
+                            html.H6("⚡ Layer 2 Solutions", className="mb-1"),
+                            html.P("Les solutions de mise à l'échelle gagnent du terrain", className="small text-muted")
+                        ])
+                    ])
                 
-                # High Impact
-                dbc.Row([
-                    dbc.Col([
-                        html.Span("High Impact", className="small")
-                    ], width=6),
-                    dbc.Col([
-                        html.Span(f"{price_impact['high']}%", className="fw-bold text-danger")
-                    ], width=6, className="text-end")
-                ], className="mb-1"),
+                # Analyser les articles pour détecter les tendances
+                articles = news_data.get('news', [])
+                trend_keywords = {
+                    '🚀 DeFi': ['defi', 'decentralized', 'uniswap', 'pancakeswap', 'yield', 'farming'],
+                    '📈 Adoption': ['institutional', 'adoption', 'enterprise', 'corporate', 'mainstream'],
+                    '⚡ Layer 2': ['layer 2', 'l2', 'scaling', 'polygon', 'arbitrum', 'optimism'],
+                    '🎮 Gaming': ['gaming', 'metaverse', 'nft', 'play-to-earn', 'virtual'],
+                    '🔒 Security': ['security', 'hack', 'vulnerability', 'audit', 'safe'],
+                    '🏛️ Regulation': ['regulation', 'regulatory', 'compliance', 'legal', 'government'],
+                    '💰 Staking': ['staking', 'validator', 'consensus', 'proof-of-stake', 'rewards'],
+                    '🌐 Web3': ['web3', 'dapp', 'blockchain', 'smart contract', 'ecosystem']
+                }
                 
-                dbc.Progress(value=price_impact['high'], color="danger", style={'height': '6px'}, className="mb-2"),
+                trend_scores = {trend: 0 for trend in trend_keywords.keys()}
+                trend_details = {trend: [] for trend in trend_keywords.keys()}
                 
-                # Medium Impact
-                dbc.Row([
-                    dbc.Col([
-                        html.Span("Medium Impact", className="small")
-                    ], width=6),
-                    dbc.Col([
-                        html.Span(f"{price_impact['medium']}%", className="fw-bold text-warning")
-                    ], width=6, className="text-end")
-                ], className="mb-1"),
+                for article in articles:
+                    title_lower = article.get('title', '').lower()
+                    summary_lower = article.get('summary', '').lower()
+                    text = f"{title_lower} {summary_lower}"
+                    
+                    for trend, keywords in trend_keywords.items():
+                        matches = sum(1 for keyword in keywords if keyword in text)
+                        if matches > 0:
+                            trend_scores[trend] += matches
+                            if len(trend_details[trend]) < 2:
+                                trend_details[trend].append(article.get('title', '')[:50] + '...')
                 
-                dbc.Progress(value=price_impact['medium'], color="warning", style={'height': '6px'}, className="mb-2"),
+                # Créer l'affichage des tendances
+                sorted_trends = sorted(trend_scores.items(), key=lambda x: x[1], reverse=True)
+                trend_items = []
                 
-                # Low Impact
-                dbc.Row([
-                    dbc.Col([
-                        html.Span("Low Impact", className="small")
-                    ], width=6),
-                    dbc.Col([
-                        html.Span(f"{price_impact['low']}%", className="fw-bold text-secondary")
-                    ], width=6, className="text-end")
-                ], className="mb-1"),
+                for trend, score in sorted_trends[:4]:
+                    if score > 0:
+                        intensity = "forte" if score >= 3 else "modérée" if score >= 2 else "faible"
+                        color_class = "text-success" if score >= 3 else "text-warning" if score >= 2 else "text-info"
+                        
+                        examples = trend_details[trend]
+                        detail_text = f"Activité {intensity} ({score} mentions)"
+                        if examples:
+                            detail_text = f"{examples[0][:40]}..."
+                        
+                        trend_items.append(
+                            html.Div([
+                                html.H6(trend, className=f"mb-1 {color_class}"),
+                                html.P(detail_text, className="small text-muted")
+                            ], className="mb-3")
+                        )
                 
-                dbc.Progress(value=price_impact['low'], color="secondary", style={'height': '6px'})
-            ])
+                if not trend_items:
+                    trend_items = [
+                        html.Div([
+                            html.H6("📊 Analyse en cours", className="mb-1"),
+                            html.P("Collecte des données de tendances...", className="small text-muted")
+                        ])
+                    ]
+                
+                return html.Div(trend_items)
+                
+            except Exception as e:
+                print(f"❌ Erreur Crypto Trends: {e}")
+                return html.Div([
+                    html.H6("⚠️ Erreur d'analyse", className="mb-1 text-warning"),
+                    html.P("Impossible d'analyser les tendances actuellement", className="small text-muted")
+                ])

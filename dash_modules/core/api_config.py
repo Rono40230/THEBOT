@@ -157,6 +157,28 @@ class APIConfig:
                                 "api_key": ""
                             }
                         }
+                    ],
+                    "economic": [
+                        {
+                            "name": "Finnhub",
+                            "type": "economic_calendar",
+                            "status": "active",
+                            "api_key_required": True,
+                            "description": "Professional economic calendar and financial data",
+                            "data_types": ["economic_events", "earnings", "market_data", "economic_indicators"],
+                            "rate_limit": "60 calls/minute (free)",
+                            "cost": "Free: 60 calls/min, Basic: $30/month",
+                            "priority": 1,
+                            "endpoints": {
+                                "base_url": "https://finnhub.io/api/v1",
+                                "economic_calendar": "/calendar/economic",
+                                "earnings": "/calendar/earnings",
+                                "quote": "/quote"
+                            },
+                            "config": {
+                                "api_key": ""
+                            }
+                        }
                     ]
                 },
                 "ai_providers": [
@@ -317,24 +339,39 @@ class APIConfig:
         ]
         return self.save_config()
     
-    def get_api_config_modal(self) -> html.Div:
+    def save_finnhub_key(self, api_key: str) -> bool:
+        """Save Finnhub API key specifically"""
+        try:
+            # Chercher Finnhub dans la catégorie economic
+            economic_providers = self.config["providers"]["data_sources"].get("economic", [])
+            for provider in economic_providers:
+                if provider["name"] == "Finnhub":
+                    provider["config"]["api_key"] = api_key
+                    provider["status"] = "active" if api_key else "inactive"
+                    return self.save_config()
+            
+            print("⚠️ Finnhub provider not found in economic category")
+            return False
+        except Exception as e:
+            print(f"❌ Error saving Finnhub key: {e}")
+            return False
+    
+    def get_api_config_modal(self) -> dbc.Modal:
         """Create the simplified API configuration modal"""
-        return html.Div([
-            dbc.Modal([
-                dbc.ModalHeader(dbc.ModalTitle([
-                    html.I(className="fas fa-key me-2"),
-                    "🔑 Configuration des Fournisseurs de Données"
-                ])),
-                dbc.ModalBody([
-                    self._create_unified_providers_panel()
-                ]),
-                dbc.ModalFooter([
-                    dbc.Button("Tester les Connexions", color="info", className="me-2", id="test-all-btn"),
-                    dbc.Button("Enregistrer", color="success", className="me-2", id="save-config-btn"),
-                    dbc.Button("Fermer", color="secondary", id="close-config-btn")
-                ])
-            ], id="api-config-modal", size="xl", is_open=False)
-        ])
+        return dbc.Modal([
+            dbc.ModalHeader(dbc.ModalTitle([
+                html.I(className="fas fa-key me-2"),
+                "🔑 Configuration des Fournisseurs de Données"
+            ])),
+            dbc.ModalBody([
+                self._create_unified_providers_panel()
+            ]),
+            dbc.ModalFooter([
+                dbc.Button("Tester les Connexions", color="info", className="me-2", id="test-all-btn"),
+                dbc.Button("Enregistrer", color="success", className="me-2", id="save-config-btn"),
+                dbc.Button("Fermer", color="secondary", id="close-config-btn")
+            ])
+        ], id="api-config-modal", size="xl", is_open=False)
     
     def _create_unified_providers_panel(self) -> html.Div:
         """Create unified providers configuration panel"""
@@ -346,6 +383,7 @@ class APIConfig:
             "forex": {"icon": "💱", "name": "Forex"}, 
             "stocks": {"icon": "📊", "name": "Actions"},
             "news": {"icon": "📰", "name": "News"},
+            "economic": {"icon": "📈", "name": "Économique"},
             "ai": {"icon": "🤖", "name": "AI"}
         }
         
@@ -471,10 +509,6 @@ class APIConfig:
             provider_cards.append(card)
         
         return html.Div([
-            html.Div([
-                html.H5("🔧 Fournisseurs de Données", className="text-primary mb-3"),
-                html.P("Configuration des sources de données et clés API", className="text-muted small mb-4")
-            ]),
             html.Div(provider_cards)
         ])
 

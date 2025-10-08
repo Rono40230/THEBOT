@@ -30,7 +30,7 @@
         {
           "name": "Alpha Vantage",
           "type": "multi",
-          "status": "inactive",
+          "status": "active",
           "api_key_required": true,
           "description": "Professional financial data provider - Forex, Stocks, News & Analysis",
           "data_types": [
@@ -52,7 +52,7 @@
             "news": "function=NEWS_SENTIMENT"
           },
           "config": {
-            "api_key": ""
+            "api_key": "8LOI149VLAXKFQ08"
           }
         },
         {
@@ -74,7 +74,7 @@
             "posts": "/posts/"
           },
           "config": {
-            "api_key": ""
+            "api_key": "91832388c7822be37d13b66bc51ca20fb50fcdcd"
           }
         },
         {
@@ -96,7 +96,34 @@
             "news": "/news"
           },
           "config": {
-            "api_key": ""
+            "api_key": "CG-ZsGBbqJGVzNS8nSFmH7jyEh4"
+          }
+        }
+      ],
+      "economic": [
+        {
+          "name": "Finnhub",
+          "type": "economic_calendar",
+          "status": "active",
+          "api_key_required": true,
+          "description": "Professional economic calendar and financial data",
+          "data_types": [
+            "economic_events",
+            "earnings",
+            "market_data",
+            "economic_indicators"
+          ],
+          "rate_limit": "60 calls/minute (free)",
+          "cost": "Free: 60 calls/min, Basic: $30/month",
+          "priority": 1,
+          "endpoints": {
+            "base_url": "https://finnhub.io/api/v1",
+            "economic_calendar": "/calendar/economic",
+            "earnings": "/calendar/earnings",
+            "quote": "/quote"
+          },
+          "config": {
+            "api_key": "d3j4hf1r01qoplb9s86gd3j4hf1r01qoplb9s870"
           }
         },
         {
@@ -122,7 +149,7 @@
         {
           "name": "FMP",
           "type": "news",
-          "status": "inactive",
+          "status": "active",
           "api_key_required": true,
           "description": "Financial Modeling Prep - Professional financial data",
           "data_types": [
@@ -138,7 +165,7 @@
             "news": "/stock_news"
           },
           "config": {
-            "api_key": ""
+            "api_key": "YIEzJJDM1epIwAGtvoqHXobXzPH012E8"
           }
         },
         {
@@ -170,7 +197,7 @@
             "crypto": "/cryptocurrencies"
           },
           "config": {
-            "api_key": ""
+            "api_key": "1f192cc6b3634b6bbb6777b8ef708b08"
           }
         }
       ]
@@ -244,7 +271,7 @@
         "cost": "Free: 1000 calls/hour, Pro: $9/month",
         "priority": 3,
         "config": {
-          "api_key": "",
+          "api_key": "${HUGGINGFACE_API_KEY}",
           "model": "cardiffnlp/twitter-roberta-base-sentiment-latest"
         }
       }
@@ -254,6 +281,6 @@
     "auto_fallback": true,
     "health_monitoring": true,
     "cost_tracking": true,
-    "last_updated": "2025-10-02T15:36:28.584378"
+    "last_updated": "2025-10-08T17:32:30.673917"
   }
 }

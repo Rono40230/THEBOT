@@ -6,7 +6,7 @@ Module ultra-modulaire - Responsabilité unique : Validation des paramètres OBV
 from decimal import Decimal
 from dataclasses import dataclass
 
-from thebot.core.exceptions import ConfigurationError
+from ....core.exceptions import ConfigError
 
 
 @dataclass

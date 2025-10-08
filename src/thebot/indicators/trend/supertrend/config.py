@@ -6,7 +6,7 @@ Module ultra-modulaire - Responsabilité unique : Validation des paramètres Sup
 from decimal import Decimal
 from dataclasses import dataclass
 
-from thebot.core.exceptions import ConfigurationError
+from ....core.exceptions import ConfigError
 
 
 @dataclass
@@ -28,26 +28,26 @@ class SuperTrendConfig:
         
         # Validation période ATR
         if not isinstance(self.atr_period, int):
-            raise ConfigurationError("atr_period must be an integer")
+            raise ConfigError("atr_period must be an integer")
         
         if self.atr_period < 2:
-            raise ConfigurationError("atr_period must be at least 2")
+            raise ConfigError("atr_period must be at least 2")
         
         if self.atr_period > 50:
-            raise ConfigurationError("atr_period must not exceed 50")
+            raise ConfigError("atr_period must not exceed 50")
         
         # Validation multiplicateur
         if not isinstance(self.multiplier, Decimal):
             try:
                 self.multiplier = Decimal(str(self.multiplier))
             except (ValueError, TypeError):
-                raise ConfigurationError("multiplier must be convertible to Decimal")
+                raise ConfigError("multiplier must be convertible to Decimal")
         
         if self.multiplier <= 0:
-            raise ConfigurationError("multiplier must be positive")
+            raise ConfigError("multiplier must be positive")
         
         if self.multiplier > 10:
-            raise ConfigurationError("multiplier should not exceed 10")
+            raise ConfigError("multiplier should not exceed 10")
     
     def to_dict(self) -> dict:
         """Export configuration vers dictionnaire"""

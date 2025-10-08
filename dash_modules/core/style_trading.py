@@ -160,6 +160,97 @@ class TradingStyleManager:
                     "opacity_broken": 0.1
                 },
                 visual={"bullish_color": "#2ECC71", "bearish_color": "#E67E22", "opacity": 0.25}
+            ),
+            
+            # Momentum - Squeeze Momentum (Scalping)
+            "squeeze_momentum": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # BB/KC - Ultra sensible
+                    "bb_period": 10,  # Court
+                    "bb_deviation": 1.5,  # Moins strict
+                    "kc_period": 10,  # Court
+                    "kc_atr_period": 5,  # Ultra court
+                    "kc_multiplier": 1.0,  # Sensible
+                    # Momentum - Réactif
+                    "momentum_period": 5,  # Très court
+                    "momentum_ma_period": 3,  # Ultra court
+                    # Alertes - Fréquentes
+                    "squeeze_alert": True,
+                    "momentum_alert": True,
+                    "min_squeeze_bars": 1  # Immédiat
+                },
+                visual={"squeeze_color": "#FF9800", "momentum_color": "#2196F3", "line_width": 1}
+            ),
+            
+            # Patterns - Candle Patterns (Scalping)
+            "candle_patterns": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Détection - Très permissive
+                    "doji_threshold": 0.05,  # 5% body
+                    "hammer_ratio": 1.5,  # 1.5x wick
+                    "body_size_min": 0.01,  # 1% minimum
+                    # Engulfing - Sensible
+                    "engulfing_body_ratio": 0.8,  # 80% engulfing
+                    "engulfing_volume_confirm": False,  # Pas de volume
+                    # Affichage - Compact
+                    "show_labels": False,  # Pas d'encombrement
+                    "show_stats": True,
+                    "max_patterns": 5  # Limité
+                },
+                visual={"bullish_color": "#4CAF50", "bearish_color": "#F44336", "opacity": 0.7}
+            ),
+            
+            # Breakout - Breakout Detector (Scalping)
+            "breakout_detector": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Support/Resistance - Court terme
+                    "sr_period": 10,  # Très court
+                    "sr_strength": 1,  # Permissif
+                    "price_precision": 4,  # Précision élevée
+                    # Volume - Sensible
+                    "volume_threshold": 0.3,  # 30% volume moyen
+                    "volume_ma_period": 5,  # Court
+                    # Breakout - Réactif
+                    "breakout_threshold": 0.02,  # 2% breakout
+                    "confirmation_bars": 1,  # Confirmation rapide
+                    "max_age_levels": 20  # Niveaux récents
+                },
+                visual={"support_color": "#00BCD4", "resistance_color": "#FF5722", "breakout_color": "#FFEB3B"}
+            ),
+            
+            # Volume Analysis - Volume Profile (Scalping)
+            "volume_profile": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Scalping: Analyse courte, réactive
+                    "profile_type": "session",  # Par session
+                    "bins_count": 50,  # Moins de niveaux, plus lisible
+                    "lookback_periods": 50,  # Période courte
+                    "value_area_percent": 60.0,  # Value Area plus étroite
+                    # POC - Sensible
+                    "poc_sensitivity": 1.5,  # Très sensible
+                    "high_volume_threshold": 75.0,  # 75% pour HVN
+                    "low_volume_threshold": 25.0,  # Montrer LVN
+                    "support_resistance_strength": 0.8,  # Force S/R
+                    # Visualisation - Scalping
+                    "show_poc": True,
+                    "show_value_area": True,
+                    "show_high_volume_nodes": True,
+                    "show_low_volume_nodes": True,  # Utile scalping
+                    "show_volume_histogram": True,
+                    # Alertes - Fréquentes
+                    "enable_poc_alerts": True,
+                    "enable_value_area_alerts": True,
+                    "poc_proximity_percent": 0.3,  # 0.3% alerte POC
+                    "value_area_break_alert": True,
+                    # Opacité - Visible
+                    "histogram_opacity": 0.8,  # Très visible
+                    "value_area_opacity": 0.3
+                },
+                visual={"poc_color": "#FF6B35", "value_area_color": "#4ECDC4", "histogram_color": "#FECA57"}
             )
         }
     
@@ -260,6 +351,97 @@ class TradingStyleManager:
                     "opacity_broken": 0.15
                 },
                 visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.3}
+            ),
+            
+            # Momentum - Squeeze Momentum (Day Trading)
+            "squeeze_momentum": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # BB/KC - Standard
+                    "bb_period": 20,  # Standard
+                    "bb_deviation": 2.0,  # Standard
+                    "kc_period": 20,  # Standard
+                    "kc_atr_period": 10,  # Standard
+                    "kc_multiplier": 1.5,  # Standard
+                    # Momentum - Équilibré
+                    "momentum_period": 12,  # Standard
+                    "momentum_ma_period": 6,  # Standard
+                    # Alertes - Équilibrées
+                    "squeeze_alert": True,
+                    "momentum_alert": True,
+                    "min_squeeze_bars": 3  # Confirmation
+                },
+                visual={"squeeze_color": "#FF9800", "momentum_color": "#2196F3", "line_width": 2}
+            ),
+            
+            # Patterns - Candle Patterns (Day Trading)
+            "candle_patterns": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Détection - Standard
+                    "doji_threshold": 0.1,  # 10% body
+                    "hammer_ratio": 2.0,  # 2x wick
+                    "body_size_min": 0.02,  # 2% minimum
+                    # Engulfing - Standard
+                    "engulfing_body_ratio": 1.0,  # 100% engulfing
+                    "engulfing_volume_confirm": True,  # Avec volume
+                    # Affichage - Complet
+                    "show_labels": True,  # Labels utiles
+                    "show_stats": True,
+                    "max_patterns": 8  # Plus de patterns
+                },
+                visual={"bullish_color": "#4CAF50", "bearish_color": "#F44336", "opacity": 0.8}
+            ),
+            
+            # Breakout - Breakout Detector (Day Trading)
+            "breakout_detector": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Support/Resistance - Standard
+                    "sr_period": 20,  # Standard
+                    "sr_strength": 2,  # Standard
+                    "price_precision": 4,  # Précision
+                    # Volume - Confirmation
+                    "volume_threshold": 0.5,  # 50% volume moyen
+                    "volume_ma_period": 10,  # Standard
+                    # Breakout - Confirmé
+                    "breakout_threshold": 0.03,  # 3% breakout
+                    "confirmation_bars": 2,  # Confirmation
+                    "max_age_levels": 50  # Niveaux plus longs
+                },
+                visual={"support_color": "#00BCD4", "resistance_color": "#FF5722", "breakout_color": "#FFEB3B"}
+            ),
+            
+            # Volume Analysis - Volume Profile (Day Trading)
+            "volume_profile": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Day Trading: Standard professionnel
+                    "profile_type": "session",  # Par session
+                    "bins_count": 100,  # Standard
+                    "lookback_periods": 100,  # Période équilibrée
+                    "value_area_percent": 70.0,  # Value Area standard
+                    # POC - Standard
+                    "poc_sensitivity": 1.0,  # Standard
+                    "high_volume_threshold": 80.0,  # 80% pour HVN
+                    "low_volume_threshold": 20.0,  # Pas de LVN
+                    "support_resistance_strength": 1.0,  # Force S/R standard
+                    # Visualisation - Complète
+                    "show_poc": True,
+                    "show_value_area": True,
+                    "show_high_volume_nodes": True,
+                    "show_low_volume_nodes": False,  # Pas utile day trading
+                    "show_volume_histogram": True,
+                    # Alertes - Équilibrées
+                    "enable_poc_alerts": True,
+                    "enable_value_area_alerts": True,
+                    "poc_proximity_percent": 0.5,  # 0.5% alerte POC
+                    "value_area_break_alert": True,
+                    # Opacité - Équilibrée
+                    "histogram_opacity": 0.6,  # Visible
+                    "value_area_opacity": 0.2
+                },
+                visual={"poc_color": "#FF6B35", "value_area_color": "#4ECDC4", "histogram_color": "#FECA57"}
             )
         }
     
@@ -360,6 +542,97 @@ class TradingStyleManager:
                     "opacity_broken": 0.2   # Visible même cassés
                 },
                 visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.4}
+            ),
+            
+            # Momentum - Squeeze Momentum (Swing Trading)
+            "squeeze_momentum": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # BB/KC - Plus longs
+                    "bb_period": 30,  # Plus long
+                    "bb_deviation": 2.5,  # Plus strict
+                    "kc_period": 30,  # Plus long
+                    "kc_atr_period": 20,  # Plus long
+                    "kc_multiplier": 2.0,  # Moins sensible
+                    # Momentum - Moins réactif
+                    "momentum_period": 20,  # Plus long
+                    "momentum_ma_period": 10,  # Plus long
+                    # Alertes - Sélectives
+                    "squeeze_alert": True,
+                    "momentum_alert": True,
+                    "min_squeeze_bars": 5  # Plus de confirmation
+                },
+                visual={"squeeze_color": "#FF9800", "momentum_color": "#2196F3", "line_width": 3}
+            ),
+            
+            # Patterns - Candle Patterns (Swing Trading)
+            "candle_patterns": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Détection - Plus stricte
+                    "doji_threshold": 0.15,  # 15% body
+                    "hammer_ratio": 2.5,  # 2.5x wick
+                    "body_size_min": 0.03,  # 3% minimum
+                    # Engulfing - Strict
+                    "engulfing_body_ratio": 1.2,  # 120% engulfing
+                    "engulfing_volume_confirm": True,  # Avec volume
+                    # Affichage - Sélectif
+                    "show_labels": True,  # Labels complets
+                    "show_stats": True,
+                    "max_patterns": 12  # Plus de patterns
+                },
+                visual={"bullish_color": "#4CAF50", "bearish_color": "#F44336", "opacity": 0.9}
+            ),
+            
+            # Breakout - Breakout Detector (Swing Trading)
+            "breakout_detector": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Support/Resistance - Long terme
+                    "sr_period": 50,  # Plus long
+                    "sr_strength": 3,  # Plus strict
+                    "price_precision": 4,  # Précision
+                    # Volume - Confirmation forte
+                    "volume_threshold": 0.8,  # 80% volume moyen
+                    "volume_ma_period": 20,  # Plus long
+                    # Breakout - Confirmé
+                    "breakout_threshold": 0.05,  # 5% breakout
+                    "confirmation_bars": 3,  # Plus de confirmation
+                    "max_age_levels": 100  # Niveaux très longs
+                },
+                visual={"support_color": "#00BCD4", "resistance_color": "#FF5722", "breakout_color": "#FFEB3B"}
+            ),
+            
+            # Volume Analysis - Volume Profile (Swing Trading)
+            "volume_profile": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Swing Trading: Long terme, sélectif
+                    "profile_type": "session",  # Par session
+                    "bins_count": 75,  # Moins de niveaux
+                    "lookback_periods": 200,  # Période longue
+                    "value_area_percent": 75.0,  # Value Area plus large
+                    # POC - Moins sensible
+                    "poc_sensitivity": 0.8,  # Moins réactif
+                    "high_volume_threshold": 85.0,  # 85% pour HVN
+                    "low_volume_threshold": 15.0,  # Pas de LVN
+                    "support_resistance_strength": 1.2,  # Force S/R plus forte
+                    # Visualisation - Sélective
+                    "show_poc": True,
+                    "show_value_area": True,
+                    "show_high_volume_nodes": True,
+                    "show_low_volume_nodes": False,  # Pas utile swing
+                    "show_volume_histogram": True,
+                    # Alertes - Sélectives
+                    "enable_poc_alerts": True,
+                    "enable_value_area_alerts": True,
+                    "poc_proximity_percent": 0.8,  # 0.8% alerte POC
+                    "value_area_break_alert": True,
+                    # Opacité - Modérée
+                    "histogram_opacity": 0.5,  # Moins visible
+                    "value_area_opacity": 0.2
+                },
+                visual={"poc_color": "#FF6B35", "value_area_color": "#4ECDC4", "histogram_color": "#FECA57"}
             )
         }
     
@@ -460,6 +733,97 @@ class TradingStyleManager:
                     "opacity_broken": 0.3   # Reste visible longtemps
                 },
                 visual={"bullish_color": "#27AE60", "bearish_color": "#E74C3C", "opacity": 0.5}
+            ),
+            
+            # Momentum - Squeeze Momentum (Position Trading)
+            "squeeze_momentum": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # BB/KC - Très longs
+                    "bb_period": 50,  # Très long
+                    "bb_deviation": 3.0,  # Très strict
+                    "kc_period": 50,  # Très long
+                    "kc_atr_period": 30,  # Très long
+                    "kc_multiplier": 2.5,  # Peu sensible
+                    # Momentum - Stable
+                    "momentum_period": 30,  # Très long
+                    "momentum_ma_period": 15,  # Très long
+                    # Alertes - Rares mais fiables
+                    "squeeze_alert": True,
+                    "momentum_alert": True,
+                    "min_squeeze_bars": 10  # Beaucoup de confirmation
+                },
+                visual={"squeeze_color": "#FF9800", "momentum_color": "#2196F3", "line_width": 4}
+            ),
+            
+            # Patterns - Candle Patterns (Position Trading)
+            "candle_patterns": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Détection - Très stricte
+                    "doji_threshold": 0.2,  # 20% body
+                    "hammer_ratio": 3.0,  # 3x wick
+                    "body_size_min": 0.05,  # 5% minimum
+                    # Engulfing - Très strict
+                    "engulfing_body_ratio": 1.5,  # 150% engulfing
+                    "engulfing_volume_confirm": True,  # Volume obligatoire
+                    # Affichage - Sélectif
+                    "show_labels": True,  # Labels complets
+                    "show_stats": True,
+                    "max_patterns": 15  # Patterns majeurs
+                },
+                visual={"bullish_color": "#4CAF50", "bearish_color": "#F44336", "opacity": 1.0}
+            ),
+            
+            # Breakout - Breakout Detector (Position Trading)
+            "breakout_detector": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Support/Resistance - Très long terme
+                    "sr_period": 100,  # Très long
+                    "sr_strength": 4,  # Très strict
+                    "price_precision": 4,  # Précision
+                    # Volume - Confirmation massive
+                    "volume_threshold": 1.2,  # 120% volume moyen
+                    "volume_ma_period": 50,  # Très long
+                    # Breakout - Majeur
+                    "breakout_threshold": 0.08,  # 8% breakout
+                    "confirmation_bars": 5,  # Beaucoup de confirmation
+                    "max_age_levels": 200  # Niveaux historiques
+                },
+                visual={"support_color": "#00BCD4", "resistance_color": "#FF5722", "breakout_color": "#FFEB3B"}
+            ),
+            
+            # Volume Analysis - Volume Profile (Position Trading)
+            "volume_profile": IndicatorConfig(
+                enabled=True,
+                parameters={
+                    # Base - Position Trading: Très long terme, ultra-sélectif
+                    "profile_type": "session",  # Par session
+                    "bins_count": 50,  # Peu de niveaux, major seulement
+                    "lookback_periods": 500,  # Période très longue
+                    "value_area_percent": 80.0,  # Value Area très large
+                    # POC - Très stable
+                    "poc_sensitivity": 0.5,  # Peu réactif
+                    "high_volume_threshold": 90.0,  # 90% pour HVN
+                    "low_volume_threshold": 10.0,  # Pas de LVN
+                    "support_resistance_strength": 1.5,  # Force S/R maximale
+                    # Visualisation - Majeure seulement
+                    "show_poc": True,
+                    "show_value_area": True,
+                    "show_high_volume_nodes": True,
+                    "show_low_volume_nodes": False,  # Pas utile position
+                    "show_volume_histogram": True,
+                    # Alertes - Rares mais importantes
+                    "enable_poc_alerts": True,
+                    "enable_value_area_alerts": True,
+                    "poc_proximity_percent": 1.0,  # 1% alerte POC
+                    "value_area_break_alert": True,
+                    # Opacité - Discrète
+                    "histogram_opacity": 0.4,  # Moins visible
+                    "value_area_opacity": 0.15
+                },
+                visual={"poc_color": "#FF6B35", "value_area_color": "#4ECDC4", "histogram_color": "#FECA57"}
             )
         }
     

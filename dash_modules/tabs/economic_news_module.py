@@ -66,24 +66,68 @@ class EconomicNewsModule:
     def translate_article_title(self, title: str) -> str:
         """Traduire titre d'article en français"""
         try:
+            if not title or len(title.strip()) < 3:
+                return title
+                
             if AI_AVAILABLE:
                 translated = smart_ai_manager.translate_to_french(title)
-                return translated if translated and len(translated) > 3 else title
+                if translated and len(translated.strip()) > 3 and translated != title:
+                    return translated
+                else:
+                    return title
             return title
         except Exception as e:
-            print(f"⚠️ Erreur traduction titre: {e}")
+            print(f"❌ Erreur traduction titre: {e}")
             return title
     
     def translate_article_summary(self, summary: str) -> str:
         """Traduire résumé d'article en français"""
         try:
-            if AI_AVAILABLE and len(summary) > 10:
+            if not summary or len(summary.strip()) < 10:
+                return summary
+                
+            if AI_AVAILABLE:
                 translated = smart_ai_manager.translate_to_french(summary)
-                return translated if translated and len(translated) > 5 else summary
+                if translated and len(translated.strip()) > 10 and translated != summary:
+                    return translated
+                else:
+                    return summary
             return summary
         except Exception as e:
-            print(f"⚠️ Erreur traduction résumé: {e}")
+            print(f"❌ Erreur traduction résumé: {e}")
             return summary
+
+    def _format_date(self, date_value):
+        """Formater une date pour l'affichage - identique au module crypto"""
+        if not date_value or date_value in ['N/A', 'Unknown Date', '']:
+            return "Date inconnue"
+        
+        try:
+            # Si c'est déjà une string formatée, la retourner
+            if isinstance(date_value, str):
+                # Essayer de parser différents formats
+                from datetime import datetime
+                try:
+                    # Format ISO avec timezone
+                    if 'T' in date_value and ('+' in date_value or 'Z' in date_value):
+                        dt = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+                        return dt.strftime("%d/%m/%Y %H:%M")
+                    # Format ISO simple
+                    elif 'T' in date_value:
+                        dt = datetime.fromisoformat(date_value)
+                        return dt.strftime("%d/%m/%Y %H:%M")
+                    # Déjà formaté
+                    else:
+                        return date_value
+                except:
+                    return date_value
+            # Si c'est un objet datetime
+            elif hasattr(date_value, 'strftime'):
+                return date_value.strftime("%d/%m/%Y %H:%M")
+            else:
+                return str(date_value)
+        except Exception as e:
+            return "Date invalide"
 
     def get_rss_news(self, limit: int = 20) -> Dict:
         """Récupérer les news RSS économiques avec traduction"""
@@ -120,12 +164,50 @@ class EconomicNewsModule:
                                    if keyword in content)
                 
                 if relevance_score >= 1:  # Au moins 1 keyword économique
-                    # Traduire titre et résumé
-                    original_title = article.get('title', 'No Title')
-                    original_summary = article.get('description', 'No summary')[:300]
+                    # Extraire données avec les bons champs RSS
+                    original_title = article.get('title') or article.get('headline') or 'Titre non disponible'
                     
-                    translated_title = self.translate_article_title(original_title)
-                    translated_summary = self.translate_article_summary(original_summary)
+                    # Utiliser les champs RSS corrects
+                    original_summary = (
+                        article.get('summary') or          # Champ RSS principal
+                        article.get('description') or 
+                        article.get('content') or 
+                        article.get('excerpt') or
+                        'Résumé non disponible'
+                    )
+                    
+                    # Limiter la longueur du résumé
+                    if len(original_summary) > 300:
+                        original_summary = original_summary[:300] + "..."
+                    
+                    # Source avec fallbacks - utiliser les champs RSS corrects  
+                    source = (
+                        article.get('source') or           # Champ RSS principal
+                        article.get('feed_title') or       # Titre du feed RSS
+                        article.get('provider') or
+                        article.get('site_name') or 
+                        article.get('author') or
+                        'RSS Feed'
+                    )
+                    
+                    # Date avec champs RSS corrects
+                    published_time = (
+                        article.get('published_date') or   # Champ RSS principal
+                        article.get('published_time') or
+                        article.get('pubDate') or
+                        'Récent'
+                    )
+                    
+                    # Traduire seulement si contenu valide
+                    if len(original_title) > 5 and original_title != 'Titre non disponible':
+                        translated_title = self.translate_article_title(original_title)
+                    else:
+                        translated_title = original_title
+                        
+                    if len(original_summary) > 10 and original_summary != 'Résumé non disponible':
+                        translated_summary = self.translate_article_summary(original_summary)
+                    else:
+                        translated_summary = original_summary
                     
                     # Enrichir article
                     enriched_article = {
@@ -133,9 +215,9 @@ class EconomicNewsModule:
                         'original_title': original_title,
                         'summary': translated_summary,
                         'original_summary': original_summary,
-                        'source': article.get('source', 'RSS'),
-                        'published_time': article.get('published_time', 'N/A'),
-                        'url': article.get('url', '#'),
+                        'source': source,
+                        'published_time': published_time,
+                        'url': article.get('url') or article.get('link') or '#',
                         'relevance_score': relevance_score,
                         'category': 'economy'
                     }
@@ -333,52 +415,55 @@ class EconomicNewsModule:
             }
     
     def get_layout(self) -> html.Div:
-        """Layout principal avec widgets AI complets"""
+        """Layout principal avec widgets AI simplifiés"""
         return html.Div([
-            # AI Widgets Row
+            # Indicateurs Macro-Économiques (gardé)
             dbc.Row([
-                # Sentiment Analysis
+                # Indicateurs Clés
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-brain me-2"),
-                            "AI Sentiment Analysis",
-                            dbc.Button([
-                                html.I(className="fas fa-sync-alt")
-                            ], id="refresh-economic-news-btn", color="info", size="sm", 
-                               className="float-end ms-2", style={'padding': '0.25rem 0.5rem'})
+                            html.I(className="fas fa-chart-bar me-2"),
+                            "Indicateurs Macro"
                         ]),
                         dbc.CardBody([
-                            dcc.Graph(id="economic-sentiment-chart", style={'height': '300px'})
+                            html.Div([
+                                # PIB, Inflation, Chômage, etc.
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.H6("📈 PIB", className="text-center text-muted"),
+                                        html.H5("2.1%", className="text-center text-success", id="gdp-indicator")
+                                    ], width=3),
+                                    dbc.Col([
+                                        html.H6("🔥 Inflation", className="text-center text-muted"),
+                                        html.H5("3.7%", className="text-center text-warning", id="inflation-indicator")
+                                    ], width=3),
+                                    dbc.Col([
+                                        html.H6("💼 Chômage", className="text-center text-muted"),
+                                        html.H5("3.8%", className="text-center text-info", id="unemployment-indicator")
+                                    ], width=3),
+                                    dbc.Col([
+                                        html.H6("💰 Taux Fed", className="text-center text-muted"),
+                                        html.H5("5.25%", className="text-center text-danger", id="fed-rate-indicator")
+                                    ], width=3)
+                                ])
+                            ])
                         ])
                     ])
-                ], width=4),
+                ], width=6),
                 
-                # Fear & Greed Index
+                # Sentiment Global
                 dbc.Col([
                     dbc.Card([
                         dbc.CardHeader([
-                            html.I(className="fas fa-thermometer-half me-2"),
-                            "Economic Fear & Greed"
+                            html.I(className="fas fa-globe-americas me-2"),
+                            "Sentiment Global"
                         ]),
                         dbc.CardBody([
-                            html.Div(id="economic-fear-greed-widget")
+                            dcc.Graph(id="global-sentiment-gauge", style={'height': '200px'})
                         ])
                     ])
-                ], width=4),
-                
-                # Trending Topics
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader([
-                            html.I(className="fas fa-fire me-2"),
-                            "Trending Topics"
-                        ]),
-                        dbc.CardBody([
-                            html.Div(id="economic-trending-topics")
-                        ])
-                    ])
-                ], width=4)
+                ], width=6)
             ], className="mb-4"),
             
             # News Feed Principal
@@ -387,7 +472,11 @@ class EconomicNewsModule:
                     dbc.Card([
                         dbc.CardHeader([
                             html.I(className="fas fa-rss me-2"),
-                            "Live RSS Economic News Feed"
+                            "Live RSS Economic News Feed",
+                            dbc.Button([
+                                html.I(className="fas fa-sync-alt")
+                            ], id="refresh-economic-news-btn", color="info", size="sm", 
+                               className="float-end ms-2", style={'padding': '0.25rem 0.5rem'})
                         ]),
                         dbc.CardBody([
                             html.Div(id="economic-news-feed", style={'maxHeight': '600px', 'overflowY': 'auto'})
@@ -477,7 +566,7 @@ class EconomicNewsModule:
                                         dbc.Badge(article.get('source', 'RSS'), color="info", className="me-2"),
                                         html.Small([
                                             html.I(className="fas fa-clock me-1"),
-                                            str(article.get('published_time', 'N/A'))
+                                            self._format_date(article.get('published_time', 'N/A'))
                                         ], className="text-muted me-3"),
                                         dbc.Button([
                                             html.I(className="fas fa-external-link-alt me-1"),
@@ -502,84 +591,91 @@ class EconomicNewsModule:
             
             return news_items
         
+        # Nouveaux callbacks Phase 5 - Indicateurs Macro-Économiques
         @app.callback(
-            Output('economic-sentiment-chart', 'figure'),
-            [Input('economic-sentiment-store', 'data')]
+            [Output('gdp-indicator', 'children'),
+             Output('inflation-indicator', 'children'), 
+             Output('unemployment-indicator', 'children'),
+             Output('fed-rate-indicator', 'children')],
+            [Input('economic-news-store', 'data')]
         )
-        def update_sentiment_chart(sentiment_data):
-            """Mettre à jour le graphique de sentiment"""
-            if not sentiment_data:
-                sentiment_data = {'positive': 30, 'neutral': 50, 'negative': 20}
+        def update_macro_indicators(news_data):
+            """Mise à jour des indicateurs macro-économiques"""
+            # Valeurs par défaut (pourraient être récupérées via API économique)
+            default_indicators = {
+                'gdp': '2.1%',
+                'inflation': '3.7%', 
+                'unemployment': '3.8%',
+                'fed_rate': '5.25%'
+            }
             
-            # Graphique en donut
-            fig = go.Figure(data=[
-                go.Pie(
-                    labels=['Positive', 'Neutral', 'Negative'],
-                    values=[sentiment_data.get('positive', 0), 
-                           sentiment_data.get('neutral', 0), 
-                           sentiment_data.get('negative', 0)],
-                    hole=0.5,
-                    marker_colors=['#22c55e', '#eab308', '#ef4444']
-                )
-            ])
+            # En Phase 6, ces données pourraient être récupérées d'APIs économiques réelles
+            if news_data and news_data.get('macro_indicators'):
+                indicators = news_data['macro_indicators']
+            else:
+                indicators = default_indicators
+            
+            return (
+                indicators.get('gdp', '2.1%'),
+                indicators.get('inflation', '3.7%'),
+                indicators.get('unemployment', '3.8%'), 
+                indicators.get('fed_rate', '5.25%')
+            )
+        
+        @app.callback(
+            Output('global-sentiment-gauge', 'figure'),
+            [Input('economic-news-store', 'data')]
+        )
+        def update_global_sentiment_gauge(news_data):
+            """Gauge de sentiment économique global"""
+            # Calcul du sentiment basé sur les news
+            sentiment_score = 65  # Valeur par défaut
+            
+            if news_data and news_data.get('sentiment_data'):
+                sentiment_data = news_data['sentiment_data']
+                sentiment_score = sentiment_data.get('average_sentiment', 65)
+            
+            # Création du gauge
+            fig = go.Figure(go.Indicator(
+                mode = "gauge+number+delta",
+                value = sentiment_score,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "Sentiment Économique"},
+                delta = {'reference': 50},
+                gauge = {
+                    'axis': {'range': [None, 100]},
+                    'bar': {'color': "lightgreen" if sentiment_score > 60 else "orange" if sentiment_score > 40 else "red"},
+                    'steps': [
+                        {'range': [0, 40], 'color': "lightgray"},
+                        {'range': [40, 60], 'color': "gray"},
+                        {'range': [60, 100], 'color': "lightgreen"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "red", 'width': 4},
+                        'thickness': 0.75,
+                        'value': 50
+                    }
+                }
+            ))
             
             fig.update_layout(
-                title="Market Sentiment",
-                showlegend=True,
+                height=200,
+                margin=dict(l=20, r=20, t=40, b=20),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                font_color='white',
-                height=300
+                font_color='white'
             )
             
             return fig
-        
-        @app.callback(
-            Output('economic-fear-greed-widget', 'children'),
-            [Input('economic-news-store', 'data')]
-        )
-        def update_fear_greed_widget(news_data):
-            """Widget Fear & Greed"""
-            if not news_data or not news_data.get('fear_greed'):
-                fear_greed = {'score': 50, 'classification': 'Neutral', 'color': '#eab308'}
-            else:
-                fear_greed = news_data['fear_greed']
-            
-            return html.Div([
-                html.H1(str(fear_greed['score']), 
-                       className="text-center mb-2", 
-                       style={'color': fear_greed['color'], 'fontSize': '4rem'}),
-                html.H5(fear_greed['classification'], 
-                       className="text-center mb-3", 
-                       style={'color': fear_greed['color']}),
-                dbc.Progress(
-                    value=fear_greed['score'],
-                    color="success" if fear_greed['score'] > 60 else "warning" if fear_greed['score'] > 40 else "danger",
-                    style={'height': '10px'}
-                )
-            ])
-        
-        @app.callback(
-            Output('economic-trending-topics', 'children'),
-            [Input('economic-news-store', 'data')]
-        )
-        def update_trending_topics(news_data):
-            """Widget sujets tendance"""
-            if not news_data or not news_data.get('trending'):
-                return html.P("Aucun sujet tendance", className="text-muted text-center")
-            
-            trending_items = []
-            for topic in news_data['trending'][:6]:
-                trending_items.append(
-                    dbc.Row([
-                        dbc.Col([
-                            html.Span(topic['topic'], className="fw-bold")
-                        ], width=8),
-                        dbc.Col([
-                            dbc.Badge(topic['count'], color="info", className="me-1"),
-                            html.I(className=f"fas fa-arrow-up text-success" if topic['trend'] == 'up' else "fas fa-minus text-warning")
-                        ], width=4, className="text-end")
-                    ], className="mb-2")
-                )
-            
-            return trending_items
+
+
+# ============================================================================
+# FONCTION D'EXPORT POUR COMPATIBILITÉ
+# ============================================================================
+
+def get_economic_news_tab():
+    """
+    Fonction d'export pour compatibilité avec l'ancien système
+    """
+    module = EconomicNewsModule()
+    return module.get_layout()

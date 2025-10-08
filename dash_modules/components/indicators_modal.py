@@ -68,6 +68,71 @@ class IndicatorsModal:
                 'signal': 9
             },
             
+            # Momentum Indicators (Phase 2)
+            'squeeze_momentum': {
+                'enabled': False,
+                'bb_period': 20,
+                'bb_deviation': 2.0,
+                'kc_period': 20,
+                'kc_atr_period': 10,
+                'kc_multiplier': 1.5,
+                'momentum_period': 12,
+                'momentum_ma_period': 6,
+                'squeeze_alert': True,
+                'momentum_alert': True,
+                'min_squeeze_bars': 3,
+                'trading_style': 'day_trading'
+            },
+            'candle_patterns': {
+                'enabled': False,
+                'doji_threshold': 0.1,
+                'hammer_ratio': 2.0,
+                'body_size_min': 0.02,
+                'engulfing_body_ratio': 1.0,
+                'engulfing_volume_confirm': True,
+                'show_labels': True,
+                'show_stats': True,
+                'max_patterns': 8,
+                'trading_style': 'day_trading'
+            },
+            'breakout_detector': {
+                'enabled': False,
+                'sr_period': 20,
+                'sr_strength': 2,
+                'price_precision': 4,
+                'volume_threshold': 0.5,
+                'volume_ma_period': 10,
+                'breakout_threshold': 0.03,
+                'confirmation_bars': 2,
+                'max_age_levels': 50,
+                'trading_style': 'day_trading'
+            },
+            
+            # Volume Analysis (Phase 4)
+            'volume_profile': {
+                'enabled': False,
+                'profile_type': 'session',
+                'bins_count': 100,
+                'lookback_periods': 100,
+                'value_area_percent': 70.0,
+                'poc_sensitivity': 1.0,
+                'high_volume_threshold': 80.0,
+                'low_volume_threshold': 20.0,
+                'support_resistance_strength': 1.0,
+                'show_poc': True,
+                'show_value_area': True,
+                'show_high_volume_nodes': True,
+                'show_low_volume_nodes': False,
+                'show_volume_histogram': True,
+                'enable_poc_alerts': True,
+                'enable_value_area_alerts': True,
+                'poc_proximity_percent': 0.5,
+                'value_area_break_alert': True,
+                'histogram_opacity': 60,
+                'value_area_opacity': 20,
+                'trading_style': 'day_trading'
+            },
+            
             # Smart Money Analysis
             'fair_value_gaps': {
                 'enabled': False,
@@ -311,6 +376,17 @@ class IndicatorsModal:
                             self._create_macd_section()
                         ], className="p-3")
                     ]),
+                    
+                    # Onglet Momentum (Nouveaux indicateurs Phase 2) - TEMPORAIREMENT DÉSACTIVÉ
+                    # dbc.Tab(label="⚡ Momentum", tab_id="momentum", children=[
+                    #     html.Div([
+                    #         self._create_squeeze_momentum_section(),
+                    #         html.Hr(),
+                    #         self._create_candle_patterns_section(),
+                    #         html.Hr(),
+                    #         self._create_breakout_detector_section()
+                    #     ], className="p-3")
+                    # ]),
                     
                     # Onglet Smart Money Analysis
                     dbc.Tab(label="🧠 Smart Money", tab_id="smart-money", children=[
@@ -2742,6 +2818,44 @@ def register_indicators_modal_callbacks(app):
         """Toggle Order Blocks collapse"""
         return enabled
     
+    # Nouveaux callbacks pour les indicateurs Momentum (Phase 3)
+    @app.callback(
+        Output("indicators-squeeze-momentum-collapse", "is_open"),
+        [Input("indicators-squeeze-momentum-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_squeeze_momentum_collapse(enabled):
+        """Toggle Squeeze Momentum collapse"""
+        return enabled
+    
+    @app.callback(
+        Output("indicators-candle-patterns-collapse", "is_open"),
+        [Input("indicators-candle-patterns-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_candle_patterns_collapse(enabled):
+        """Toggle Candle Patterns collapse"""
+        return enabled
+    
+    @app.callback(
+        Output("indicators-breakout-detector-collapse", "is_open"),
+        [Input("indicators-breakout-detector-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_breakout_detector_collapse(enabled):
+        """Toggle Breakout Detector collapse"""
+        return enabled
+    
+    # Callback toggle Volume Profile (Phase 4)
+    @app.callback(
+        Output("indicators-volume-profile-collapse", "is_open"),
+        [Input("indicators-volume-profile-switch", "value")],
+        prevent_initial_call=True
+    )
+    def toggle_volume_profile_collapse(enabled):
+        """Toggle Volume Profile collapse"""
+        return enabled
+    
     # Callback principal pour synchronisation INSTANTANÉE avec le graphique
     # Note: Cette version ne renvoie rien car les IDs crypto-xxx n'existent plus
     # La synchronisation se fait directement via les inputs du callback du graphique
@@ -2763,13 +2877,50 @@ def register_indicators_modal_callbacks(app):
          Input("indicators-rsi-oversold", "value"),
          Input("indicators-atr-switch", "value"),
          Input("indicators-atr-period", "value"),
-         Input("indicators-atr-multiplier", "value")],
+         Input("indicators-atr-multiplier", "value"),
+         # Nouveaux indicateurs Momentum (Phase 3)
+         Input("indicators-squeeze-momentum-switch", "value"),
+         Input("indicators-squeeze-period", "value"),
+         Input("indicators-squeeze-sensitivity", "value"),
+         Input("indicators-candle-patterns-switch", "value"),
+         Input("indicators-doji-threshold", "value"),
+         Input("indicators-hammer-ratio", "value"),
+         Input("indicators-pattern-volume-confirm", "value"),
+         Input("indicators-pattern-labels", "value"),
+         Input("indicators-breakout-detector-switch", "value"),
+         Input("indicators-breakout-strength", "value"),
+         Input("indicators-breakout-volume-threshold", "value"),
+         Input("indicators-breakout-threshold", "value"),
+         Input("indicators-breakout-confirmation", "value"),
+         # Volume Profile (Phase 4)
+         Input("indicators-volume-profile-switch", "value"),
+         Input("indicators-volume-bins", "value"),
+         Input("indicators-volume-lookback", "value"),
+         Input("indicators-value-area-percent", "value"),
+         Input("indicators-poc-sensitivity", "value"),
+         Input("indicators-show-poc", "value"),
+         Input("indicators-show-value-area", "value"),
+         Input("indicators-show-histogram", "value"),
+         Input("indicators-show-hvn", "value"),
+         Input("indicators-hvn-threshold", "value"),
+         Input("indicators-poc-alerts", "value"),
+         Input("indicators-poc-proximity", "value"),
+         Input("indicators-va-alerts", "value"),
+         Input("indicators-histogram-opacity", "value")],
         prevent_initial_call=True
     )
     def store_indicators_config(sma_enabled, sma_period, ema_enabled, ema_period,
                                sr_enabled, sr_strength, fib_enabled, fib_swing, 
                                pivot_enabled, pivot_method, rsi_enabled, rsi_period, 
-                               rsi_overbought, rsi_oversold, atr_enabled, atr_period, atr_multiplier):
+                               rsi_overbought, rsi_oversold, atr_enabled, atr_period, atr_multiplier,
+                               # Nouveaux indicateurs Momentum
+                               squeeze_enabled, squeeze_period, squeeze_sensitivity,
+                               candle_enabled, doji_threshold, hammer_ratio, pattern_volume_confirm, pattern_labels,
+                               breakout_enabled, breakout_strength, breakout_volume_threshold, breakout_threshold, breakout_confirmation,
+                               # Volume Profile (Phase 4)
+                               volume_profile_enabled, volume_bins, volume_lookback, value_area_percent, poc_sensitivity,
+                               show_poc, show_value_area, show_histogram, show_hvn, hvn_threshold,
+                               poc_alerts, poc_proximity, va_alerts, histogram_opacity):
         """Stocker la configuration des indicateurs pour persistance"""
         return {
             'sma': {'enabled': sma_enabled, 'period': sma_period},
@@ -2778,7 +2929,44 @@ def register_indicators_modal_callbacks(app):
             'fibonacci': {'enabled': fib_enabled, 'swing': fib_swing},
             'pivot': {'enabled': pivot_enabled, 'method': pivot_method},
             'rsi': {'enabled': rsi_enabled, 'period': rsi_period, 'overbought': rsi_overbought, 'oversold': rsi_oversold},
-            'atr': {'enabled': atr_enabled, 'period': atr_period, 'multiplier': atr_multiplier}
+            'atr': {'enabled': atr_enabled, 'period': atr_period, 'multiplier': atr_multiplier},
+            # Nouveaux indicateurs
+            'squeeze_momentum': {
+                'enabled': squeeze_enabled, 
+                'period': squeeze_period, 
+                'sensitivity': squeeze_sensitivity
+            },
+            'candle_patterns': {
+                'enabled': candle_enabled,
+                'doji_threshold': doji_threshold,
+                'hammer_ratio': hammer_ratio,
+                'volume_confirm': pattern_volume_confirm,
+                'show_labels': pattern_labels
+            },
+            'breakout_detector': {
+                'enabled': breakout_enabled,
+                'strength': breakout_strength,
+                'volume_threshold': breakout_volume_threshold,
+                'threshold': breakout_threshold,
+                'confirmation': breakout_confirmation
+            },
+            # Volume Profile (Phase 4)
+            'volume_profile': {
+                'enabled': volume_profile_enabled,
+                'bins_count': volume_bins,
+                'lookback_periods': volume_lookback,
+                'value_area_percent': value_area_percent,
+                'poc_sensitivity': poc_sensitivity,
+                'show_poc': show_poc,
+                'show_value_area': show_value_area,
+                'show_histogram': show_histogram,
+                'show_hvn': show_hvn,
+                'hvn_threshold': hvn_threshold,
+                'poc_alerts': poc_alerts,
+                'poc_proximity': poc_proximity,
+                'va_alerts': va_alerts,
+                'histogram_opacity': histogram_opacity
+            }
         }
 
     # Callback pour réinitialiser les indicateurs
@@ -3089,6 +3277,686 @@ def register_indicators_modal_callbacks(app):
             print(f"❌ Erreur synchronisation FVG: {e}")
         
         return dash.no_update, dash.no_update, dash.no_update
+
+    # =================================================================
+    # NOUVELLES SECTIONS MOMENTUM - PHASE 3
+    # =================================================================
+    
+    def _create_squeeze_momentum_section(self) -> html.Div:
+        """Section Squeeze Momentum - Détection Compression/Expansion"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6([
+                        "Squeeze Momentum",
+                        html.I(className="fas fa-compress-arrows-alt ms-2", 
+                               id="squeeze-momentum-tooltip-target",
+                               style={"color": "#ff9800", "cursor": "pointer"})
+                    ], className="fw-bold text-warning"),
+                    dbc.Tooltip([
+                        html.Strong("⚡ Squeeze Momentum - Compression/Expansion"), html.Br(),
+                        "📊 Concept: Détecte les phases de compression et d'expansion du marché", html.Br(),
+                        "🎯 Squeeze: Bollinger Bands à l'intérieur des Keltner Channels", html.Br(),
+                        "💥 Release: Breakout avec forte expansion de volatilité", html.Br(),
+                        "📈 Momentum: Direction de l'explosion (haussier/baissier)", html.Br(),
+                        "⚡ Trading: Anticiper les mouvements explosifs après compression"
+                    ], target="squeeze-momentum-tooltip-target", placement="right"),
+                    html.P("Détecte compression/expansion pour anticiper les breakouts", className="text-muted small")
+                ], width=8),
+                dbc.Col([
+                    dbc.Switch(
+                        id="indicators-squeeze-momentum-switch",
+                        value=False,
+                        className="ms-auto"
+                    )
+                ], width=4, className="d-flex align-items-center justify-content-end")
+            ]),
+            
+            dbc.Collapse([
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Période BB/KC", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Période pour Bollinger Bands et Keltner Channels", html.Br(),
+                            "⚡ Court: Signaux fréquents", html.Br(),
+                            "🎯 Long: Signaux de qualité"
+                        ], target="squeeze-period-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="squeeze-period-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-squeeze-period",
+                            min=5, max=50, step=1, value=20,
+                            marks={5: '5', 20: '20', 50: '50'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        html.Label("Sensibilité Momentum", className="fw-bold"),
+                        dbc.Tooltip([
+                            "⚡ Sensibilité détection momentum", html.Br(),
+                            "🔥 Faible: Plus de signaux", html.Br(),
+                            "🎯 Élevé: Signaux sélectifs"
+                        ], target="squeeze-sensitivity-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="squeeze-sensitivity-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-squeeze-sensitivity",
+                            min=1, max=10, step=1, value=5,
+                            marks={1: '1', 5: '5', 10: '10'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6)
+                ], className="mt-2")
+            ], id="indicators-squeeze-momentum-collapse", is_open=False)
+        ])
+    
+    def _create_candle_patterns_section(self) -> html.Div:
+        """Section Candle Patterns - Détection Patterns de Bougies"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6([
+                        "Candle Patterns",
+                        html.I(className="fas fa-chart-bar ms-2", 
+                               id="candle-patterns-tooltip-target",
+                               style={"color": "#4caf50", "cursor": "pointer"})
+                    ], className="fw-bold text-success"),
+                    dbc.Tooltip([
+                        html.Strong("🕯️ Candle Patterns - Psychologie du Marché"), html.Br(),
+                        "📊 Doji: Indécision, potentiel retournement", html.Br(),
+                        "🔨 Hammer: Rejet baissier, signal haussier", html.Br(),
+                        "💪 Engulfing: Absorption complète, signal fort", html.Br(),
+                        "🎯 Usage: Confirmation des zones de retournement", html.Br(),
+                        "⚡ Trading: Entrées sur retests de patterns validés"
+                    ], target="candle-patterns-tooltip-target", placement="right"),
+                    html.P("Détecte Doji, Hammer, Engulfing pour signaux de retournement", className="text-muted small")
+                ], width=8),
+                dbc.Col([
+                    dbc.Switch(
+                        id="indicators-candle-patterns-switch",
+                        value=False,
+                        className="ms-auto"
+                    )
+                ], width=4, className="d-flex align-items-center justify-content-end")
+            ]),
+            
+            dbc.Collapse([
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Sensibilité Doji", className="fw-bold"),
+                        dbc.Tooltip([
+                            "🕯️ Taille max du corps pour Doji", html.Br(),
+                            "⚡ Faible: Dojis stricts", html.Br(),
+                            "🎯 Élevé: Plus de détections"
+                        ], target="doji-sensitivity-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="doji-sensitivity-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-doji-threshold",
+                            min=0.05, max=0.3, step=0.05, value=0.1,
+                            marks={0.05: '5%', 0.1: '10%', 0.3: '30%'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        html.Label("Ratio Hammer", className="fw-bold"),
+                        dbc.Tooltip([
+                            "🔨 Ratio mèche/corps pour Hammer", html.Br(),
+                            "⚡ Faible: Hammers larges", html.Br(),
+                            "🎯 Élevé: Hammers stricts"
+                        ], target="hammer-ratio-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="hammer-ratio-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-hammer-ratio",
+                            min=1.5, max=4.0, step=0.5, value=2.0,
+                            marks={1.5: '1.5x', 2.0: '2x', 4.0: '4x'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6)
+                ], className="mt-2"),
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Confirmation Volume", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Confirmer patterns avec volume", html.Br(),
+                            "✅ Activé: Patterns plus fiables", html.Br(),
+                            "⚡ Désactivé: Plus de signaux"
+                        ], target="pattern-volume-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="pattern-volume-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dbc.Switch(
+                            id="indicators-pattern-volume-confirm",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        html.Label("Afficher Labels", className="fw-bold"),
+                        dbc.Tooltip([
+                            "🏷️ Afficher noms des patterns", html.Br(),
+                            "✅ Utile pour apprentissage", html.Br(),
+                            "❌ Peut encombrer le graphique"
+                        ], target="pattern-labels-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="pattern-labels-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dbc.Switch(
+                            id="indicators-pattern-labels",
+                            value=True,
+                            className="mt-2"
+                        )
+                    ], width=6)
+                ], className="mt-2")
+            ], id="indicators-candle-patterns-collapse", is_open=False)
+        ])
+    
+    def _create_breakout_detector_section(self) -> html.Div:
+        """Section Breakout Detector - Détection Cassures de Niveaux"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6([
+                        "Breakout Detector",
+                        html.I(className="fas fa-rocket ms-2", 
+                               id="breakout-detector-tooltip-target",
+                               style={"color": "#ff5722", "cursor": "pointer"})
+                    ], className="fw-bold text-danger"),
+                    dbc.Tooltip([
+                        html.Strong("🚀 Breakout Detector - Cassures Explosives"), html.Br(),
+                        "📊 Concept: Détecte cassures de supports/résistances clés", html.Br(),
+                        "💥 Volume: Confirmation par explosion de volume", html.Br(),
+                        "🎯 Direction: Breakout haussier ou baissier", html.Br(),
+                        "📈 Momentum: Force de la cassure", html.Br(),
+                        "⚡ Trading: Entrées sur retests post-breakout"
+                    ], target="breakout-detector-tooltip-target", placement="right"),
+                    html.P("Détecte cassures explosives avec confirmation volume", className="text-muted small")
+                ], width=8),
+                dbc.Col([
+                    dbc.Switch(
+                        id="indicators-breakout-detector-switch",
+                        value=False,
+                        className="ms-auto"
+                    )
+                ], width=4, className="d-flex align-items-center justify-content-end")
+            ]),
+            
+            dbc.Collapse([
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Force S/R", className="fw-bold"),
+                        dbc.Tooltip([
+                            "💪 Force minimale Support/Résistance", html.Br(),
+                            "⚡ Faible: Plus de niveaux", html.Br(),
+                            "🎯 Élevé: Niveaux majeurs seulement"
+                        ], target="breakout-strength-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="breakout-strength-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-breakout-strength",
+                            min=1, max=5, step=1, value=2,
+                            marks={1: '1', 2: '2', 5: '5'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        html.Label("Seuil Volume", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Volume min vs moyenne pour confirmer", html.Br(),
+                            "⚡ Faible: Moins strict", html.Br(),
+                            "🔥 Élevé: Volume explosif requis"
+                        ], target="breakout-volume-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="breakout-volume-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-breakout-volume-threshold",
+                            min=0.2, max=2.0, step=0.1, value=0.5,
+                            marks={0.2: '0.2x', 0.5: '0.5x', 2.0: '2x'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6)
+                ], className="mt-2"),
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Seuil Breakout %", className="fw-bold"),
+                        dbc.Tooltip([
+                            "💥 % minimum de cassure du niveau", html.Br(),
+                            "⚡ Faible: Breakouts sensibles", html.Br(),
+                            "🎯 Élevé: Breakouts confirmés"
+                        ], target="breakout-threshold-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="breakout-threshold-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-breakout-threshold",
+                            min=0.01, max=0.1, step=0.01, value=0.03,
+                            marks={0.01: '1%', 0.03: '3%', 0.1: '10%'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6),
+                    dbc.Col([
+                        html.Label("Barres Confirmation", className="fw-bold"),
+                        dbc.Tooltip([
+                            "📊 Nombre de barres pour confirmer", html.Br(),
+                            "⚡ 1: Confirmation rapide", html.Br(),
+                            "🎯 5: Confirmation solide"
+                        ], target="breakout-confirmation-tooltip", placement="top"),
+                        html.I(className="fas fa-info-circle ms-1", id="breakout-confirmation-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                        dcc.Slider(
+                            id="indicators-breakout-confirmation",
+                            min=1, max=5, step=1, value=2,
+                            marks={1: '1', 2: '2', 5: '5'},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        )
+                    ], width=6)
+                ], className="mt-2")
+            ], id="indicators-breakout-detector-collapse", is_open=False)
+        ])
+
+    # =================================================================
+    # CALLBACKS SYNCHRONISATION NOUVEAUX INDICATEURS - PHASE 3
+    # =================================================================
+    
+    # Callback de synchronisation automatique Squeeze Momentum selon le style
+    @app.callback(
+        [Output('indicators-squeeze-period', 'value'),
+         Output('indicators-squeeze-sensitivity', 'value')],
+        [Input('indicators-trading-style', 'value')],
+        prevent_initial_call=True
+    )
+    def sync_squeeze_momentum_with_style(trading_style):
+        """Synchronise automatiquement les paramètres Squeeze Momentum avec le style sélectionné"""
+        if not trading_style:
+            return dash.no_update, dash.no_update
+        
+        try:
+            # Récupérer la configuration du style pour Squeeze Momentum
+            style_config = trading_style_manager.get_style_config(trading_style)
+            squeeze_config = style_config.get('squeeze_momentum')
+            
+            if squeeze_config and hasattr(squeeze_config, 'parameters'):
+                params = squeeze_config.parameters
+                
+                # Mettre à jour les contrôles avec les paramètres du style
+                period = params.get('bb_period', 20)
+                sensitivity = params.get('momentum_period', 12) // 2  # Convertir en sensibilité 1-10
+                
+                print(f"🔄 Sync Squeeze Momentum avec style {trading_style}: period={period}, sensitivity={sensitivity}")
+                
+                return period, sensitivity
+            
+        except Exception as e:
+            print(f"❌ Erreur synchronisation Squeeze Momentum: {e}")
+        
+        return dash.no_update, dash.no_update
+    
+    # Callback de synchronisation automatique Candle Patterns selon le style
+    @app.callback(
+        [Output('indicators-doji-threshold', 'value'),
+         Output('indicators-hammer-ratio', 'value'),
+         Output('indicators-pattern-volume-confirm', 'value'),
+         Output('indicators-pattern-labels', 'value')],
+        [Input('indicators-trading-style', 'value')],
+        prevent_initial_call=True
+    )
+    def sync_candle_patterns_with_style(trading_style):
+        """Synchronise automatiquement les paramètres Candle Patterns avec le style sélectionné"""
+        if not trading_style:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        
+        try:
+            # Récupérer la configuration du style pour Candle Patterns
+            style_config = trading_style_manager.get_style_config(trading_style)
+            patterns_config = style_config.get('candle_patterns')
+            
+            if patterns_config and hasattr(patterns_config, 'parameters'):
+                params = patterns_config.parameters
+                
+                # Mettre à jour les contrôles avec les paramètres du style
+                doji_threshold = params.get('doji_threshold', 0.1)
+                hammer_ratio = params.get('hammer_ratio', 2.0)
+                volume_confirm = params.get('engulfing_volume_confirm', True)
+                show_labels = params.get('show_labels', True)
+                
+                print(f"🔄 Sync Candle Patterns avec style {trading_style}: doji={doji_threshold}, hammer={hammer_ratio}, volume={volume_confirm}, labels={show_labels}")
+                
+                return doji_threshold, hammer_ratio, volume_confirm, show_labels
+            
+        except Exception as e:
+            print(f"❌ Erreur synchronisation Candle Patterns: {e}")
+        
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+    
+    # Callback de synchronisation automatique Breakout Detector selon le style
+    @app.callback(
+        [Output('indicators-breakout-strength', 'value'),
+         Output('indicators-breakout-volume-threshold', 'value'),
+         Output('indicators-breakout-threshold', 'value'),
+         Output('indicators-breakout-confirmation', 'value')],
+        [Input('indicators-trading-style', 'value')],
+        prevent_initial_call=True
+    )
+    def sync_breakout_detector_with_style(trading_style):
+        """Synchronise automatiquement les paramètres Breakout Detector avec le style sélectionné"""
+        if not trading_style:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        
+        try:
+            # Récupérer la configuration du style pour Breakout Detector
+            style_config = trading_style_manager.get_style_config(trading_style)
+            breakout_config = style_config.get('breakout_detector')
+            
+            if breakout_config and hasattr(breakout_config, 'parameters'):
+                params = breakout_config.parameters
+                
+                # Mettre à jour les contrôles avec les paramètres du style
+                strength = params.get('sr_strength', 2)
+                volume_threshold = params.get('volume_threshold', 0.5)
+                breakout_threshold = params.get('breakout_threshold', 0.03)
+                confirmation = params.get('confirmation_bars', 2)
+                
+                print(f"🔄 Sync Breakout Detector avec style {trading_style}: strength={strength}, volume={volume_threshold}, threshold={breakout_threshold}, confirmation={confirmation}")
+                
+                return strength, volume_threshold, breakout_threshold, confirmation
+            
+        except Exception as e:
+            print(f"❌ Erreur synchronisation Breakout Detector: {e}")
+        
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+    # =================================================================
+    # SECTION VOLUME PROFILE - PHASE 4
+    # =================================================================
+    
+    def _create_volume_profile_section(self) -> html.Div:
+        """Section Volume Profile + POC - Analyse Distribution Volume"""
+        return html.Div([
+            dbc.Row([
+                dbc.Col([
+                    html.H6([
+                        "Volume Profile + POC",
+                        html.I(className="fas fa-chart-area ms-2", 
+                               id="volume-profile-tooltip-target",
+                               style={"color": "#ff6b35", "cursor": "pointer"})
+                    ], className="fw-bold text-warning"),
+                    dbc.Tooltip([
+                        html.Strong("📊 Volume Profile - Distribution du Volume par Prix"), html.Br(),
+                        "🎯 POC: Point of Control = prix avec le plus gros volume", html.Br(),
+                        "💹 Value Area: Zone contenant 70% du volume total", html.Br(),
+                        "🔥 HVN: High Volume Nodes = supports/résistances forts", html.Br(),
+                        "💴 Histogramme: Visualisation horizontale du volume", html.Br(),
+                        "⚡ Trading: POC = zones de retournement, Value Area = limites clés"
+                    ], target="volume-profile-tooltip-target", placement="right"),
+                    html.P("Analyse distribution volume avec POC et Value Area", className="text-muted small")
+                ], width=8),
+                dbc.Col([
+                    dbc.Switch(
+                        id="indicators-volume-profile-switch",
+                        value=False,
+                        className="ms-auto"
+                    )
+                ], width=4, className="d-flex align-items-center justify-content-end")
+            ]),
+            
+            dbc.Collapse([
+                dbc.Tabs([
+                    
+                    # Onglet Configuration de Base
+                    dbc.Tab(label="⚙️ Base", tab_id="volume-profile-base", children=[
+                        html.Div([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Nombre de Niveaux", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "📊 Niveaux de prix pour histogramme", html.Br(),
+                                        "⚡ Peu: Plus lisible, moins précis", html.Br(),
+                                        "🎯 Beaucoup: Plus précis, plus dense"
+                                    ], target="volume-bins-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="volume-bins-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dcc.Slider(
+                                        id="indicators-volume-bins",
+                                        min=25, max=200, step=25, value=100,
+                                        marks={25: '25', 100: '100', 200: '200'},
+                                        tooltip={"placement": "bottom", "always_visible": True}
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Période d'Analyse", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🕰️ Nombre de bougies à analyser", html.Br(),
+                                        "⚡ Court: Profil réactif, récent", html.Br(),
+                                        "🎯 Long: Profil stable, historique"
+                                    ], target="volume-lookback-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="volume-lookback-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dcc.Slider(
+                                        id="indicators-volume-lookback",
+                                        min=50, max=500, step=50, value=100,
+                                        marks={50: '50', 100: '100', 500: '500'},
+                                        tooltip={"placement": "bottom", "always_visible": True}
+                                    )
+                                ], width=6)
+                            ], className="mt-2"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Value Area %", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "💹 % du volume pour Value Area", html.Br(),
+                                        "📈 Standard: 70% (norme institutionnelle)", html.Br(),
+                                        "⚡ Plus bas: Zone plus étroite", html.Br(),
+                                        "🎯 Plus haut: Zone plus large"
+                                    ], target="value-area-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="value-area-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dcc.Slider(
+                                        id="indicators-value-area-percent",
+                                        min=50, max=90, step=5, value=70,
+                                        marks={50: '50%', 70: '70%', 90: '90%'},
+                                        tooltip={"placement": "bottom", "always_visible": True}
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Sensibilité POC", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🎯 Sensibilité détection POC", html.Br(),
+                                        "⚡ Faible: POC plus stable", html.Br(),
+                                        "🔥 Élevé: POC plus réactif"
+                                    ], target="poc-sensitivity-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="poc-sensitivity-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dcc.Slider(
+                                        id="indicators-poc-sensitivity",
+                                        min=0.5, max=2.0, step=0.1, value=1.0,
+                                        marks={0.5: '0.5x', 1.0: '1x', 2.0: '2x'},
+                                        tooltip={"placement": "bottom", "always_visible": True}
+                                    )
+                                ], width=6)
+                            ], className="mt-2")
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Visualisation
+                    dbc.Tab(label="🎨 Affichage", tab_id="volume-profile-display", children=[
+                        html.Div([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Afficher POC", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🎯 Point of Control (prix max volume)", html.Br(),
+                                        "✅ Ligne horizontale orange", html.Br(),
+                                        "💹 Zone de retournement importante"
+                                    ], target="show-poc-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="show-poc-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dbc.Switch(
+                                        id="indicators-show-poc",
+                                        value=True,
+                                        className="mt-2"
+                                    )
+                                ], width=4),
+                                dbc.Col([
+                                    html.Label("Afficher Value Area", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "💹 Zone 70% du volume", html.Br(),
+                                        "✅ Zone colorée bleu-vert", html.Br(),
+                                        "💴 Limites clés du marché"
+                                    ], target="show-value-area-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="show-value-area-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dbc.Switch(
+                                        id="indicators-show-value-area",
+                                        value=True,
+                                        className="mt-2"
+                                    )
+                                ], width=4),
+                                dbc.Col([
+                                    html.Label("Histogramme Volume", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "📊 Barres horizontales volume", html.Br(),
+                                        "✅ Visualisation distribution", html.Br(),
+                                        "🔥 Intensité par niveau prix"
+                                    ], target="show-histogram-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="show-histogram-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dbc.Switch(
+                                        id="indicators-show-histogram",
+                                        value=True,
+                                        className="mt-2"
+                                    )
+                                ], width=4)
+                            ], className="mt-2"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("High Volume Nodes", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🔥 Niveaux à fort volume", html.Br(),
+                                        "✅ Supports/Résistances forts", html.Br(),
+                                        "💴 Zones de consolidation"
+                                    ], target="show-hvn-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="show-hvn-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dbc.Switch(
+                                        id="indicators-show-hvn",
+                                        value=True,
+                                        className="mt-2"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Seuil HVN %", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🔥 % volume pour être HVN", html.Br(),
+                                        "⚡ Faible: Plus de HVN", html.Br(),
+                                        "🎯 Élevé: Seulement majeurs"
+                                    ], target="hvn-threshold-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="hvn-threshold-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dcc.Slider(
+                                        id="indicators-hvn-threshold",
+                                        min=60, max=95, step=5, value=80,
+                                        marks={60: '60%', 80: '80%', 95: '95%'},
+                                        tooltip={"placement": "bottom", "always_visible": True}
+                                    )
+                                ], width=6)
+                            ], className="mt-2")
+                        ], className="p-3")
+                    ]),
+                    
+                    # Onglet Alertes
+                    dbc.Tab(label="🔔 Alertes", tab_id="volume-profile-alerts", children=[
+                        html.Div([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Alertes POC", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🔔 Alerte approche POC", html.Br(),
+                                        "✅ Signal retournement potentiel", html.Br(),
+                                        "🎯 Zone de trading importante"
+                                    ], target="poc-alerts-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="poc-alerts-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dbc.Switch(
+                                        id="indicators-poc-alerts",
+                                        value=True,
+                                        className="mt-2"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Distance POC %", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🎯 % distance pour alerte POC", html.Br(),
+                                        "⚡ Faible: Alertes plus fréquentes", html.Br(),
+                                        "🔥 Élevé: Seulement très proche"
+                                    ], target="poc-distance-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="poc-distance-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dcc.Slider(
+                                        id="indicators-poc-proximity",
+                                        min=0.1, max=2.0, step=0.1, value=0.5,
+                                        marks={0.1: '0.1%', 0.5: '0.5%', 2.0: '2%'},
+                                        tooltip={"placement": "bottom", "always_visible": True}
+                                    )
+                                ], width=6)
+                            ], className="mt-2"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Alertes Value Area", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🔔 Alerte cassure Value Area", html.Br(),
+                                        "✅ Signal mouvement important", html.Br(),
+                                        "💥 Breakout hors zone principale"
+                                    ], target="va-alerts-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="va-alerts-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dbc.Switch(
+                                        id="indicators-va-alerts",
+                                        value=True,
+                                        className="mt-2"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Opacité Histogramme", className="fw-bold"),
+                                    dbc.Tooltip([
+                                        "🎨 Transparence histogramme", html.Br(),
+                                        "⚡ Faible: Discret, fond", html.Br(),
+                                        "🔥 Élevé: Très visible"
+                                    ], target="histogram-opacity-tooltip", placement="top"),
+                                    html.I(className="fas fa-info-circle ms-1", id="histogram-opacity-tooltip", style={"font-size": "0.8rem", "color": "#6c757d"}),
+                                    dcc.Slider(
+                                        id="indicators-histogram-opacity",
+                                        min=20, max=100, step=10, value=60,
+                                        marks={20: '20%', 60: '60%', 100: '100%'},
+                                        tooltip={"placement": "bottom", "always_visible": True}
+                                    )
+                                ], width=6)
+                            ], className="mt-2")
+                        ], className="p-3")
+                    ])
+                    
+                ], id="volume-profile-tabs", active_tab="volume-profile-base")
+            ], id="indicators-volume-profile-collapse", is_open=False)
+        ])
+    
+    # Callback de synchronisation automatique Volume Profile selon le style
+    @app.callback(
+        [Output('indicators-volume-bins', 'value'),
+         Output('indicators-volume-lookback', 'value'),
+         Output('indicators-value-area-percent', 'value'),
+         Output('indicators-poc-sensitivity', 'value'),
+         Output('indicators-hvn-threshold', 'value'),
+         Output('indicators-histogram-opacity', 'value')],
+        [Input('indicators-trading-style', 'value')],
+        prevent_initial_call=True
+    )
+    def sync_volume_profile_with_style(trading_style):
+        """Synchronise automatiquement les paramètres Volume Profile avec le style sélectionné"""
+        if not trading_style:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        
+        try:
+            # Récupérer la configuration du style pour Volume Profile
+            style_config = trading_style_manager.get_style_config(trading_style)
+            vp_config = style_config.get('volume_profile')
+            
+            if vp_config and hasattr(vp_config, 'parameters'):
+                params = vp_config.parameters
+                
+                # Mettre à jour les contrôles avec les paramètres du style
+                bins_count = params.get('bins_count', 100)
+                lookback_periods = params.get('lookback_periods', 100)
+                value_area_percent = params.get('value_area_percent', 70.0)
+                poc_sensitivity = params.get('poc_sensitivity', 1.0)
+                hvn_threshold = params.get('high_volume_threshold', 80.0)
+                histogram_opacity = int(params.get('histogram_opacity', 0.6) * 100)  # Convertir en %
+                
+                print(f"🔄 Sync Volume Profile avec style {trading_style}: bins={bins_count}, lookback={lookback_periods}, VA={value_area_percent}%, POC={poc_sensitivity}, HVN={hvn_threshold}%, opacity={histogram_opacity}%")
+                
+                return bins_count, lookback_periods, value_area_percent, poc_sensitivity, hvn_threshold, histogram_opacity
+            
+        except Exception as e:
+            print(f"❌ Erreur synchronisation Volume Profile: {e}")
+        
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 
 # Store pour sauvegarder la configuration des indicateurs
