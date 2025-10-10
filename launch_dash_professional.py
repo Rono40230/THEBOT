@@ -32,6 +32,7 @@ from dash_modules.core.api_config import api_config
 
 # Import modules modulaires
 from dash_modules.tabs.crypto_module import CryptoModule
+from crypto_callbacks_clean import register_new_crypto_callbacks
 from dash_modules.tabs.forex_module import ForexModule
 from dash_modules.tabs.stocks_module import StocksModule
 from dash_modules.tabs.economic_news_module import EconomicNewsModule
@@ -69,6 +70,11 @@ class THEBOTDashApp:
                 dbc.themes.CYBORG,  # Thème dark moderne
                 dbc.icons.FONT_AWESOME,  # Icônes
                 "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+            ],
+            meta_tags=[
+                {"name": "viewport", "content": "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"},
+                {"name": "description", "content": "THEBOT - Trading Intelligence Platform"},
+                {"name": "theme-color", "content": "#212529"}
             ],
             suppress_callback_exceptions=True,
             update_title=None  # Pas de "Updating..." dans le titre
@@ -128,7 +134,11 @@ class THEBOTDashApp:
             # Configuration unique des callbacks pour les modules qui en ont
             if 'crypto' in self.modules and hasattr(self.modules['crypto'], 'setup_callbacks'):
                 self.modules['crypto'].setup_callbacks(self.app)
-                print("✅ Callbacks Crypto configurés")
+            
+            # Enregistrer les nouveaux callbacks du système modulaire
+            register_new_crypto_callbacks(self.app)
+            print("🔧 Callbacks nouveau système modulaire enregistrés")
+            print("✅ Callbacks Crypto configurés")
             
             if 'economic_news' in self.modules and hasattr(self.modules['economic_news'], 'setup_callbacks'):
                 self.modules['economic_news'].setup_callbacks(self.app)
@@ -479,6 +489,75 @@ class THEBOTDashApp:
                         {{%css%}}
                         <style>
                             {modal_css}
+                            
+                            /* CSS Responsif pour adaptation automatique */
+                            * {{
+                                box-sizing: border-box;
+                            }}
+                            
+                            body {{
+                                margin: 0;
+                                padding: 0;
+                                overflow-x: auto;
+                            }}
+                            
+                            /* Container principal responsive */
+                            ._dash-loading {{
+                                margin: 0;
+                            }}
+                            
+                            /* Graphiques responsifs */
+                            .js-plotly-plot, .plotly {{
+                                width: 100% !important;
+                                height: auto !important;
+                            }}
+                            
+                            /* Colonnes responsive */
+                            .col, .col-1, .col-2, .col-3, .col-4, .col-5, .col-6,
+                            .col-7, .col-8, .col-9, .col-10, .col-11, .col-12 {{
+                                padding-left: 5px;
+                                padding-right: 5px;
+                            }}
+                            
+                            /* Responsive pour tablettes et mobiles */
+                            @media (max-width: 1200px) {{
+                                .col-4 {{
+                                    flex: 0 0 50% !important;
+                                    max-width: 50% !important;
+                                }}
+                            }}
+                            
+                            @media (max-width: 768px) {{
+                                .col-4 {{
+                                    flex: 0 0 100% !important;
+                                    max-width: 100% !important;
+                                }}
+                                
+                                .dbc-tabs {{
+                                    font-size: 0.9rem;
+                                }}
+                                
+                                .card {{
+                                    margin-bottom: 10px;
+                                }}
+                            }}
+                            
+                            /* Adaptation automatique des conteneurs */
+                            .container-fluid {{
+                                max-width: 100vw;
+                                overflow-x: auto;
+                            }}
+                            
+                            /* Responsive pour les graphiques secondaires */
+                            #crypto-rsi-chart, #crypto-atr-chart, #crypto-macd-chart {{
+                                min-height: 300px;
+                            }}
+                            
+                            @media (max-width: 768px) {{
+                                #crypto-rsi-chart, #crypto-atr-chart, #crypto-macd-chart {{
+                                    min-height: 250px;
+                                }}
+                            }}
                         </style>
                     </head>
                     <body>
@@ -945,31 +1024,8 @@ class THEBOTDashApp:
         ])
         
     def create_footer(self):
-        """Footer avec informations de statut"""
-        
-        return dbc.Row([
-            dbc.Col([
-                html.Small([
-                    html.I(className="fas fa-clock me-1"),
-                    html.Span("Last Update: ", className="text-muted"),
-                    html.Span("--:--:--", id="last-update-time"),
-                    html.Span(" | ", className="text-muted mx-2"),
-                    html.Span("Server: Online", className="text-success"),
-                    html.Span(" | ", className="text-muted mx-2"),
-                    html.Span("Data: Binance, Alpha Vantage", className="text-info")
-                ])
-            ], width=8),
-            
-            dbc.Col([
-                html.Small([
-                    "THEBOT v2.0 | ",
-                    html.A("Docs", href="#", className="text-decoration-none"),
-                    " | ",
-                    html.A("Support", href="#", className="text-decoration-none")
-                ], className="text-end text-muted")
-            ], width=4)
-            
-        ], className="border-top border-secondary pt-2 mt-4 small")
+        """Footer supprimé pour gagner de la place"""
+        return html.Div()  # Footer vide
         
     def get_default_settings(self):
         """Configuration par défaut"""

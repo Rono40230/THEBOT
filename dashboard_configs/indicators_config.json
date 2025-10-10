@@ -1,0 +1,164 @@
+{
+  "basic_indicators": {
+    "sma": {
+      "enabled": true,
+      "period": 20,
+      "min_value": 5,
+      "max_value": 200,
+      "color": "#2196F3"
+    },
+    "ema": {
+      "enabled": true,
+      "period": 12,
+      "min_value": 5,
+      "max_value": 200,
+      "color": "#FF9800"
+    },
+    "rsi": {
+      "enabled": true,
+      "period": 14,
+      "min_value": 2,
+      "max_value": 50,
+      "overbought": 70,
+      "oversold": 30,
+      "color": "#9C27B0"
+    },
+    "atr": {
+      "enabled": true,
+      "period": 14,
+      "min_value": 5,
+      "max_value": 50,
+      "multiplier": 2.0,
+      "color": "#4CAF50"
+    },
+    "macd": {
+      "enabled": true,
+      "fast_period": 12,
+      "slow_period": 26,
+      "signal_period": 9,
+      "color_macd": "#2196F3",
+      "color_signal": "#FF5722",
+      "color_histogram": "#FFC107"
+    }
+  },
+  "advanced_indicators": {
+    "support_resistance": {
+      "enabled": false,
+      "strength": 2,
+      "lookback": 50,
+      "min_strength": 1,
+      "max_strength": 5,
+      "min_lookback": 10,
+      "max_lookback": 200
+    },
+    "fibonacci": {
+      "enabled": false,
+      "swing_period": 20,
+      "line_width": 1,
+      "min_swing": 5,
+      "max_swing": 100,
+      "levels": [
+        0.0,
+        0.236,
+        0.382,
+        0.5,
+        0.618,
+        0.786,
+        1.0
+      ]
+    },
+    "pivot_points": {
+      "enabled": false,
+      "method": "traditional",
+      "show_r3": true,
+      "show_r2": true,
+      "show_r1": true,
+      "show_pp": true,
+      "show_s1": true,
+      "show_s2": true,
+      "show_s3": true
+    }
+  },
+  "trading_styles": {
+    "current_style": "day_trading",
+    "styles": {
+      "scalping": {
+        "timeframe": "1m",
+        "indicators": {
+          "ema": {
+            "period": 8
+          },
+          "rsi": {
+            "period": 7,
+            "overbought": 80,
+            "oversold": 20
+          },
+          "atr": {
+            "period": 7,
+            "multiplier": 1.5
+          }
+        }
+      },
+      "day_trading": {
+        "timeframe": "15m",
+        "indicators": {
+          "sma": {
+            "period": 20
+          },
+          "ema": {
+            "period": 12
+          },
+          "rsi": {
+            "period": 14,
+            "overbought": 70,
+            "oversold": 30
+          },
+          "atr": {
+            "period": 14,
+            "multiplier": 2.0
+          }
+        }
+      },
+      "swing_trading": {
+        "timeframe": "4h",
+        "indicators": {
+          "sma": {
+            "period": 50
+          },
+          "ema": {
+            "period": 21
+          },
+          "rsi": {
+            "period": 21,
+            "overbought": 65,
+            "oversold": 35
+          },
+          "atr": {
+            "period": 21,
+            "multiplier": 2.5
+          }
+        }
+      },
+      "position_trading": {
+        "timeframe": "1d",
+        "indicators": {
+          "sma": {
+            "period": 100
+          },
+          "ema": {
+            "period": 50
+          },
+          "rsi": {
+            "period": 30,
+            "overbought": 60,
+            "oversold": 40
+          },
+          "atr": {
+            "period": 30,
+            "multiplier": 3.0
+          }
+        }
+      }
+    }
+  }
+}

@@ -68,11 +68,19 @@ except ImportError as e:
     print(f"⚠️ Order Blocks non disponibles: {e}")
     ORDER_BLOCKS_AVAILABLE = False
 
+# Variable globale pour l'instance crypto
+_crypto_instance = None
+
+# Variable globale pour l'app Dash (sera définie par le launcher)
+app = None
+
 class CryptoModule:
     """Module crypto moderne avec interface complète"""
     
     def __init__(self, calculators: Dict = None):
         """Initialisation du module crypto"""
+        global _crypto_instance
+        
         self.calculators = calculators or {}
         self.current_symbol = "BTCUSDT"
         self.current_timeframe = "1h"
@@ -95,7 +103,10 @@ class CryptoModule:
             'atr': {'period': 14, 'enabled': True}
         }
         
-        print("✅ CryptoModule nouveau initialisé")
+        # Enregistrer l'instance globalement
+        _crypto_instance = self
+        
+        print("✅ CryptoModule nouveau initialisé et enregistré globalement")
 
     def get_symbols_list(self) -> List[str]:
         """Récupère la liste des symboles crypto disponibles"""
@@ -306,10 +317,11 @@ class CryptoModule:
         """Crée le graphique principal avec candlesticks et prix en direct"""
         return dcc.Graph(
             id='crypto-main-chart',
-            style={'height': '600px'},  # Augmenté pour accommoder le volume
+            style={'height': '600px', 'width': '100%'},  # Responsive
             config={
                 'displayModeBar': True,
                 'displaylogo': False,
+                'responsive': True,  # Graphique responsive
                 'modeBarButtonsToRemove': [
                     'pan2d', 'lasso2d', 'select2d',
                     'autoScale2d', 'hoverClosestCartesian'
@@ -318,37 +330,33 @@ class CryptoModule:
         )
 
     def create_secondary_charts(self):
-        """Crée les 2 graphiques secondaires (RSI, ATR) - Volume intégré au graphique principal"""
+        """Crée les 3 graphiques secondaires (RSI, ATR, MACD) avec hauteur augmentée"""
         return dbc.Row([
-            
             # RSI Chart
             dbc.Col([
                 dcc.Graph(
                     id='crypto-rsi-chart',
-                    style={'height': '200px'},
-                    config={'displayModeBar': False}
+                    style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'},
+                    config={'displayModeBar': False, 'responsive': True}
                 )
-            ], width=4),  # Réduit à 4 colonnes pour 3 graphiques
-            
+            ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=6, lg=4),
             # ATR Chart
             dbc.Col([
                 dcc.Graph(
                     id='crypto-atr-chart',
-                    style={'height': '200px'},
-                    config={'displayModeBar': False}
+                    style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'},
+                    config={'displayModeBar': False, 'responsive': True}
                 )
-            ], width=4),  # Réduit à 4 colonnes pour 3 graphiques
-            
+            ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=6, lg=4),
             # MACD Chart
             dbc.Col([
                 dcc.Graph(
                     id='crypto-macd-chart',
-                    style={'height': '200px'},
-                    config={'displayModeBar': False}
+                    style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'},
+                    config={'displayModeBar': False, 'responsive': True}
                 )
-            ], width=4)  # Nouveau graphique MACD
-            
-        ])
+            ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=12, lg=4)
+        ], style={'margin': '0px'}, className="g-2")
 
     def create_ai_insights_cards(self):
         """Crée les 3 cartes AI Insights"""
@@ -561,6 +569,10 @@ class CryptoModule:
                 print(f"❌ Erreur mise à jour prix: {e}")
                 return (self.current_symbol, "Error", "", "--")
         
+        # 🚫 CALLBACK PRINCIPAL TEMPORAIREMENT DÉSACTIVÉ - CONFLIT AVEC NOUVEAU SYSTÈME MODULAIRE
+        # Ce callback sera réactivé une fois que le nouveau système modulaire
+        # aura implémenté les IDs correspondants (indicators-sma-switch, etc.)
+        """
         # Callback pour le graphique principal avec indicateurs structurels
         @app.callback(
             Output('crypto-main-chart', 'figure'),
@@ -638,7 +650,7 @@ class CryptoModule:
                              ob_enabled, ob_lookback, ob_strength, ob_show_labels, ob_opacity,
                              # Trading Style Parameter
                              trading_style):
-            """Met à jour le graphique principal"""
+            "Met à jour le graphique principal"
             try:
                 # CORRECTION: Être strict sur le symbole, pas de fallback
                 if not symbol:
@@ -668,7 +680,7 @@ class CryptoModule:
                     rows=2, cols=1,
                     shared_xaxes=True,
                     vertical_spacing=0.03,
-                    subplot_titles=('Prix', 'Volume'),
+                    subplot_titles=('', ''),  # Titres supprimés (redondant)
                     row_heights=[0.75, 0.25]  # 75% pour prix, 25% pour volume
                 )
                 
@@ -1073,526 +1085,739 @@ class CryptoModule:
                     xref="paper", yref="paper",
                     x=0.5, y=0.5, showarrow=False
                 )
+        """
+        # FIN DU CALLBACK PRINCIPAL DÉSACTIVÉ
         
-        @app.callback(
-            [Output('crypto-rsi-chart', 'figure'),
-             Output('crypto-atr-chart', 'figure'),
-             Output('crypto-macd-chart', 'figure')],
-            [Input('crypto-symbol-search', 'value'),
-             Input('crypto-timeframe-selector', 'value'),
-             Input('indicators-rsi-switch', 'value'),
-             Input('indicators-rsi-period', 'value'),
-             Input('indicators-rsi-overbought', 'value'),
-             Input('indicators-rsi-oversold', 'value'),
-             Input('indicators-atr-switch', 'value'),
-             Input('indicators-atr-period', 'value'),
-             Input('indicators-atr-multiplier', 'value'),
-             Input('indicators-macd-switch', 'value'),
-             Input('indicators-macd-fast', 'value'),
-             Input('indicators-macd-slow', 'value'),
-             Input('indicators-macd-signal', 'value'),
-             Input('indicators-macd-color', 'value'),
-             Input('indicators-macd-signal-color', 'value'),
-             Input('indicators-macd-histogram', 'value')]
-        )
-        def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, rsi_overbought, rsi_oversold, atr_enabled, atr_period, atr_multiplier,
-                                   macd_enabled, macd_fast, macd_slow, macd_signal, 
-                                   macd_color, macd_signal_color, macd_histogram):
-            """Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal"""
-            try:
-                # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
-                if not symbol:
-                    return go.Figure(), go.Figure(), go.Figure()
+        # 🔧 CALLBACKS TEMPORAIRES SIMPLIFIÉS - NOUVEAU SYSTÈME MODULAIRE (DÉSACTIVÉS)
+        # Ces callbacks temporaires affichent les graphiques sans dépendre des anciens IDs
+        
+        # @app.callback(
+        #     Output('crypto-main-chart', 'figure'),
+        #     [Input('crypto-symbol-search', 'value'),
+        #      Input('crypto-timeframe-selector', 'value')]
+        # )
+        # def update_main_chart_simplified(symbol, timeframe):
+        #     """Met à jour le graphique principal (version simplifiée temporaire)"""
+        #     try:
+        #         if not symbol:
+        #             return go.Figure().add_annotation(
+        #                 text="Aucun symbole sélectionné",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False
+        #             )
+        #         
+        #         # Charger les données
+        #         data = self.load_market_data(symbol, timeframe)
+        #         if data.empty:
+        #             return go.Figure().add_annotation(
+        #                 text=f"Pas de données pour {symbol}",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False
+        #             )
+        #         
+        #         # Créer un graphique de base avec chandelier
+        #         fig = go.Figure()
+        #         
+        #         fig.add_trace(go.Candlestick(
+        #             x=data.index,
+        #             open=data['open'],
+        #             high=data['high'],
+        #             low=data['low'],
+        #             close=data['close'],
+        #             name=symbol,
+        #             increasing_line_color='#00ff88',
+        #             decreasing_line_color='#ff4444'
+        #         ))
+        #         
+        #         # Ajouter par défaut les indicateurs demandés : SMA, EMA (selon config nouveau système)
+        #         try:
+        #             # SMA 20 par défaut (activé dans nouveau système)
+        #             sma_20 = data['close'].rolling(window=20).mean()
+        #             fig.add_trace(go.Scatter(
+        #                 x=data.index, y=sma_20, mode='lines',
+        #                 name='SMA 20', line=dict(color='#2196F3', width=2)
+        #             ))
+        #             
+        #             # EMA 12 par défaut (activé dans nouveau système)  
+        #             ema_12 = data['close'].ewm(span=12).mean()
+        #             fig.add_trace(go.Scatter(
+        #                 x=data.index, y=ema_12, mode='lines',
+        #                 name='EMA 12', line=dict(color='#FF9800', width=2)
+        #             ))
+        #         except Exception as e:
+        #             print(f"⚠️ Erreur calcul indicateurs par défaut: {e}")
+        #         
+        #         # Configuration du layout
+        #         fig.update_layout(
+        #             title=f"{symbol} - {timeframe} (Nouveau Système)",
+        #             yaxis_title="Prix",
+        #             template="plotly_dark",
+        #             showlegend=True,
+        #             height=500
+        #         )
+        #         
+        #         fig.update_xaxes(rangeslider_visible=False)
+        #         
+        #         print(f"✅ Graphique principal mis à jour: {symbol} (système simplifié)")
+        #         return fig
                 
-                # Mettre à jour le symbole courant pour synchronisation
-                if symbol != self.current_symbol:
-                    self.current_symbol = symbol
-                
-                # Utiliser les valeurs des indicateurs reçues en paramètres
-                # rsi_enabled, rsi_period, atr_enabled, atr_period sont déjà disponibles
-                
-                print(f"🔄 Graphiques secondaires: symbole synchronisé vers {symbol}")
-                    
-                data = self.current_data if not self.current_data.empty else self.load_market_data(symbol, timeframe)
-                
-                if data.empty:
-                    empty_fig = go.Figure().add_annotation(
-                        text="Pas de données",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False
-                    )
-                    return empty_fig, empty_fig, empty_fig  # 3 figures pour RSI, ATR, MACD
-                
-                # RSI Chart Professionnel avec signaux avancés
-                rsi_fig = go.Figure()
-                if rsi_enabled and rsi_period and rsi_period > 0:
-                    # Calcul RSI avec signaux avancés
-                    from dash_modules.core.calculators import TechnicalCalculators
-                    calc = TechnicalCalculators()
-                    rsi_data = calc.calculate_rsi_signals(
-                        data['close'].tolist(), 
-                        period=rsi_period,
-                        overbought=rsi_overbought,
-                        oversold=rsi_oversold
-                    )
-                    
-                    rsi_values = rsi_data['rsi_values']
-                    signals = rsi_data['signals']
-                    signal_strength = rsi_data['signal_strength']
-                    signal_descriptions = rsi_data['signal_descriptions']
-                    
-                    # Zones d'arrière-plan colorées
-                    rsi_fig.add_hrect(y0=rsi_overbought, y1=100, fillcolor="rgba(255, 0, 0, 0.1)", 
-                                      line_width=0)
-                    rsi_fig.add_hrect(y0=0, y1=rsi_oversold, fillcolor="rgba(0, 255, 0, 0.1)", 
-                                      line_width=0)
-                    rsi_fig.add_hrect(y0=rsi_oversold, y1=rsi_overbought, fillcolor="rgba(128, 128, 128, 0.05)", 
-                                      line_width=0)
-                    
-                    # Ligne RSI principale avec signaux dans tooltip
-                    rsi_fig.add_trace(go.Scatter(
-                        x=data.index,
-                        y=rsi_values,
-                        mode='lines',
-                        name='RSI',
-                        line=dict(color='#00bfff', width=2),
-                        showlegend=False,
-                        hovertemplate='<b>RSI</b>: %{y:.1f}<br>' +
-                                     '<b>Date</b>: %{x}<br>' +
-                                     '<b>Signal</b>: %{customdata}<br>' +
-                                     '<extra></extra>',
-                        customdata=signal_descriptions
-                    ))
-                    
-                    # Ajouter les signaux de trading comme marqueurs
-                    for i, (signal, strength, desc) in enumerate(zip(signals, signal_strength, signal_descriptions)):
-                        if signal in ['buy', 'strong_buy'] and strength > 0.5:
-                            rsi_fig.add_trace(go.Scatter(
-                                x=[data.index[i]],
-                                y=[rsi_values[i]],
-                                mode='markers',
-                                marker=dict(
-                                    symbol='triangle-up',
-                                    size=12 + (strength * 8),  # Taille selon force
-                                    color='#00ff88',
-                                    line=dict(color='#004400', width=2)
-                                ),
-                                name='Signal Achat',
-                                showlegend=False,
-                                hovertemplate=f'<b>SIGNAL ACHAT</b><br>' +
-                                             f'Force: {strength:.1%}<br>' +
-                                             f'{desc}<br>' +
-                                             '<extra></extra>'
-                            ))
-                        elif signal in ['sell', 'strong_sell'] and strength > 0.5:
-                            rsi_fig.add_trace(go.Scatter(
-                                x=[data.index[i]],
-                                y=[rsi_values[i]],
-                                mode='markers',
-                                marker=dict(
-                                    symbol='triangle-down',
-                                    size=12 + (strength * 8),  # Taille selon force
-                                    color='#ff4444',
-                                    line=dict(color='#440000', width=2)
-                                ),
-                                name='Signal Vente',
-                                showlegend=False,
-                                hovertemplate=f'<b>SIGNAL VENTE</b><br>' +
-                                             f'Force: {strength:.1%}<br>' +
-                                             f'{desc}<br>' +
-                                             '<extra></extra>'
-                            ))
-                    
-                    # Ajouter signaux de divergence (losanges dorés)
-                    for i, is_divergence in enumerate(rsi_data['divergence_signals']):
-                        if is_divergence:
-                            rsi_fig.add_trace(go.Scatter(
-                                x=[data.index[i]],
-                                y=[rsi_values[i]],
-                                mode='markers',
-                                marker=dict(
-                                    symbol='diamond',
-                                    size=15,
-                                    color='#ffd700',
-                                    line=dict(color='#ffaa00', width=2)
-                                ),
-                                name='Divergence',
-                                showlegend=False,
-                                hovertemplate='<b>🔄 DIVERGENCE RSI</b><br>' +
-                                             'Signal de retournement potentiel<br>' +
-                                             f'{signal_descriptions[i]}<br>' +
-                                             '<extra></extra>'
-                            ))
-                    
-                    # Lignes de niveaux critiques
-                    rsi_fig.add_hline(y=rsi_overbought, line=dict(color='#ff4444', dash='dash', width=1))
-                    rsi_fig.add_hline(y=rsi_oversold, line=dict(color='#00ff88', dash='dash', width=1))
-                    rsi_fig.add_hline(y=50, line=dict(color='#888888', dash='dot', width=1))
-                    
-                    # Annotations pour les seuils (plus discrètes)
-                    rsi_fig.add_annotation(
-                        x=data.index[-1], y=rsi_overbought,
-                        text=f"Surachat {rsi_overbought}",
-                        showarrow=False,
-                        xanchor="left",
-                        font=dict(size=10, color="#ff4444")
-                    )
-                    rsi_fig.add_annotation(
-                        x=data.index[-1], y=rsi_oversold,
-                        text=f"Survente {rsi_oversold}",
-                        showarrow=False,
-                        xanchor="left",
-                        font=dict(size=10, color="#00ff88")
-                    )
-                
-                if not rsi_enabled:
-                    rsi_fig.add_annotation(
-                        text="RSI désactivé",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False,
-                        font=dict(size=14, color="#666666")
-                    )
-                    rsi_fig.add_annotation(
-                        text="RSI désactivé",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False,
-                        font=dict(size=14, color="#666666")
-                    )
-                
-                rsi_fig.update_layout(
-                    title="RSI - Surachat/Survente",
-                    template='plotly_dark',
-                    height=200,
-                    margin=dict(l=0, r=0, t=30, b=0),
-                    yaxis_range=[0, 100],
-                    showlegend=False
-                )
-                
-                # ATR Chart Professionnel avec signaux de croisement et zones de volatilité
-                atr_fig = go.Figure()
-                if atr_enabled and atr_period and atr_period > 0:
-                    # Utiliser le multiplier de l'interface (fallback à 2.0 si None)
-                    atr_multiplier_value = atr_multiplier if atr_multiplier is not None else 2.0
-                    atr_data = self.calculate_atr_signals(data, atr_period, atr_multiplier_value)
-                    
-                    atr = pd.Series(atr_data['atr'])
-                    atr_ma = pd.Series(atr_data['atr_ma'])
-                    upper_threshold = pd.Series(atr_data['upper_threshold'])
-                    lower_threshold = pd.Series(atr_data['lower_threshold'])
-                    
-                    # Obtenir les valeurs fixes des seuils
-                    upper_value = upper_threshold.iloc[0] if len(upper_threshold) > 0 else atr.max() * 1.5
-                    lower_value = lower_threshold.iloc[0] if len(lower_threshold) > 0 else 0
-                    
-                    # Zones de volatilité avec rectangles horizontaux fixes
-                    # Zone de volatilité faible (0 à seuil bas) - Vert
-                    if lower_value > 0:
-                        atr_fig.add_hrect(
-                            y0=0, y1=lower_value,
-                            fillcolor="rgba(0, 255, 0, 0.1)",
-                            line_width=0
-                        )
-                    
-                    # Zone de volatilité normale (seuil bas à seuil haut) - Jaune
-                    atr_fig.add_hrect(
-                        y0=lower_value, y1=upper_value,
-                        fillcolor="rgba(255, 255, 0, 0.1)",
-                        line_width=0
-                    )
-                    
-                    # Zone de volatilité élevée (seuil haut à max) - Rouge
-                    atr_fig.add_hrect(
-                        y0=upper_value, y1=atr.max() * 1.2,
-                        fillcolor="rgba(255, 0, 0, 0.1)",
-                        line_width=0
-                    )
-                    
-                    # ATR principal avec tooltip enrichi
-                    atr_fig.add_trace(go.Scatter(
-                        x=data.index,
-                        y=atr,
-                        mode='lines',
-                        name='ATR',
-                        line=dict(color='#00bfff', width=2),
-                        showlegend=False,
-                        hovertemplate='<b>ATR</b>: %{y:.4f}<br>' +
-                                     '<b>Date</b>: %{x}<br>' +
-                                     '<b>Stop suggéré</b>: ±%{customdata:.4f}<br>' +
-                                     '<extra></extra>',
-                        customdata=atr * 2  # Stop loss suggéré à 2x ATR
-                    ))
-                    
-                    # ATR Moyenne Mobile avec tooltip explicatif
-                    atr_fig.add_trace(go.Scatter(
-                        x=data.index,
-                        y=atr_ma,
-                        mode='lines',
-                        name='ATR Tendance',
-                        line=dict(color='#ffa500', width=1, dash='dot'),
-                        opacity=0.7,
-                        showlegend=False,
-                        hovertemplate='<b>ATR Tendance</b>: %{y:.4f}<br>' +
-                                     '<b>Date</b>: %{x}<br>' +
-                                     '<b>Évolution</b>: Tendance de volatilité<br>' +
-                                     '<extra></extra>'
-                    ))
-                    
-                    # Seuils de volatilité HORIZONTAUX FIXES
-                    # Ligne de seuil haute volatilité (rouge)
-                    atr_fig.add_hline(
-                        y=upper_value,
-                        line=dict(color='#ff4444', dash='dash', width=2),
-                        annotation_text=f"Seuil Élevé: {upper_value:.4f}",
-                        annotation_position="top right"
-                    )
-                    
-                    # Ligne de seuil basse volatilité (vert)
-                    if lower_value > 0:
-                        atr_fig.add_hline(
-                            y=lower_value,
-                            line=dict(color='#00ff88', dash='dash', width=2),
-                            annotation_text=f"Seuil Faible: {lower_value:.4f}",
-                            annotation_position="bottom right"
-                        )
-                    
-                    # === SIGNAUX DE CROISEMENT ATR ===
-                    
-                    # Signaux de haute volatilité (croix vers le haut)
-                    for signal in atr_data['volatility_signals']:
-                        if signal['type'] == 'high_volatility':
-                            atr_fig.add_trace(go.Scatter(
-                                x=[data.index[signal['index']]],
-                                y=[signal['value']],
-                                mode='markers',
-                                marker=dict(symbol='triangle-up', size=12, color='red'),
-                                name='⚠️ Volatilité Élevée',
-                                showlegend=False,
-                                hovertemplate=f'<b>🔺 {signal["description"]}</b><br>' +
-                                             f'ATR: {signal["value"]:.4f}<br>' +
-                                             f'Seuil: {signal["threshold"]:.4f}<br>' +
-                                             'Signal: Marché agité - Prudence!<br>' +
-                                             '<extra></extra>'
-                            ))
-                    
-                    # Signaux de basse volatilité (croix vers le bas)
-                    for signal in atr_data['volatility_signals']:
-                        if signal['type'] == 'low_volatility':
-                            atr_fig.add_trace(go.Scatter(
-                                x=[data.index[signal['index']]],
-                                y=[signal['value']],
-                                mode='markers',
-                                marker=dict(symbol='triangle-down', size=12, color='green'),
-                                name='📉 Volatilité Faible',
-                                showlegend=False,
-                                hovertemplate=f'<b>🔻 {signal["description"]}</b><br>' +
-                                             f'ATR: {signal["value"]:.4f}<br>' +
-                                             f'Seuil: {signal["threshold"]:.4f}<br>' +
-                                             'Signal: Marché calme - Stabilité<br>' +
-                                             '<extra></extra>'
-                            ))
-                    
-                    # Signaux d'expansion de volatilité (étoiles rouges)
-                    for signal in atr_data['expansion_signals']:
-                        atr_fig.add_trace(go.Scatter(
-                            x=[data.index[signal['index']]],
-                            y=[signal['value']],
-                            mode='markers',
-                            marker=dict(symbol='star', size=14, color='orangered'),
-                            name='💥 Expansion',
-                            showlegend=False,
-                            hovertemplate=f'<b>💥 {signal["description"]}</b><br>' +
-                                         f'ATR: {signal["value"]:.4f}<br>' +
-                                         f'Précédent: {signal["previous"]:.4f}<br>' +
-                                         f'Ratio: {signal["ratio"]:.2f}x<br>' +
-                                         'Signal: Explosion de volatilité!<br>' +
-                                         '<extra></extra>'
-                        ))
-                    
-                    # Signaux de contraction de volatilité (diamants bleus)
-                    for signal in atr_data['contraction_signals']:
-                        atr_fig.add_trace(go.Scatter(
-                            x=[data.index[signal['index']]],
-                            y=[signal['value']],
-                            mode='markers',
-                            marker=dict(symbol='diamond', size=12, color='lightblue'),
-                            name='💎 Contraction',
-                            showlegend=False,
-                            hovertemplate=f'<b>💎 {signal["description"]}</b><br>' +
-                                         f'ATR: {signal["value"]:.4f}<br>' +
-                                         f'Précédent: {signal["previous"]:.4f}<br>' +
-                                         f'Ratio: {signal["ratio"]:.2f}x<br>' +
-                                         'Signal: Compression de volatilité<br>' +
-                                         '<extra></extra>'
-                        ))
-                    
-                    # Signaux de tendance de volatilité (flèches)
-                    for signal in atr_data['trend_signals']:
-                        if signal['type'] == 'volatility_increasing':
-                            atr_fig.add_trace(go.Scatter(
-                                x=[data.index[signal['index']]],
-                                y=[signal['ma_value']],
-                                mode='markers',
-                                marker=dict(symbol='arrow-up', size=10, color='orange'),
-                                name='📈 Tendance Hausse',
-                                showlegend=False,
-                                hovertemplate=f'<b>📈 {signal["description"]}</b><br>' +
-                                             f'ATR: {signal["value"]:.4f}<br>' +
-                                             f'Tendance: {signal["ma_value"]:.4f}<br>' +
-                                             'Signal: Volatilité en hausse<br>' +
-                                             '<extra></extra>'
-                            ))
-                        elif signal['type'] == 'volatility_decreasing':
-                            atr_fig.add_trace(go.Scatter(
-                                x=[data.index[signal['index']]],
-                                y=[signal['ma_value']],
-                                mode='markers',
-                                marker=dict(symbol='arrow-down', size=10, color='lightgreen'),
-                                name='📉 Tendance Baisse',
-                                showlegend=False,
-                                hovertemplate=f'<b>📉 {signal["description"]}</b><br>' +
-                                             f'ATR: {signal["value"]:.4f}<br>' +
-                                             f'Tendance: {signal["ma_value"]:.4f}<br>' +
-                                             'Signal: Volatilité en baisse<br>' +
-                                             '<extra></extra>'
-                            ))
-                
-                if not atr_enabled:
-                    atr_fig.add_annotation(
-                        text="ATR désactivé",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False,
-                        font=dict(size=14, color="#666666")
-                    )
-                
-                atr_fig.update_layout(
-                    title="ATR - Volatilité",
-                    template='plotly_dark',
-                    height=200,
-                    margin=dict(l=0, r=0, t=30, b=0),
-                    showlegend=False
-                )
-                
-                # === GRAPHIQUE MACD ===
-                macd_fig = go.Figure()
-                
-                if macd_enabled and len(data) > max(macd_slow, 50):
-                    # Calculer MACD
-                    macd_data = self.calculate_macd(data['close'], macd_fast, macd_slow, macd_signal)
-                    
-                    # Histogramme MACD (barres)
-                    if macd_histogram:
-                        colors = ['green' if x >= 0 else 'red' for x in macd_data['histogram']]
-                        macd_fig.add_trace(go.Bar(
-                            x=data.index,
-                            y=macd_data['histogram'],
-                            name='Histogramme',
-                            marker_color=colors,
-                            opacity=0.6,
-                            showlegend=False,
-                            hovertemplate='<b>Histogramme</b>: %{y:.4f}<br>' +
-                                         '<b>Date</b>: %{x}<br>' +
-                                         '<b>Signal</b>: %{customdata}<br>' +
-                                         '<extra></extra>',
-                            customdata=[
-                                'Force haussière' if x > 0 else 'Force baissière' 
-                                for x in macd_data['histogram']
-                            ]
-                        ))
-                    
-                    # Ligne MACD
-                    macd_fig.add_trace(go.Scatter(
-                        x=data.index,
-                        y=macd_data['macd'],
-                        mode='lines',
-                        name='MACD',
-                        line=dict(color=macd_color, width=2),
-                        showlegend=False,
-                        hovertemplate='<b>MACD</b>: %{y:.4f}<br>' +
-                                     '<b>Date</b>: %{x}<br>' +
-                                     '<b>Calcul</b>: EMA(' + str(macd_fast) + ') - EMA(' + str(macd_slow) + ')<br>' +
-                                     '<extra></extra>'
-                    ))
-                    
-                    # Ligne Signal
-                    macd_fig.add_trace(go.Scatter(
-                        x=data.index,
-                        y=macd_data['signal'],
-                        mode='lines',
-                        name='Signal',
-                        line=dict(color=macd_signal_color, width=2),
-                        showlegend=False,
-                        hovertemplate='<b>Signal</b>: %{y:.4f}<br>' +
-                                     '<b>Date</b>: %{x}<br>' +
-                                     '<b>Calcul</b>: EMA(' + str(macd_signal) + ') du MACD<br>' +
-                                     '<extra></extra>'
-                    ))
-                    
-                    # Ligne zéro
-                    macd_fig.add_hline(y=0, line=dict(color='white', dash='dot', width=1))
-                    
-                    # Tooltips pour signaux
-                    # Crossover positif récent
-                    crossover_points = []
-                    for i in range(1, len(macd_data['macd'])):
-                        if (macd_data['macd'].iloc[i] > macd_data['signal'].iloc[i] and 
-                            macd_data['macd'].iloc[i-1] <= macd_data['signal'].iloc[i-1]):
-                            crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'achat'))
-                        elif (macd_data['macd'].iloc[i] < macd_data['signal'].iloc[i] and 
-                              macd_data['macd'].iloc[i-1] >= macd_data['signal'].iloc[i-1]):
-                            crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'vente'))
-                    
-                    # Afficher les 3 derniers crossovers
-                    for point in crossover_points[-3:]:
-                        color = 'lime' if point[2] == 'achat' else 'red'
-                        symbol = 'triangle-up' if point[2] == 'achat' else 'triangle-down'
-                        macd_fig.add_trace(go.Scatter(
-                            x=[point[0]], y=[point[1]],
-                            mode='markers',
-                            marker=dict(size=8, color=color, symbol=symbol),
-                            hovertemplate=f'<b>Signal {point[2].title()}</b><br>' +
-                                         f'Date: {point[0]}<br>' +
-                                         f'MACD: {point[1]:.4f}<br>' +
-                                         ('📈 MACD croise au-dessus du Signal' if point[2] == 'achat' else 
-                                          '📉 MACD croise en-dessous du Signal') + '<br>' +
-                                         '<extra></extra>',
-                            showlegend=False,
-                            name=f'Signal {point[2]}'
-                        ))
-                
-                if not macd_enabled:
-                    macd_fig.add_annotation(
-                        text="MACD désactivé",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False,
-                        font=dict(size=14, color="#666666")
-                    )
-                
-                macd_fig.update_layout(
-                    title="MACD - Convergence/Divergence",
-                    template='plotly_dark',
-                    height=200,
-                    margin=dict(l=0, r=0, t=30, b=0),
-                    showlegend=False
-                )
-                
-                return rsi_fig, atr_fig, macd_fig  # Retourner les 3 figures
-                
-            except Exception as e:
-                print(f"❌ Erreur graphiques secondaires: {e}")
-                empty_fig = go.Figure().add_annotation(
-                    text=f"Erreur: {str(e)}",
-                    xref="paper", yref="paper",
-                    x=0.5, y=0.5, showarrow=False
-                )
-                return empty_fig, empty_fig, empty_fig  # Retourner 3 figures vides
+        #         except Exception as e:
+        #             print(f"❌ Erreur graphique principal simplifié: {e}")
+        #             return go.Figure().add_annotation(
+        #                 text=f"Erreur: {str(e)}",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False
+        #             )
+        # FIN CALLBACK TEMPORAIRE SIMPLIFIÉ DÉSACTIVÉ
+        
+        # 🚫 CALLBACK TEMPORAIREMENT DÉSACTIVÉ - CONFLIT AVEC NOUVEAU SYSTÈME MODULAIRE
+        # Ce callback sera réactivé une fois que le nouveau système modulaire
+        # aura implémenté les IDs correspondants
+        # @app.callback(
+        #     [Output('crypto-rsi-chart', 'figure'),
+        #      Output('crypto-atr-chart', 'figure'),
+        #      Output('crypto-macd-chart', 'figure')],
+        #     [Input('crypto-symbol-search', 'value'),
+        #      Input('crypto-timeframe-selector', 'value'),
+        #      Input('indicators-rsi-switch', 'value'),
+        #      Input('indicators-rsi-period', 'value'),
+        #      Input('indicators-rsi-overbought', 'value'),
+        #      Input('indicators-rsi-oversold', 'value'),
+        #      Input('indicators-atr-switch', 'value'),
+        #      Input('indicators-atr-period', 'value'),
+        #      Input('indicators-atr-multiplier', 'value'),
+        #      Input('indicators-macd-switch', 'value'),
+        #      Input('indicators-macd-fast', 'value'),
+        #      Input('indicators-macd-slow', 'value'),
+        #      Input('indicators-macd-signal', 'value'),
+        #      Input('indicators-macd-color', 'value'),
+        #      Input('indicators-macd-signal-color', 'value'),
+        #      Input('indicators-macd-histogram', 'value')]
+        # )
+        # def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, rsi_overbought, rsi_oversold, atr_enabled, atr_period, atr_multiplier,
+        #                            macd_enabled, macd_fast, macd_slow, macd_signal, 
+        #                            macd_color, macd_signal_color, macd_histogram):
+        #     \"\"\"Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal\"\"\"
+        #     try:
+        #         # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
+        #         if not symbol:
+        #             return go.Figure(), go.Figure(), go.Figure()
+        #         
+        #         # Mettre à jour le symbole courant pour synchronisation
+        #         if symbol != self.current_symbol:
+        #             self.current_symbol = symbol
+        #         
+        #         # Utiliser les valeurs des indicateurs reçues en paramètres
+        #         # rsi_enabled, rsi_period, atr_enabled, atr_period sont déjà disponibles
+        #         
+        #         print(f"🔄 Graphiques secondaires: symbole synchronisé vers {symbol}")
+        #             
+        #         data = self.current_data if not self.current_data.empty else self.load_market_data(symbol, timeframe)
+        #         
+        #         if data.empty:
+        #             empty_fig = go.Figure().add_annotation(
+        #                 text="Pas de données",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False
+        #             )
+        #             return empty_fig, empty_fig, empty_fig  # 3 figures pour RSI, ATR, MACD
+        #         
+        #         # RSI Chart Professionnel avec signaux avancés
+        #         rsi_fig = go.Figure()
+        #         if rsi_enabled and rsi_period and rsi_period > 0:
+        #             # Calcul RSI avec signaux avancés
+        #             from dash_modules.core.calculators import TechnicalCalculators
+        #             calc = TechnicalCalculators()
+        #             rsi_data = calc.calculate_rsi_signals(
+        #                 data['close'].tolist(), 
+        #                 period=rsi_period,
+        #                 overbought=rsi_overbought,
+        #                 oversold=rsi_oversold
+        #             )
+        #             
+        #             rsi_values = rsi_data['rsi_values']
+        #             signals = rsi_data['signals']
+        #             signal_strength = rsi_data['signal_strength']
+        #             signal_descriptions = rsi_data['signal_descriptions']
+        #             
+        #             # Zones d'arrière-plan colorées
+        #             rsi_fig.add_hrect(y0=rsi_overbought, y1=100, fillcolor="rgba(255, 0, 0, 0.1)", 
+        #                               line_width=0)
+        #             rsi_fig.add_hrect(y0=0, y1=rsi_oversold, fillcolor="rgba(0, 255, 0, 0.1)", 
+        #                               line_width=0)
+        #             rsi_fig.add_hrect(y0=rsi_oversold, y1=rsi_overbought, fillcolor="rgba(128, 128, 128, 0.05)", 
+        #                               line_width=0)
+        #             
+        #             # Ligne RSI principale avec signaux dans tooltip
+        #             rsi_fig.add_trace(go.Scatter(
+        #                 x=data.index,
+        #                 y=rsi_values,
+        #                 mode='lines',
+        #                 name='RSI',
+        #                 line=dict(color='#00bfff', width=2),
+        #                 showlegend=False,
+        #                 hovertemplate='<b>RSI</b>: %{y:.1f}<br>' +
+        #                              '<b>Date</b>: %{x}<br>' +
+        #                              '<b>Signal</b>: %{customdata}<br>' +
+        #                              '<extra></extra>',
+        #                 customdata=signal_descriptions
+        #             ))
+        #             
+        #             # Ajouter les signaux de trading comme marqueurs
+        #             for i, (signal, strength, desc) in enumerate(zip(signals, signal_strength, signal_descriptions)):
+        #                 if signal in ['buy', 'strong_buy'] and strength > 0.5:
+        #                     rsi_fig.add_trace(go.Scatter(
+        #                         x=[data.index[i]],
+        #                         y=[rsi_values[i]],
+        #                         mode='markers',
+        #                         marker=dict(
+        #                             symbol='triangle-up',
+        #                             size=12 + (strength * 8),  # Taille selon force
+        #                             color='#00ff88',
+        #                             line=dict(color='#004400', width=2)
+        #                         ),
+        #                         name='Signal Achat',
+        #                         showlegend=False,
+        #                         hovertemplate=f'<b>SIGNAL ACHAT</b><br>' +
+        #                                      f'Force: {strength:.1%}<br>' +
+        #                                      f'{desc}<br>' +
+        #                                      '<extra></extra>'
+        #                     ))
+        #                 elif signal in ['sell', 'strong_sell'] and strength > 0.5:
+        #                     rsi_fig.add_trace(go.Scatter(
+        #                         x=[data.index[i]],
+        #                         y=[rsi_values[i]],
+        #                         mode='markers',
+        #                         marker=dict(
+        #                             symbol='triangle-down',
+        #                             size=12 + (strength * 8),  # Taille selon force
+        #                             color='#ff4444',
+        #                             line=dict(color='#440000', width=2)
+        #                         ),
+        #                         name='Signal Vente',
+        #                         showlegend=False,
+        #                         hovertemplate=f'<b>SIGNAL VENTE</b><br>' +
+        #                                      f'Force: {strength:.1%}<br>' +
+        #                                      f'{desc}<br>' +
+        #                                      '<extra></extra>'
+        #                     ))
+        #             
+        #             # Ajouter signaux de divergence (losanges dorés)
+        #             for i, is_divergence in enumerate(rsi_data['divergence_signals']):
+        #                 if is_divergence:
+        #                     rsi_fig.add_trace(go.Scatter(
+        #                         x=[data.index[i]],
+        #                         y=[rsi_values[i]],
+        #                         mode='markers',
+        #                         marker=dict(
+        #                             symbol='diamond',
+        #                             size=15,
+        #                             color='#ffd700',
+        #                             line=dict(color='#ffaa00', width=2)
+        #                         ),
+        #                         name='Divergence',
+        #                         showlegend=False,
+        #                         hovertemplate='<b>🔄 DIVERGENCE RSI</b><br>' +
+        #                                      'Signal de retournement potentiel<br>' +
+        #                                      f'{signal_descriptions[i]}<br>' +
+        #                                      '<extra></extra>'
+        #                     ))
+        #             
+        #             # Lignes de niveaux critiques
+        #             rsi_fig.add_hline(y=rsi_overbought, line=dict(color='#ff4444', dash='dash', width=1))
+        #             rsi_fig.add_hline(y=rsi_oversold, line=dict(color='#00ff88', dash='dash', width=1))
+        #             rsi_fig.add_hline(y=50, line=dict(color='#888888', dash='dot', width=1))
+        #             
+        #             # Annotations pour les seuils (plus discrètes)
+        #             rsi_fig.add_annotation(
+        #                 x=data.index[-1], y=rsi_overbought,
+        #                 text=f"Surachat {rsi_overbought}",
+        #                 showarrow=False,
+        #                 xanchor="left",
+        #                 font=dict(size=10, color="#ff4444")
+        #             )
+        #             rsi_fig.add_annotation(
+        #                 x=data.index[-1], y=rsi_oversold,
+        #                 text=f"Survente {rsi_oversold}",
+        #                 showarrow=False,
+        #                 xanchor="left",
+        #                 font=dict(size=10, color="#00ff88")
+        #             )
+        #         
+        #         if not rsi_enabled:
+        #             rsi_fig.add_annotation(
+        #                 text="RSI désactivé",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False,
+        #                 font=dict(size=14, color="#666666")
+        #             )
+        #             rsi_fig.add_annotation(
+        #                 text="RSI désactivé",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False,
+        #                 font=dict(size=14, color="#666666")
+        #             )
+        #         
+        #         rsi_fig.update_layout(
+        #             title="RSI - Surachat/Survente",
+        #             template='plotly_dark',
+        #             height=200,
+        #             margin=dict(l=0, r=0, t=30, b=0),
+        #             yaxis_range=[0, 100],
+        #             showlegend=False
+        #         )
+        #         
+        #         # ATR Chart Professionnel avec signaux de croisement et zones de volatilité
+        #         atr_fig = go.Figure()
+        #         if atr_enabled and atr_period and atr_period > 0:
+        #             # Utiliser le multiplier de l'interface (fallback à 2.0 si None)
+        #             atr_multiplier_value = atr_multiplier if atr_multiplier is not None else 2.0
+        #             atr_data = self.calculate_atr_signals(data, atr_period, atr_multiplier_value)
+        #             
+        #             atr = pd.Series(atr_data['atr'])
+        #             atr_ma = pd.Series(atr_data['atr_ma'])
+        #             upper_threshold = pd.Series(atr_data['upper_threshold'])
+        #             lower_threshold = pd.Series(atr_data['lower_threshold'])
+        #             
+        #             # Obtenir les valeurs fixes des seuils
+        #             upper_value = upper_threshold.iloc[0] if len(upper_threshold) > 0 else atr.max() * 1.5
+        #             lower_value = lower_threshold.iloc[0] if len(lower_threshold) > 0 else 0
+        #             
+        #             # Zones de volatilité avec rectangles horizontaux fixes
+        #             # Zone de volatilité faible (0 à seuil bas) - Vert
+        #             if lower_value > 0:
+        #                 atr_fig.add_hrect(
+        #                     y0=0, y1=lower_value,
+        #                     fillcolor="rgba(0, 255, 0, 0.1)",
+        #                     line_width=0
+        #                 )
+        #             
+        #             # Zone de volatilité normale (seuil bas à seuil haut) - Jaune
+        #             atr_fig.add_hrect(
+        #                 y0=lower_value, y1=upper_value,
+        #                 fillcolor="rgba(255, 255, 0, 0.1)",
+        #                 line_width=0
+        #             )
+        #             
+        #             # Zone de volatilité élevée (seuil haut à max) - Rouge
+        #             atr_fig.add_hrect(
+        #                 y0=upper_value, y1=atr.max() * 1.2,
+        #                 fillcolor="rgba(255, 0, 0, 0.1)",
+        #                 line_width=0
+        #             )
+        #             
+        #             # ATR principal avec tooltip enrichi
+        #             atr_fig.add_trace(go.Scatter(
+        #                 x=data.index,
+        #                 y=atr,
+        #                 mode='lines',
+        #                 name='ATR',
+        #                 line=dict(color='#00bfff', width=2),
+        #                 showlegend=False,
+        #                 hovertemplate='<b>ATR</b>: %{y:.4f}<br>' +
+        #                              '<b>Date</b>: %{x}<br>' +
+        #                              '<b>Stop suggéré</b>: ±%{customdata:.4f}<br>' +
+        #                              '<extra></extra>',
+        #                 customdata=atr * 2  # Stop loss suggéré à 2x ATR
+        #             ))
+        #             
+        #             # ATR Moyenne Mobile avec tooltip explicatif
+        #             atr_fig.add_trace(go.Scatter(
+        #                 x=data.index,
+        #                 y=atr_ma,
+        #                 mode='lines',
+        #                 name='ATR Tendance',
+        #                 line=dict(color='#ffa500', width=1, dash='dot'),
+        #                 opacity=0.7,
+        #                 showlegend=False,
+        #                 hovertemplate='<b>ATR Tendance</b>: %{y:.4f}<br>' +
+        #                              '<b>Date</b>: %{x}<br>' +
+        #                              '<b>Évolution</b>: Tendance de volatilité<br>' +
+        #                              '<extra></extra>'
+        #             ))
+        #             
+        #             # Seuils de volatilité HORIZONTAUX FIXES
+        #             # Ligne de seuil haute volatilité (rouge)
+        #             atr_fig.add_hline(
+        #                 y=upper_value,
+        #                 line=dict(color='#ff4444', dash='dash', width=2),
+        #                 annotation_text=f"Seuil Élevé: {upper_value:.4f}",
+        #                 annotation_position="top right"
+        #             )
+        #             
+        #             # Ligne de seuil basse volatilité (vert)
+        #             if lower_value > 0:
+        #                 atr_fig.add_hline(
+        #                     y=lower_value,
+        #                     line=dict(color='#00ff88', dash='dash', width=2),
+        #                     annotation_text=f"Seuil Faible: {lower_value:.4f}",
+        #                     annotation_position="bottom right"
+        #                 )
+        #             
+        #             # === SIGNAUX DE CROISEMENT ATR ===
+        #             
+        #             # Signaux de haute volatilité (croix vers le haut)
+        #             for signal in atr_data['volatility_signals']:
+        #                 if signal['type'] == 'high_volatility':
+        #                     atr_fig.add_trace(go.Scatter(
+        #                         x=[data.index[signal['index']]],
+        #                         y=[signal['value']],
+        #                         mode='markers',
+        #                         marker=dict(symbol='triangle-up', size=12, color='red'),
+        #                         name='⚠️ Volatilité Élevée',
+        #                         showlegend=False,
+        #                         hovertemplate=f'<b>🔺 {signal["description"]}</b><br>' +
+        #                                      f'ATR: {signal["value"]:.4f}<br>' +
+        #                                      f'Seuil: {signal["threshold"]:.4f}<br>' +
+        #                                      'Signal: Marché agité - Prudence!<br>' +
+        #                                      '<extra></extra>'
+        #                     ))
+        #             
+        #             # Signaux de basse volatilité (croix vers le bas)
+        #             for signal in atr_data['volatility_signals']:
+        #                 if signal['type'] == 'low_volatility':
+        #                     atr_fig.add_trace(go.Scatter(
+        #                         x=[data.index[signal['index']]],
+        #                         y=[signal['value']],
+        #                         mode='markers',
+        #                         marker=dict(symbol='triangle-down', size=12, color='green'),
+        #                         name='📉 Volatilité Faible',
+        #                         showlegend=False,
+        #                         hovertemplate=f'<b>🔻 {signal["description"]}</b><br>' +
+        #                                      f'ATR: {signal["value"]:.4f}<br>' +
+        #                                      f'Seuil: {signal["threshold"]:.4f}<br>' +
+        #                                      'Signal: Marché calme - Stabilité<br>' +
+        #                                      '<extra></extra>'
+        #                     ))
+        #             
+        #             # Signaux d'expansion de volatilité (étoiles rouges)
+        #             for signal in atr_data['expansion_signals']:
+        #                 atr_fig.add_trace(go.Scatter(
+        #                     x=[data.index[signal['index']]],
+        #                     y=[signal['value']],
+        #                     mode='markers',
+        #                     marker=dict(symbol='star', size=14, color='orangered'),
+        #                     name='💥 Expansion',
+        #                     showlegend=False,
+        #                     hovertemplate=f'<b>💥 {signal["description"]}</b><br>' +
+        #                                  f'ATR: {signal["value"]:.4f}<br>' +
+        #                                  f'Précédent: {signal["previous"]:.4f}<br>' +
+        #                                  f'Ratio: {signal["ratio"]:.2f}x<br>' +
+        #                                  'Signal: Explosion de volatilité!<br>' +
+        #                                  '<extra></extra>'
+        #                 ))
+        #             
+        #             # Signaux de contraction de volatilité (diamants bleus)
+        #             for signal in atr_data['contraction_signals']:
+        #                 atr_fig.add_trace(go.Scatter(
+        #                     x=[data.index[signal['index']]],
+        #                     y=[signal['value']],
+        #                     mode='markers',
+        #                     marker=dict(symbol='diamond', size=12, color='lightblue'),
+        #                     name='💎 Contraction',
+        #                     showlegend=False,
+        #                     hovertemplate=f'<b>💎 {signal["description"]}</b><br>' +
+        #                                  f'ATR: {signal["value"]:.4f}<br>' +
+        #                                  f'Précédent: {signal["previous"]:.4f}<br>' +
+        #                                  f'Ratio: {signal["ratio"]:.2f}x<br>' +
+        #                                  'Signal: Compression de volatilité<br>' +
+        #                                  '<extra></extra>'
+        #                 ))
+        #             
+        #             # Signaux de tendance de volatilité (flèches)
+        #             for signal in atr_data['trend_signals']:
+        #                 if signal['type'] == 'volatility_increasing':
+        #                     atr_fig.add_trace(go.Scatter(
+        #                         x=[data.index[signal['index']]],
+        #                         y=[signal['ma_value']],
+        #                         mode='markers',
+        #                         marker=dict(symbol='arrow-up', size=10, color='orange'),
+        #                         name='📈 Tendance Hausse',
+        #                         showlegend=False,
+        #                         hovertemplate=f'<b>📈 {signal["description"]}</b><br>' +
+        #                                      f'ATR: {signal["value"]:.4f}<br>' +
+        #                                      f'Tendance: {signal["ma_value"]:.4f}<br>' +
+        #                                      'Signal: Volatilité en hausse<br>' +
+        #                                      '<extra></extra>'
+        #                     ))
+        #                 elif signal['type'] == 'volatility_decreasing':
+        #                     atr_fig.add_trace(go.Scatter(
+        #                         x=[data.index[signal['index']]],
+        #                         y=[signal['ma_value']],
+        #                         mode='markers',
+        #                         marker=dict(symbol='arrow-down', size=10, color='lightgreen'),
+        #                         name='📉 Tendance Baisse',
+        #                         showlegend=False,
+        #                         hovertemplate=f'<b>📉 {signal["description"]}</b><br>' +
+        #                                      f'ATR: {signal["value"]:.4f}<br>' +
+        #                                      f'Tendance: {signal["ma_value"]:.4f}<br>' +
+        #                                      'Signal: Volatilité en baisse<br>' +
+        #                                      '<extra></extra>'
+        #                     ))
+        #         
+        #         if not atr_enabled:
+        #             atr_fig.add_annotation(
+        #                 text="ATR désactivé",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False,
+        #                 font=dict(size=14, color="#666666")
+        #             )
+        #         
+        #         atr_fig.update_layout(
+        #             title="ATR - Volatilité",
+        #             template='plotly_dark',
+        #             height=200,
+        #             margin=dict(l=0, r=0, t=30, b=0),
+        #             showlegend=False
+        #         )
+        #         
+        #         # === GRAPHIQUE MACD ===
+        #         macd_fig = go.Figure()
+        #         
+        #         if macd_enabled and len(data) > max(macd_slow, 50):
+        #             # Calculer MACD
+        #             macd_data = self.calculate_macd(data['close'], macd_fast, macd_slow, macd_signal)
+        #             
+        #             # Histogramme MACD (barres)
+        #             if macd_histogram:
+        #                 colors = ['green' if x >= 0 else 'red' for x in macd_data['histogram']]
+        #                 macd_fig.add_trace(go.Bar(
+        #                     x=data.index,
+        #                     y=macd_data['histogram'],
+        #                     name='Histogramme',
+        #                     marker_color=colors,
+        #                     opacity=0.6,
+        #                     showlegend=False,
+        #                     hovertemplate='<b>Histogramme</b>: %{y:.4f}<br>' +
+        #                                  '<b>Date</b>: %{x}<br>' +
+        #                                  '<b>Signal</b>: %{customdata}<br>' +
+        #                                  '<extra></extra>',
+        #                     customdata=[
+        #                         'Force haussière' if x > 0 else 'Force baissière' 
+        #                         for x in macd_data['histogram']
+        #                     ]
+        #                 ))
+        #             
+        #             # Ligne MACD
+        #             macd_fig.add_trace(go.Scatter(
+        #                 x=data.index,
+        #                 y=macd_data['macd'],
+        #                 mode='lines',
+        #                 name='MACD',
+        #                 line=dict(color=macd_color, width=2),
+        #                 showlegend=False,
+        #                 hovertemplate='<b>MACD</b>: %{y:.4f}<br>' +
+        #                              '<b>Date</b>: %{x}<br>' +
+        #                              '<b>Calcul</b>: EMA(' + str(macd_fast) + ') - EMA(' + str(macd_slow) + ')<br>' +
+        #                              '<extra></extra>'
+        #             ))
+        #             
+        #             # Ligne Signal
+        #             macd_fig.add_trace(go.Scatter(
+        #                 x=data.index,
+        #                 y=macd_data['signal'],
+        #                 mode='lines',
+        #                 name='Signal',
+        #                 line=dict(color=macd_signal_color, width=2),
+        #                 showlegend=False,
+        #                 hovertemplate='<b>Signal</b>: %{y:.4f}<br>' +
+        #                              '<b>Date</b>: %{x}<br>' +
+        #                              '<b>Calcul</b>: EMA(' + str(macd_signal) + ') du MACD<br>' +
+        #                              '<extra></extra>'
+        #             ))
+        #             
+        #             # Ligne zéro
+        #             macd_fig.add_hline(y=0, line=dict(color='white', dash='dot', width=1))
+        #             
+        #             # Tooltips pour signaux
+        #             # Crossover positif récent
+        #             crossover_points = []
+        #             for i in range(1, len(macd_data['macd'])):
+        #                 if (macd_data['macd'].iloc[i] > macd_data['signal'].iloc[i] and 
+        #                     macd_data['macd'].iloc[i-1] <= macd_data['signal'].iloc[i-1]):
+        #                     crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'achat'))
+        #                 elif (macd_data['macd'].iloc[i] < macd_data['signal'].iloc[i] and 
+        #                       macd_data['macd'].iloc[i-1] >= macd_data['signal'].iloc[i-1]):
+        #                     crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'vente'))
+        #             
+        #             # Afficher les 3 derniers crossovers
+        #             for point in crossover_points[-3:]:
+        #                 color = 'lime' if point[2] == 'achat' else 'red'
+        #                 symbol = 'triangle-up' if point[2] == 'achat' else 'triangle-down'
+        #                 macd_fig.add_trace(go.Scatter(
+        #                     x=[point[0]], y=[point[1]],
+        #                     mode='markers',
+        #                     marker=dict(size=8, color=color, symbol=symbol),
+        #                     hovertemplate=f'<b>Signal {point[2].title()}</b><br>' +
+        #                                  f'Date: {point[0]}<br>' +
+        #                                  f'MACD: {point[1]:.4f}<br>' +
+        #                                  ('📈 MACD croise au-dessus du Signal' if point[2] == 'achat' else 
+        #                                   '📉 MACD croise en-dessous du Signal') + '<br>' +
+        #                                  '<extra></extra>',
+        #                     showlegend=False,
+        #                     name=f'Signal {point[2]}'
+        #                 ))
+        #         
+        #         if not macd_enabled:
+        #             macd_fig.add_annotation(
+        #                 text="MACD désactivé",
+        #                 xref="paper", yref="paper",
+        #                 x=0.5, y=0.5, showarrow=False,
+        #                 font=dict(size=14, color="#666666")
+        #             )
+        #         
+        #         macd_fig.update_layout(
+        #             title="MACD - Convergence/Divergence",
+        #             template='plotly_dark',
+        #             height=200,
+        #             margin=dict(l=0, r=0, t=30, b=0),
+        #             showlegend=False
+        #         )
+        #         
+        #         return rsi_fig, atr_fig, macd_fig  # Retourner les 3 figures
+        #         
+        #     except Exception as e:
+        #         print(f"❌ Erreur graphiques secondaires: {e}")
+        #         empty_fig = go.Figure().add_annotation(
+        #             text=f"Erreur: {str(e)}",
+        #             xref="paper", yref="paper",
+        #             x=0.5, y=0.5, showarrow=False
+        #         )
+        #         return empty_fig, empty_fig, empty_fig  # Retourner 3 figures vides
+        # FIN DU CALLBACK DÉSACTIVÉ
+        
+        # 🔧 CALLBACKS SECONDAIRES TEMPORAIRES SIMPLIFIÉS (DÉSACTIVÉS)
+        # @app.callback(
+        #     [Output('crypto-rsi-chart', 'figure'),
+        #      Output('crypto-atr-chart', 'figure'), 
+        #      Output('crypto-macd-chart', 'figure')],
+        #     [Input('crypto-symbol-search', 'value'),
+        #      Input('crypto-timeframe-selector', 'value')]
+        # )
+        # def update_secondary_charts_simplified(symbol, timeframe):
+        #     """Met à jour les graphiques secondaires (version simplifiée temporaire)"""
+        #     try:
+        #         if not symbol:
+        #             empty_fig = go.Figure().add_annotation(
+        #                 text="Aucun symbole",
+        #                 xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
+        #             )
+        #             return empty_fig, empty_fig, empty_fig
+        #         
+        #         # Charger les données
+        #         data = self.load_market_data(symbol, timeframe)
+        #         if data.empty:
+        #             empty_fig = go.Figure().add_annotation(
+        #                 text="Pas de données",
+        #                 xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
+        #             )
+        #             return empty_fig, empty_fig, empty_fig
+        #         
+        #         # RSI simplifié (calcul direct)
+        #         try:
+        #             delta = data['close'].diff()
+        #             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        #             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        #             rs = gain / loss
+        #             rsi_values = 100 - (100 / (1 + rs))
+        #             rsi_values = rsi_values.fillna(50)  # Remplacer NaN par 50
+        #             
+        #             rsi_fig = go.Figure()
+        #             rsi_fig.add_trace(go.Scatter(
+        #                 x=data.index, y=rsi_values, mode='lines',
+        #                 name='RSI 14', line=dict(color='#9C27B0', width=2)
+        #             ))
+        #             rsi_fig.add_hline(y=70, line_dash="dash", line_color="red", annotation_text="Surachat")
+        #             rsi_fig.add_hline(y=30, line_dash="dash", line_color="green", annotation_text="Survente")
+        #             rsi_fig.update_layout(
+        #                 title="RSI (par défaut)", yaxis_title="RSI", 
+        #                 template="plotly_dark", height=200, showlegend=False
+        #             )
+        #         except Exception as e:
+        #             print(f"⚠️ Erreur calcul RSI: {e}")
+        #             rsi_fig = go.Figure().add_annotation(
+        #                 text="Erreur RSI", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
+        #             )
+        #         
+        #         # ATR simplifié (calcul direct)
+        #         try:
+        #             high_low = data['high'] - data['low']
+        #             high_close = abs(data['high'] - data['close'].shift())
+        #             low_close = abs(data['low'] - data['close'].shift())
+        #             true_range = pd.DataFrame({'hl': high_low, 'hc': high_close, 'lc': low_close}).max(axis=1)
+        #             atr_values = true_range.rolling(window=14).mean()
+        #             atr_values = atr_values.fillna(0)  # Remplacer NaN par 0
+        #             
+        #             atr_fig = go.Figure()
+        #             atr_fig.add_trace(go.Scatter(
+        #                 x=data.index, y=atr_values, mode='lines',
+        #                 name='ATR 14', line=dict(color='#4CAF50', width=2)
+        #             ))
+        #             atr_fig.update_layout(
+        #                 title="ATR (par défaut)", yaxis_title="ATR",
+        #                 template="plotly_dark", height=200, showlegend=False
+        #             )
+        #         except Exception as e:
+        #             print(f"⚠️ Erreur calcul ATR: {e}")
+        #             atr_fig = go.Figure().add_annotation(
+        #                 text="Erreur ATR", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
+        #             )
+        #         
+        #         # MACD simplifié (calcul direct)
+        #         try:
+        #             ema12 = data['close'].ewm(span=12).mean()
+        #             ema26 = data['close'].ewm(span=26).mean()
+        #             macd_line = ema12 - ema26
+        #             macd_signal = macd_line.ewm(span=9).mean()
+        #             macd_histogram = macd_line - macd_signal
+        #             
+        #             # Remplacer NaN par 0
+        #             macd_line = macd_line.fillna(0)
+        #             macd_signal = macd_signal.fillna(0)
+        #             macd_histogram = macd_histogram.fillna(0)
+        #             
+        #             macd_fig = go.Figure()
+        #             macd_fig.add_trace(go.Scatter(
+        #                 x=data.index, y=macd_line, mode='lines',
+        #                 name='MACD', line=dict(color='#2196F3', width=2)
+        #             ))
+        #             macd_fig.add_trace(go.Scatter(
+        #                 x=data.index, y=macd_signal, mode='lines',
+        #                 name='Signal', line=dict(color='#FF5722', width=1)
+        #             ))
+        #             macd_fig.add_trace(go.Bar(
+        #                 x=data.index, y=macd_histogram,
+        #                 name='Histogramme', marker_color='#FFC107', opacity=0.7
+        #             ))
+        #             macd_fig.update_layout(
+        #                 title="MACD (par défaut)", yaxis_title="MACD",
+        #                 template="plotly_dark", height=200, showlegend=False
+        #             )
+        #         except Exception as e:
+        #             print(f"⚠️ Erreur calcul MACD: {e}")
+        #             macd_fig = go.Figure().add_annotation(
+        #                 text="Erreur MACD", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
+        #             )
+        #         
+        #         print(f"✅ Graphiques secondaires mis à jour: {symbol} (système simplifié)")
+        #         return rsi_fig, atr_fig, macd_fig
+        #         
+        #         except Exception as e:
+        #             print(f"❌ Erreur graphiques secondaires simplifiés: {e}")
+        #             empty_fig = go.Figure().add_annotation(
+        #                 text=f"Erreur: {str(e)}",
+        #                 xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
+        #             )
+        #             return empty_fig, empty_fig, empty_fig
+        # FIN CALLBACK TEMPORAIRE SIMPLIFIÉ DÉSACTIVÉ
 
     def calculate_rsi(self, prices, period=14):
         """Calcule le RSI"""
         try:
-            delta = prices.diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-            rs = gain / loss
+        #     delta = prices.diff()
+        #     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        #     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        #     rs = gain / loss
             rsi = 100 - (100 / (1 + rs))
             return rsi
         except:
@@ -2071,3 +2296,17 @@ class CryptoModule:
             print(f"⚠️ Erreur ajout niveaux structurels: {e}")
         
         return fig
+
+# =====================================================
+# 🔧 FONCTION D'ENREGISTREMENT DES CALLBACKS NOUVEAU SYSTÈME
+# =====================================================
+
+# =====================================================
+# 🔧 CALLBACKS DÉSACTIVÉS - REMPLACÉS PAR VERSION PROPRE
+# =====================================================
+# Les callbacks sont maintenant dans crypto_callbacks_clean.py
+
+# Fonction vide pour compatibilité
+def register_new_crypto_callbacks(dash_app):
+    """Fonction vide - callbacks maintenant dans crypto_callbacks_clean.py"""
+    pass
