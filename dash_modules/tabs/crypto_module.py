@@ -1,6 +1,6 @@
 """
-THEBOT Crypto Module - Interface Moderne Complète
-Module crypto avec interface exacte selon spécifications + Indicateurs Structurels Phase 1
+THEBOT Crypto Module - Interface Moderne Complète PROPRE
+Module crypto avec architecture modulaire - Version nettoyée sans code mort
 """
 
 import pandas as pd
@@ -38,2275 +38,903 @@ except ImportError as e:
     alerts_store = None
     ALERTS_MODAL_AVAILABLE = False
 
-# Indicateurs structurels Phase 1 - Import conditionnel
-STRUCTURAL_INDICATORS_AVAILABLE = False
+# Import des nouveaux modules modulaires
 try:
-    # Version simplifiée sans dépendances complexes
-    print("📊 Chargement des indicateurs structurels Phase 1...")
+    from ..components.crypto_search_bar import crypto_search_bar, CryptoSearchBar
+    from ..components.technical_indicators import technical_indicators, TechnicalIndicators
+    from ..components.crypto_chart_components import crypto_chart_components, CryptoChartComponents
+    print("🔄 Initialisation des modules modulaires...")
+    MODULAR_COMPONENTS_AVAILABLE = True
+    print("✅ Modules modulaires disponibles")
+except ImportError as e:
+    print(f"⚠️ Modules modulaires non disponibles: {e}")
+    MODULAR_COMPONENTS_AVAILABLE = False
+
+# Indicateurs structurels Phase 1 - Import conditionnel
+try:
+    from dash_modules.core.calculators import StructuralIndicatorsCalculator
     STRUCTURAL_INDICATORS_AVAILABLE = True
+    print("📊 Chargement des indicateurs structurels Phase 1...")
     print("✅ Mode indicateurs structurels activé")
-except Exception as e:
-    print(f"⚠️ Indicateurs structurels indisponibles: {e}")
+except ImportError:
     STRUCTURAL_INDICATORS_AVAILABLE = False
 
 # Smart Money Indicators - Import conditionnel
-SMART_MONEY_AVAILABLE = False
-ORDER_BLOCKS_AVAILABLE = False
 try:
-    from src.thebot.indicators.smart_money.fair_value_gaps import create_fvg_analyzer, FVGConfig
+    from dash_modules.core.calculators import FairValueGapCalculator, OrderBlockCalculator
+    
+    class SmartMoneyIndicators:
+        def __init__(self):
+            self.fvg_calculator = FairValueGapCalculator()
+            self.ob_calculator = OrderBlockCalculator()
+    
     SMART_MONEY_AVAILABLE = True
+    smart_money_indicators = SmartMoneyIndicators()
     print("🧠 Fair Value Gaps Smart Money disponibles")
-except ImportError as e:
-    print(f"⚠️ Smart Money indicators non disponibles: {e}")
-    SMART_MONEY_AVAILABLE = False
-
-try:
-    from src.thebot.indicators.smart_money.order_blocks import create_order_blocks_indicator, get_order_blocks_signals, create_order_blocks_overlay
-    ORDER_BLOCKS_AVAILABLE = True
     print("📦 Order Blocks Smart Money disponibles")
-except ImportError as e:
-    print(f"⚠️ Order Blocks non disponibles: {e}")
-    ORDER_BLOCKS_AVAILABLE = False
+except ImportError:
+    SMART_MONEY_AVAILABLE = False
+    smart_money_indicators = None
 
 # Variable globale pour l'instance crypto
-_crypto_instance = None
+global_crypto_module_instance = None
 
 # Variable globale pour l'app Dash (sera définie par le launcher)
-app = None
+dash_app_instance = None
 
 class CryptoModule:
-    """Module crypto moderne avec interface complète"""
+    """Module crypto avec architecture modulaire propre"""
     
-    def __init__(self, calculators: Dict = None):
-        """Initialisation du module crypto"""
-        global _crypto_instance
-        
-        self.calculators = calculators or {}
-        self.current_symbol = "BTCUSDT"
-        self.current_timeframe = "1h"
-        self.current_data = pd.DataFrame()
+    def __init__(self):
+        global global_crypto_module_instance
         
         # Symboles crypto populaires
-        self.popular_symbols = [
+        self.crypto_symbols = [
             'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
-            'SOLUSDT', 'DOGEUSDT', 'DOTUSDT', 'MATICUSDT', 'SHIBUSDT',
-            'AVAXUSDT', 'LTCUSDT', 'UNIUSDT', 'LINKUSDT', 'ATOMUSDT',
-            'ETCUSDT', 'XLMUSDT', 'BCHUSDT', 'FILUSDT', 'THETAUSDT',
-            'VETUSDT', 'TRXUSDT', 'EOSUSDT', 'AAVEUSDT', 'MKRUSDT'
+            'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LTCUSDT',
+            'LINKUSDT', 'UNIUSDT', 'BCHUSDT', 'XLMUSDT', 'ATOMUSDT'
         ]
         
         # Configuration des indicateurs techniques
-        self.default_indicators = {
-            'sma': {'period': 20, 'enabled': True},
-            'ema': {'period': 12, 'enabled': True},
-            'rsi': {'period': 14, 'enabled': True},
-            'atr': {'period': 14, 'enabled': True}
+        self.indicators_config = {
+            'rsi_period': 14,
+            'atr_period': 14,
+            'macd_params': (12, 26, 9)
         }
         
         # Enregistrer l'instance globalement
-        _crypto_instance = self
+        global_crypto_module_instance = self
+        
+        # Initialiser le symbole par défaut
+        self.initialize_default_symbol()
         
         print("✅ CryptoModule nouveau initialisé et enregistré globalement")
 
-    def get_symbols_list(self) -> List[str]:
-        """Récupère la liste des symboles crypto disponibles"""
-        try:
-            symbols = binance_provider.get_all_symbols()
-            return symbols if symbols else self.popular_symbols
-        except Exception as e:
-            print(f"⚠️ Erreur chargement symboles: {e}")
-            return self.popular_symbols
+    def get_supported_timeframes(self):
+        """Retourne les timeframes supportés"""
+        return [
+            {'label': '1mn', 'value': '1m'},
+            {'label': '15mn', 'value': '15m'},
+            {'label': '30mn', 'value': '30m'},
+            {'label': '1h', 'value': '1h'},
+            {'label': '4h', 'value': '4h'},
+            {'label': '1d', 'value': '1d'},
+            {'label': '1m', 'value': '1M'}
+        ]
 
-    def get_default_symbol(self) -> str:
-        """Retourne le symbole par défaut"""
-        return self.current_symbol
+    def initialize_default_symbol(self):
+        """Initialise le symbole par défaut (BTCUSDT)"""
+        self.current_symbol = 'BTCUSDT'
+        self.current_timeframe = '1h'
+        print(f"🪙 Symbole par défaut initialisé: {self.current_symbol}")
+        print(f"⏰ Timeframe par défaut initialisé: {self.current_timeframe}")
 
-    def load_market_data(self, symbol: str, interval: str = '1h', limit: int = 200) -> pd.DataFrame:
-        """Charge les données de marché depuis Binance"""
+    # =====================================================
+    # 📊 MÉTHODES DE CRÉATION DE GRAPHIQUES
+    # =====================================================
+    
+    def create_candlestick_chart(self, df, symbol, timeframe):
+        """Crée le graphique candlestick principal"""
         try:
-            print(f"🔄 Chargement données crypto {symbol}...")
-            data = binance_provider.get_klines(symbol, interval, limit)
+            fig = go.Figure(data=[go.Candlestick(
+                x=df.index,
+                open=df['open'],
+                high=df['high'],
+                low=df['low'],
+                close=df['close'],
+                name=symbol,
+                increasing_line_color='#00d4aa',
+                decreasing_line_color='#ff6b6b'
+            )])
             
-            if data is not None and not data.empty:
-                print(f"✅ {symbol}: {len(data)} points chargés")
-                self.current_data = data
-                self.current_symbol = symbol
-                self.current_timeframe = interval
-                return data
-            else:
-                print(f"⚠️ Aucune donnée pour {symbol}")
-                return pd.DataFrame()
-                
+            # Configuration du layout
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                xaxis_title="",  # Suppression du titre "Temps"
+                yaxis_title="",  # Suppression du titre "Prix"
+                font=dict(color='white'),
+                xaxis_rangeslider_visible=False,
+                showlegend=False
+            )
+            
+            return fig
+            
         except Exception as e:
-            print(f"❌ Erreur chargement {symbol}: {e}")
-            return pd.DataFrame()
+            print(f"❌ Erreur création candlestick: {e}")
+            return go.Figure()
+    
+    def create_volume_chart(self, df):
+        """Crée le graphique de volume"""
+        try:
+            # Couleurs basées sur le mouvement des prix
+            colors = ['#00d4aa' if df['close'].iloc[i] >= df['open'].iloc[i] 
+                     else '#ff6b6b' for i in range(len(df))]
+            
+            fig = go.Figure(data=[go.Bar(
+                x=df.index,
+                y=df['volume'],
+                marker_color=colors,
+                name='Volume'
+            )])
+            
+            fig.update_layout(
+                title="Volume",
+                template="plotly_dark",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=200,
+                xaxis_title="",  # Suppression du titre "Temps"
+                yaxis_title="Volume",
+                font=dict(color='white'),
+                showlegend=False,
+                xaxis=dict(
+                    showticklabels=False,  # Cache les labels des dates
+                    tickformat=""
+                )
+            )
+            
+            return fig
+            
+        except Exception as e:
+            print(f"❌ Erreur création volume: {e}")
+            return go.Figure()
+    
+    def create_technical_indicators_chart(self, df):
+        """Crée le graphique des indicateurs techniques"""
+        try:
+            fig = make_subplots(
+                rows=2, cols=1,
+                shared_xaxes=True,
+                subplot_titles=('RSI', 'MACD'),
+                vertical_spacing=0.1
+            )
+            
+            # Calcul RSI
+            if len(df) >= 14:
+                rsi = self.calculate_rsi(df['close'])
+                fig.add_trace(
+                    go.Scatter(x=df.index, y=rsi, name='RSI', line=dict(color='#ffd93d')),
+                    row=1, col=1
+                )
+                
+                # Lignes de surachat/survente
+                fig.add_hline(y=70, row=1, col=1, line_dash="dash", line_color="red", opacity=0.5)
+                fig.add_hline(y=30, row=1, col=1, line_dash="dash", line_color="green", opacity=0.5)
+            
+            # Calcul MACD
+            if len(df) >= 26:
+                macd_line, macd_signal, macd_histogram = self.calculate_macd(df['close'])
+                fig.add_trace(
+                    go.Scatter(x=df.index, y=macd_line, name='MACD', line=dict(color='#00d4aa')),
+                    row=2, col=1
+                )
+                fig.add_trace(
+                    go.Scatter(x=df.index, y=macd_signal, name='Signal', line=dict(color='#ff6b6b')),
+                    row=2, col=1
+                )
+                fig.add_trace(
+                    go.Bar(x=df.index, y=macd_histogram, name='Histogram', marker_color='gray', opacity=0.6),
+                    row=2, col=1
+                )
+            
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=300,
+                font=dict(color='white'),
+                showlegend=False,
+                xaxis=dict(
+                    showticklabels=False,  # Cache les labels des dates pour éviter l'affichage 2025
+                    tickformat=""
+                ),
+                xaxis2=dict(
+                    showticklabels=False,  # Cache les labels des dates pour éviter l'affichage 2025
+                    tickformat=""
+                )
+            )
+            
+            return fig
+            
+        except Exception as e:
+            print(f"❌ Erreur création indicateurs: {e}")
+            return go.Figure()
+    
+    def calculate_rsi(self, prices, period=14):
+        """Calcule l'indicateur RSI"""
+        try:
+            delta = prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            return rsi
+        except:
+            return pd.Series([50] * len(prices), index=prices.index)
+    
+    def calculate_macd(self, prices, fast=12, slow=26, signal=9):
+        """Calcule l'indicateur MACD"""
+        try:
+            exp1 = prices.ewm(span=fast).mean()
+            exp2 = prices.ewm(span=slow).mean()
+            macd_line = exp1 - exp2
+            macd_signal = macd_line.ewm(span=signal).mean()
+            macd_histogram = macd_line - macd_signal
+            return macd_line, macd_signal, macd_histogram
+        except:
+            zeros = pd.Series([0] * len(prices), index=prices.index)
+            return zeros, zeros, zeros
+
+    def create_rsi_chart(self, df):
+        """Crée le graphique RSI séparé"""
+        try:
+            rsi = self.calculate_rsi(df['close'])
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=df.index, 
+                y=rsi, 
+                name='RSI',
+                line=dict(color='#ffd93d', width=2)
+            ))
+            
+            # Lignes de surachat/survente
+            fig.add_hline(y=70, line_dash="dash", line_color="red", opacity=0.7)
+            fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.7)
+            
+            fig.update_layout(
+                title="RSI (14)",
+                template="plotly_dark",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                yaxis=dict(range=[0, 100]),
+                font=dict(color='white'),
+                showlegend=False,
+                xaxis=dict(
+                    showticklabels=False,  # Cache les labels des dates
+                    tickformat=""
+                )
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erreur création RSI: {e}")
+            return go.Figure()
+
+    def create_atr_chart(self, df):
+        """Crée le graphique ATR séparé"""
+        try:
+            # Calcul ATR
+            high_low = df['high'] - df['low']
+            high_close = np.abs(df['high'] - df['close'].shift())
+            low_close = np.abs(df['low'] - df['close'].shift())
+            
+            tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+            atr = tr.rolling(window=14).mean()
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=df.index, 
+                y=atr, 
+                name='ATR',
+                line=dict(color='#ff9500', width=2),
+                fill='tozeroy',
+                fillcolor='rgba(255, 149, 0, 0.1)'
+            ))
+            
+            fig.update_layout(
+                title="ATR (14)",
+                template="plotly_dark",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                font=dict(color='white'),
+                showlegend=False,
+                xaxis=dict(
+                    showticklabels=False,  # Cache les labels des dates
+                    tickformat=""
+                )
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erreur création ATR: {e}")
+            return go.Figure()
+
+    def create_macd_chart(self, df):
+        """Crée le graphique MACD séparé"""
+        try:
+            macd_line, macd_signal, macd_histogram = self.calculate_macd(df['close'])
+            
+            fig = go.Figure()
+            
+            # MACD Line
+            fig.add_trace(go.Scatter(
+                x=df.index, 
+                y=macd_line, 
+                name='MACD',
+                line=dict(color='#00d4aa', width=2)
+            ))
+            
+            # Signal Line
+            fig.add_trace(go.Scatter(
+                x=df.index, 
+                y=macd_signal, 
+                name='Signal',
+                line=dict(color='#ff6b6b', width=2)
+            ))
+            
+            # Histogram
+            colors = ['green' if val >= 0 else 'red' for val in macd_histogram]
+            fig.add_trace(go.Bar(
+                x=df.index, 
+                y=macd_histogram, 
+                name='Histogram',
+                marker_color=colors,
+                opacity=0.6
+            ))
+            
+            fig.update_layout(
+                title="MACD (12,26,9)",
+                template="plotly_dark",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                font=dict(color='white'),
+                showlegend=False,
+                xaxis=dict(
+                    showticklabels=False,  # Cache les labels des dates
+                    tickformat=""
+                )
+            )
+            
+            return fig
+        except Exception as e:
+            print(f"❌ Erreur création MACD: {e}")
+            return go.Figure()
+
+    def get_crypto_symbols(self):
+        """Retourne la liste des symboles avec formatage pour dropdown"""
+        return [{'label': symbol, 'value': symbol} for symbol in self.crypto_symbols]
 
     def create_search_component(self):
-        """Crée le composant de recherche d'actifs"""
-        return html.Div([
-            dcc.Dropdown(
-                id='crypto-symbol-search',
-                options=[{'label': symbol, 'value': symbol} for symbol in self.get_symbols_list()],
-                value=self.current_symbol,
-                placeholder="Rechercher un actif crypto...",
-                searchable=True,
-                className="mb-3"
-            )
-        ], className="mb-4")
-    
-    def create_enhanced_price_display(self):
-        """Crée la barre de contrôle complète avec prix, recherche, timeframe et boutons"""
+        """Crée le composant de recherche - VERSION SIMPLIFIÉE QUI FONCTIONNE"""
+        
+        # Symboles populaires
+        popular_symbols = [
+            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
+            'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT',
+            'LTCUSDT', 'BCHUSDT', 'XLMUSDT', 'ATOMUSDT', 'UNIUSDT'
+        ]
+        
+        timeframes = [
+            {'label': '1mn', 'value': '1m'},
+            {'label': '15mn', 'value': '15m'},
+            {'label': '30mn', 'value': '30m'},
+            {'label': '1h', 'value': '1h'},
+            {'label': '4h', 'value': '4h'},
+            {'label': '1d', 'value': '1d'},
+            {'label': '1M', 'value': '1M'}
+        ]
+        
         return dbc.Card([
             dbc.CardBody([
-                # Première ligne : Recherche d'actif et Timeframe
                 dbc.Row([
                     dbc.Col([
                         dcc.Dropdown(
                             id='crypto-symbol-search',
-                            options=[{'label': symbol, 'value': symbol} for symbol in self.get_symbols_list()],
-                            value=self.current_symbol,
-                            placeholder="🔍 Rechercher un actif crypto...",
+                            options=[{'label': s, 'value': s} for s in popular_symbols],
+                            value='BTCUSDT',
+                            placeholder="Rechercher une crypto...",
                             searchable=True,
-                            className="mb-2"
-                        )
-                    ], width=8),
+                            clearable=False,
+                            style={
+                                'backgroundColor': '#2c2c2e',
+                                'color': '#ffffff'
+                            }
+                        ),
+                        # Informations prix/progression/volume
+                        html.Div([
+                            html.Span("", id="crypto-price-display", className="fw-bold text-primary me-3"),
+                            html.Span("", id="crypto-price-change", className="me-3"),
+                            html.Span("Vol: ", className="text-muted"),
+                            html.Span("", id="crypto-volume-display", className="fw-bold")
+                        ], className="mt-2 small")
+                    ], width=4),
+                    
                     dbc.Col([
                         dcc.Dropdown(
                             id='crypto-timeframe-selector',
-                            options=[
-                                {'label': '🔥 1m', 'value': '1m'},
-                                {'label': '⚡ 5m', 'value': '5m'},
-                                {'label': '📊 15m', 'value': '15m'},
-                                {'label': '📈 1h', 'value': '1h'},
-                                {'label': '📅 4h', 'value': '4h'},
-                                {'label': '🏛️ 1D', 'value': '1d'},
-                                {'label': '📆 1W', 'value': '1w'},
-                                {'label': '🗓️ 1M', 'value': '1M'}
-                            ],
-                            value=self.current_timeframe,
-                            className="mb-2"
+                            options=timeframes,
+                            value='1h',
+                            clearable=False,
+                            style={
+                                'backgroundColor': '#2c2c2e',
+                                'color': '#ffffff'
+                            }
                         )
-                    ], width=4)
-                ]),
-                
-                # Deuxième ligne : Prix et informations
-                dbc.Row([
+                    ], width=3),
+                    
                     dbc.Col([
-                        html.Span(
-                            id='crypto-current-symbol',
-                            children=self.current_symbol,
-                            className="fw-bold me-3",
-                            style={'color': '#212529', 'fontSize': '1.1rem'}
-                        ),
-                        html.Span(
-                            id='crypto-current-price',
-                            children="Loading...",
-                            className="text-primary fw-bold me-2",
-                            style={'fontSize': '1.2rem'}
-                        ),
-                        html.Span(
-                            id='crypto-price-change',
-                            children="",
-                            className="me-3"
-                        ),
-                        html.Small([
-                            html.Span("Vol: ", className="text-muted"),
-                            html.Span(
-                                id='crypto-volume-24h',
-                                children="--",
-                                className="fw-bold"
-                            )
+                        html.Div([
+                            dbc.Button("📊 Analyse", color="success", size="sm", className="me-2"),
+                            dbc.Button("🔔 Alertes", color="warning", size="sm")
                         ])
-                    ], width=7),
-                    dbc.Col([
-                        # Trio de boutons : IA, Alertes, Indicateurs
-                        dbc.ButtonGroup([
-                            dbc.Button(
-                                [html.I(className="fas fa-brain me-2"), "AI Analysis"],
-                                id="generate-ai-insights-btn",
-                                color="primary",
-                                size="sm"
-                            ),
-                            dbc.Button(
-                                [html.I(className="fas fa-bell me-2"), "Price Alerts"],
-                                id="manage-alerts-btn",
-                                color="success",
-                                size="sm"
-                            ),
-                            dbc.Button(
-                                [html.I(className="fas fa-chart-line me-2"), "Indicators"],
-                                id="manage-indicators-btn",
-                                color="info",
-                                size="sm"
-                            )
-                        ], className="float-end")
-                    ], width=5, className="text-end")
-                ], align="center")
-            ], className="py-2 px-3")
-        ], className="mb-2 border-0 shadow-sm", style={'backgroundColor': '#f8f9fa'})
+                    ], width=5)
+                ])
+            ])
+        ], style={
+            'backgroundColor': '#495057',
+            'border': '1px solid #6c757d'
+        }, className="mb-3")
 
     def create_timeframe_component(self):
-        """Crée le composant de sélection de timeframe"""
-        return html.Div([
-            dcc.Dropdown(
-                id='crypto-timeframe-selector',
-                options=[
-                    {'label': '🔥 1m - Scalping', 'value': '1m'},
-                    {'label': '⚡ 5m - Quick Trades', 'value': '5m'},
-                    {'label': '📊 15m - Short Term', 'value': '15m'},
-                    {'label': '📈 1h - Day Trading', 'value': '1h'},
-                    {'label': '📅 4h - Swing', 'value': '4h'},
-                    {'label': '🏛️ 1D - Position', 'value': '1d'},
-                    {'label': '📆 1W - Weekly', 'value': '1w'},
-                    {'label': '🗓️ 1M - Monthly', 'value': '1M'}
-                ],
-                value=self.current_timeframe,
-                className="mb-3"
-            )
-        ], className="mb-4")
+        """Crée le sélecteur de timeframe"""
+        return dbc.Card([
+            dbc.CardHeader(html.H5("Timeframe", className="mb-0")),
+            dbc.CardBody([
+                dcc.Dropdown(
+                    id='crypto-timeframe-selector-main',
+                    options=self.get_supported_timeframes(),
+                    value='1h',
+                    placeholder="Sélectionner un timeframe"
+                )
+            ])
+        ], className="mb-3")
 
     def create_technical_indicators_component(self):
-        """Composant indicateurs techniques simplifié - Contrôles déplacés vers modal"""
-        return html.Div([
-            html.Div([
-                html.Small("🎛️ Indicateurs techniques disponibles via le bouton 'Indicateurs' dans la barre de prix", 
-                          className="text-info fst-italic")
-            ], className="mb-3")
-        ])
+        """Crée le composant des indicateurs techniques"""
+        return html.Div()
 
     def create_ai_analysis_component(self):
-        """Composant IA simplifié - Retourné vide car contrôles déplacés"""
-        return html.Div([
-            # Composant vide - Tous les contrôles IA sont maintenant dans le modal et la zone prix
-        ])
+        """Crée le composant d'analyse IA"""
+        return html.Div()
 
     def create_smart_alerts_component(self):
-        """Composant alertes simplifié - Retouré vide car contrôles déplacés"""
+        """Crée le composant des alertes intelligentes"""
+        return html.Div()
+
+    def add_hidden_dropdowns_for_modal(self):
+        """IMPORTANT: Garde les dropdowns cachés pour les callbacks du modal IA"""
         return html.Div([
-            # Composant vide - Tous les contrôles alertes sont maintenant dans le modal et la zone prix
+            dcc.Dropdown(id='crypto-symbol-modal-sync', style={'display': 'none'}),
+            dcc.Dropdown(id='crypto-timeframe-modal-sync', style={'display': 'none'})
         ])
 
-    def get_sidebar(self):
-        """Retourne None car nous utilisons maintenant le layout pleine largeur"""
-        # IMPORTANT: Garde les dropdowns cachés pour les callbacks du modal IA
-        return html.Div([
-            dcc.Dropdown(
-                id='crypto-symbol-dropdown', 
-                options=[{'label': symbol, 'value': symbol} for symbol in self.popular_symbols],
-                value=self.current_symbol,
-                style={'display': 'none'}
-            ),
-            dcc.Dropdown(
-                id='crypto-timeframe-dropdown',
-                options=[
-                    {'label': '1m', 'value': '1m'},
-                    {'label': '5m', 'value': '5m'},
-                    {'label': '15m', 'value': '15m'},
-                    {'label': '1h', 'value': '1h'},
-                    {'label': '4h', 'value': '4h'},
-                    {'label': '1d', 'value': '1d'},
-                    {'label': '1w', 'value': '1w'},
-                    {'label': '1M', 'value': '1M'}
-                ],
-                value=self.current_timeframe,
-                style={'display': 'none'}
-            )
-        ], style={'display': 'none'})
-
     def create_main_chart(self):
-        """Crée le graphique principal avec candlesticks et prix en direct"""
-        return dcc.Graph(
-            id='crypto-main-chart',
-            style={'height': '600px', 'width': '100%'},  # Responsive
-            config={
-                'displayModeBar': True,
-                'displaylogo': False,
-                'responsive': True,  # Graphique responsive
-                'modeBarButtonsToRemove': [
-                    'pan2d', 'lasso2d', 'select2d',
-                    'autoScale2d', 'hoverClosestCartesian'
-                ]
-            }
-        )
+        """Crée le graphique principal"""
+        if MODULAR_COMPONENTS_AVAILABLE:
+            return crypto_chart_components.create_main_chart()
+        else:
+            # Version de secours
+            return dcc.Graph(
+                id='crypto-main-chart',
+                style={'height': '600px', 'width': '100%'},
+                config={
+                    'displayModeBar': True,
+                    'displaylogo': False,
+                    'responsive': True
+                }
+            )
 
     def create_secondary_charts(self):
-        """Crée les 3 graphiques secondaires (RSI, ATR, MACD) avec hauteur augmentée"""
-        return dbc.Row([
-            # RSI Chart
-            dbc.Col([
-                dcc.Graph(
-                    id='crypto-rsi-chart',
-                    style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'},
-                    config={'displayModeBar': False, 'responsive': True}
-                )
-            ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=6, lg=4),
-            # ATR Chart
-            dbc.Col([
-                dcc.Graph(
-                    id='crypto-atr-chart',
-                    style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'},
-                    config={'displayModeBar': False, 'responsive': True}
-                )
-            ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=6, lg=4),
-            # MACD Chart
-            dbc.Col([
-                dcc.Graph(
-                    id='crypto-macd-chart',
-                    style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'},
-                    config={'displayModeBar': False, 'responsive': True}
-                )
-            ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=12, lg=4)
-        ], style={'margin': '0px'}, className="g-2")
+        """Crée les graphiques secondaires"""
+        if MODULAR_COMPONENTS_AVAILABLE:
+            return crypto_chart_components.create_secondary_charts()
+        else:
+            # Version de secours
+            return dbc.Row([
+                # RSI Chart
+                dbc.Col([
+                    dcc.Graph(
+                        id='crypto-rsi-chart',
+                        style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'}
+                    )
+                ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=6, lg=4),
+                
+                # ATR Chart
+                dbc.Col([
+                    dcc.Graph(
+                        id='crypto-atr-chart',
+                        style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'}
+                    )
+                ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=6, lg=4),
+                
+                # MACD Chart
+                dbc.Col([
+                    dcc.Graph(
+                        id='crypto-macd-chart',
+                        style={'height': '400px', 'margin': '0px', 'margin-top': '30px', 'width': '100%'}
+                    )
+                ], width=4, style={'padding': '2px'}, xs=12, sm=12, md=12, lg=4)
+            ], style={'margin': '0px'}, className="g-2")
 
     def create_ai_insights_cards(self):
-        """Crée les 3 cartes AI Insights"""
-        return dbc.Row([
-            
-            # Market Sentiment
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.I(className="fas fa-chart-pie me-2"),
-                        "Market Sentiment (AI)"
-                    ], className="bg-primary text-white"),
-                    dbc.CardBody([
-                        html.Div(
-                            id="crypto-ai-sentiment-content",
-                            children=[
-                                dbc.Spinner([
-                                    html.P("Analyzing...", className="text-center text-muted")
-                                ], color="primary")
-                            ]
-                        )
-                    ])
-                ], className="h-100")
-            ], width=4),
-            
-            # Technical Analysis
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.I(className="fas fa-chart-line me-2"),
-                        "Technical Analysis (AI)"
-                    ], className="bg-info text-white"),
-                    dbc.CardBody([
-                        html.Div(
-                            id="crypto-ai-technical-content",
-                            children=[
-                                dbc.Spinner([
-                                    html.P("Analyzing...", className="text-center text-muted")
-                                ], color="info")
-                            ]
-                        )
-                    ])
-                ], className="h-100")
-            ], width=4),
-            
-            # Trading Insights
-            dbc.Col([
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.I(className="fas fa-lightbulb me-2"),
-                        "Trading Insights (AI)"
-                    ], className="bg-warning text-white"),
-                    dbc.CardBody([
-                        html.Div(
-                            id="crypto-ai-trading-content",
-                            children=[
-                                dbc.Spinner([
-                                    html.P("Analyzing...", className="text-center text-muted")
-                                ], color="warning")
-                            ]
-                        )
-                    ])
-                ], className="h-100")
-            ], width=4)
-            
-        ], className="g-3")
+        """Crée les cartes AI Insights"""
+        if MODULAR_COMPONENTS_AVAILABLE:
+            return crypto_chart_components.create_ai_insights_cards()
+        else:
+            # Version de secours simplifiée
+            return dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Market Sentiment (AI)"),
+                        dbc.CardBody([html.P("Analyzing...", className="text-center text-muted")])
+                    ], className="h-100")
+                ], width=4),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Technical Analysis (AI)"),
+                        dbc.CardBody([html.P("Analyzing...", className="text-center text-muted")])
+                    ], className="h-100")
+                ], width=4),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader("Trading Signals (AI)"),
+                        dbc.CardBody([html.P("Analyzing...", className="text-center text-muted")])
+                    ], className="h-100")
+                ], width=4)
+            ], className="mb-4")
 
     def get_layout(self):
-        """Retourne le layout principal en pleine largeur avec modal IA, Alertes et Indicateurs"""
+        """Retourne le layout complet du module crypto"""
         layout_components = [
-            
             # Barre de contrôle complète (prix + recherche + timeframe + boutons)
-            dbc.Row([
-                dbc.Col([
-                    self.create_enhanced_price_display()
-                ], width=12)
-            ]),
+            dbc.Container([
+                self.create_search_component()
+            ], fluid=True, className="mb-3"),
             
             # Graphique principal en pleine largeur
-            dbc.Row([
-                dbc.Col([
-                    self.create_main_chart()
-                ], width=12)
-            ], className="mb-3"),
+            dbc.Container([
+                dbc.Row([
+                    dbc.Col([self.create_main_chart()], width=12)
+                ])
+            ], fluid=True, className="mb-3"),
             
             # Graphiques secondaires
-            self.create_secondary_charts()
-            
+            dbc.Container([
+                self.create_secondary_charts()
+            ], fluid=True, className="mb-3"),
         ]
         
         # Ajouter les modals IA et Alertes si disponibles
         if AI_MODAL_AVAILABLE and ai_trading_modal:
+            # Utiliser la méthode create_modal() pour obtenir le layout
             layout_components.append(ai_trading_modal.create_modal())
-        
-        if ALERTS_MODAL_AVAILABLE and price_alerts_modal:
-            layout_components.append(price_alerts_modal.create_modal())
+            
+        if ALERTS_MODAL_AVAILABLE and alerts_store:
             # Ajouter le Store pour les alertes
             layout_components.append(alerts_store)
         
         # Ajouter la modal des indicateurs
         try:
-            from ..components.indicators_modal import indicators_modal, indicators_store
-            layout_components.append(indicators_modal.create_modal())
-            layout_components.append(indicators_store)
+            from ..components.indicators_modal import indicators_modal
+            if hasattr(indicators_modal, 'create_modal'):
+                layout_components.append(indicators_modal.create_modal())
+            elif hasattr(indicators_modal, 'layout'):
+                layout_components.append(indicators_modal.layout)
+            else:
+                layout_components.append(indicators_modal)
         except ImportError:
-            print("⚠️ Modal des indicateurs non disponible")
+            pass
         
-        return html.Div(layout_components, className="p-3")
-    
+        # Ajouter les dropdowns cachés
+        layout_components.append(self.add_hidden_dropdowns_for_modal())
+        
+        return html.Div(layout_components)
+
     def setup_callbacks(self, app):
-        """Configure les callbacks pour l'interactivité avec modals IA et Alertes"""
+        """Méthode appelée par le launcher pour enregistrer les callbacks"""
+        self.register_callbacks(app)
+        print("✅ Callbacks crypto configurés via setup_callbacks")
+
+    def register_callbacks(self, app):
+        """Enregistre tous les callbacks du module"""
+        global dash_app_instance
+        dash_app_instance = app
         
         # Enregistrer les callbacks du modal IA si disponible
-        if AI_MODAL_AVAILABLE and register_ai_modal_callbacks:
-            register_ai_modal_callbacks(app)
-            print("✅ Callbacks Modal IA enregistrés")
+        # DÉSACTIVÉ - Cause "Duplicate callback outputs" 
+        # if AI_MODAL_AVAILABLE and register_ai_modal_callbacks:
+        #     register_ai_modal_callbacks(app)
         
         # Enregistrer les callbacks du modal Alertes si disponible
-        if ALERTS_MODAL_AVAILABLE and register_alerts_modal_callbacks:
-            register_alerts_modal_callbacks(app)
-            print("✅ Callbacks Modal Alertes enregistrés")
-            
-        # Enregistrer les callbacks de la modal des indicateurs
-        try:
-            from ..components.indicators_modal import register_indicators_modal_callbacks
-            register_indicators_modal_callbacks(app)
-            print("✅ Callbacks Modal Indicateurs enregistrés")
-        except ImportError:
-            print("⚠️ Callbacks modal indicateurs non disponibles")
-            
-        # Ajouter les dropdowns nécessaires pour le modal
-        if AI_MODAL_AVAILABLE:
-            # Callback pour synchroniser les dropdowns avec le modal
-            @app.callback(
-                [Output('crypto-symbol-dropdown', 'value'),
-                 Output('crypto-timeframe-dropdown', 'value')],
-                [Input('crypto-symbol-search', 'value'),
-                 Input('crypto-timeframe-selector', 'value')]
-            )
-            def sync_modal_dropdowns(symbol, timeframe):
-                """Synchroniser les valeurs pour le modal IA"""
-                return symbol or self.current_symbol, timeframe or self.current_timeframe
-        """Configure les callbacks pour l'interactivité"""
+        # DÉSACTIVÉ - Cause "Duplicate callback outputs"
+        # if ALERTS_MODAL_AVAILABLE and register_alerts_modal_callbacks:
+        #     register_alerts_modal_callbacks(app)
         
-        # Callback pour mettre à jour l'affichage du prix en temps réel
+        # Enregistrer les callbacks de la modal des indicateurs
+        # DÉSACTIVÉ - Cause "Duplicate callback outputs"
+        # try:
+        #     from ..components.indicators_modal import register_indicators_modal_callbacks
+        #     register_indicators_modal_callbacks(app)
+        # except ImportError:
+        #     pass
+
+        # Ajouter les dropdowns nécessaires pour le modal
+        # if AI_MODAL_AVAILABLE:
+        #     # Callback pour synchroniser les dropdowns avec le modal
+        #     @app.callback(
+        #         [Output('crypto-symbol-modal-sync', 'value'),
+        #          Output('crypto-timeframe-modal-sync', 'value')],
+        #         [Input('crypto-symbol-search', 'value'),
+        #          Input('crypto-timeframe-selector', 'value')]
+        #     )
+        #     def sync_modal_dropdowns(symbol, timeframe):
+        #         return symbol, timeframe
+
+        # =====================================================
+        # 🔍 CALLBACK DE RECHERCHE DYNAMIQUE SIMPLIFIÉE
+        # =====================================================
         @app.callback(
-            [Output('crypto-current-symbol', 'children'),
-             Output('crypto-current-price', 'children'),
-             Output('crypto-price-change', 'children'),
-             Output('crypto-volume-24h', 'children')],
-            [Input('crypto-symbol-search', 'value'),
-             Input('realtime-data-store', 'data')]
+            Output('crypto-symbol-search', 'options'),
+            Input('crypto-symbol-search', 'search_value'),
+            prevent_initial_call=True
         )
-        def update_price_display(selected_symbol, realtime_data):
+        def update_search_options_simple(search_value):
+            """Met à jour dynamiquement les options de recherche - VERSION SIMPLIFIÉE"""
+            try:
+                # Symboles populaires par défaut
+                popular_symbols = [
+                    'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
+                    'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT',
+                    'LTCUSDT', 'BCHUSDT', 'XLMUSDT', 'ATOMUSDT', 'UNIUSDT'
+                ]
+                
+                if not search_value or len(search_value) < 2:
+                    return [{'label': s, 'value': s} for s in popular_symbols]
+                
+                # Recherche simple avec l'API Binance
+                try:
+                    all_symbols = binance_provider.get_all_symbols()
+                    search_upper = search_value.upper()
+                    filtered = [s for s in all_symbols if search_upper in s][:20]
+                    if filtered:
+                        return [{'label': s, 'value': s} for s in filtered]
+                except:
+                    pass
+                
+                # Fallback
+                filtered = [s for s in popular_symbols if search_value.upper() in s]
+                return [{'label': s, 'value': s} for s in filtered] or [{'label': 'BTCUSDT', 'value': 'BTCUSDT'}]
+                
+            except Exception as e:
+                print(f"⚠️ Erreur recherche: {e}")
+                return [{'label': 'BTCUSDT', 'value': 'BTCUSDT'}]
+
+        # =====================================================
+        # 💰 CALLBACK DE MISE À JOUR DU PRIX ET VOLUME
+        # =====================================================
+        @app.callback(
+            [Output('crypto-price-display', 'children'),
+             Output('crypto-price-change', 'children'),
+             Output('crypto-volume-display', 'children')],
+            [Input('crypto-symbol-search', 'value')],
+            prevent_initial_call=False
+        )
+        def update_price_display(selected_symbol):
             """Met à jour l'affichage du prix en temps réel"""
             try:
-                # IMPORTANT: Synchroniser le symbole - TOUJOURS utiliser le dernier symbole sélectionné
-                if selected_symbol:
-                    if selected_symbol != self.current_symbol:
-                        self.current_symbol = selected_symbol
-                        print(f"🔄 Symbole prix mis à jour: {selected_symbol}")
-                    active_symbol = selected_symbol
-                else:
-                    # Utiliser le symbole actuel seulement si aucun symbole sélectionné
-                    active_symbol = self.current_symbol
+                if not selected_symbol:
+                    selected_symbol = 'BTCUSDT'
                 
-                # Données en temps réel depuis WebSocket
-                if realtime_data and realtime_data.get('symbol') == active_symbol:
-                    price = realtime_data.get('price', 0)
-                    price_change = realtime_data.get('price_change', 0)
-                    volume = realtime_data.get('volume', 0)
-                    
+                print(f"🔄 Callback prix déclenché pour: {selected_symbol}")
+                
+                # Récupérer les données depuis Binance
+                ticker_data = binance_provider.get_ticker_24hr(selected_symbol)
+                print(f"🔍 DEBUG ticker_data: {ticker_data}")
+                
+                if ticker_data and 'lastPrice' in ticker_data:
                     # Formatage du prix adaptatif
-                    price_str = format_crypto_price_adaptive(price)
+                    price = float(ticker_data['lastPrice'])
+                    formatted_price = format_crypto_price_adaptive(price)
                     
                     # Formatage du changement de prix avec couleur
-                    change_str = format_percentage_change(price_change)
-                    if price_change > 0:
-                        change_style = {'color': '#28a745'}
-                    elif price_change < 0:
-                        change_style = {'color': '#dc3545'}
-                    else:
-                        change_style = {'color': '#6c757d'}
+                    price_change_percent = float(ticker_data.get('priceChangePercent', 0))
+                    formatted_change = format_percentage_change(price_change_percent)
+                    
+                    # Classe CSS pour la couleur
+                    change_class = "text-success" if price_change_percent >= 0 else "text-danger"
+                    change_html = html.Span(formatted_change, className=change_class)
                     
                     # Formatage du volume
-                    if volume > 1000000:
-                        volume_str = f"{volume/1000000:.1f}M"
-                    elif volume > 1000:
-                        volume_str = f"{volume/1000:.1f}K"
-                    else:
-                        volume_str = f"{volume:.0f}"
+                    volume = float(ticker_data.get('volume', 0))
+                    formatted_volume = format_volume_adaptive(volume)
                     
-                    return (
-                        active_symbol,
-                        price_str,
-                        html.Span(change_str, style=change_style),
-                        volume_str
-                    )
+                    print(f"✅ Prix mis à jour: {formatted_price} ({formatted_change})")
+                    return (formatted_price, change_html, formatted_volume)
                 else:
-                    # Données par défaut si pas de données WebSocket
-                    data = self.load_market_data(active_symbol, '1h', 1)
-                    if not data.empty:
-                        current_price = data['close'].iloc[-1]
-                        price_str = format_crypto_price_adaptive(current_price)
-                        return active_symbol, price_str, "Loading...", "--"
-                
-                return active_symbol, "Loading...", "", "--"
-                
+                    print(f"⚠️ Pas de données pour {selected_symbol}, ticker_data: {ticker_data}")
+                    return ("--", html.Span("--", className="text-muted"), "--")
+                    
             except Exception as e:
-                print(f"❌ Erreur mise à jour prix: {e}")
-                return (self.current_symbol, "Error", "", "--")
-        
-        # 🚫 CALLBACK PRINCIPAL TEMPORAIREMENT DÉSACTIVÉ - CONFLIT AVEC NOUVEAU SYSTÈME MODULAIRE
-        # Ce callback sera réactivé une fois que le nouveau système modulaire
-        # aura implémenté les IDs correspondants (indicators-sma-switch, etc.)
-        """
-        # Callback pour le graphique principal avec indicateurs structurels
+                print(f"❌ Erreur update_price_display: {e}")
+                import traceback
+                traceback.print_exc()
+                return ("Error", html.Span("--", className="text-muted"), "--")
+
+        # =====================================================
+        # 📊 CALLBACK DE MISE À JOUR DES GRAPHIQUES
+        # =====================================================
         @app.callback(
-            Output('crypto-main-chart', 'figure'),
+            [Output('crypto-main-chart', 'figure'),
+             Output('crypto-rsi-chart', 'figure'),
+             Output('crypto-atr-chart', 'figure'),
+             Output('crypto-macd-chart', 'figure')],
             [Input('crypto-symbol-search', 'value'),
-             Input('crypto-timeframe-selector', 'value'),
-             Input('indicators-sma-switch', 'value'),
-             Input('indicators-sma-period', 'value'),
-             Input('indicators-ema-switch', 'value'),
-             Input('indicators-ema-period', 'value'),
-             Input('indicators-sr-switch', 'value'),
-             Input('indicators-sr-strength', 'value'),
-             Input('indicators-sr-lookback', 'value'),
-             Input('indicators-sr-support-color', 'value'),
-             Input('indicators-sr-resistance-color', 'value'),
-             Input('indicators-sr-line-style', 'value'),
-             Input('indicators-sr-line-width', 'value'),
-             Input('indicators-fibonacci-switch', 'value'),
-             Input('indicators-fibonacci-swing', 'value'),
-             Input('indicators-fibonacci-line-style', 'value'),
-             Input('indicators-fibonacci-line-width', 'value'),
-             Input('indicators-fibonacci-transparency', 'value'),
-             Input('indicators-pivot-switch', 'value'),
-             Input('indicators-pivot-method', 'value'),
-             Input('indicators-pivot-line-style', 'value'),
-             Input('indicators-pivot-line-width', 'value'),
-             # Smart Money FVG Inputs
-             Input('indicators-fvg-switch', 'value'),
-             Input('indicators-fvg-threshold', 'value'),
-             Input('indicators-fvg-max-age', 'value'),
-             Input('indicators-fvg-volume-confirmation', 'value'),
-             Input('indicators-fvg-show-labels', 'value'),
-             Input('indicators-fvg-opacity', 'value'),
-             # Paramètres avancés FVG
-             Input('indicators-fvg-min-gap-size', 'value'),
-             Input('indicators-fvg-volume-multiplier', 'value'),
-             Input('indicators-fvg-immediate-fill-threshold', 'value'),
-             Input('indicators-fvg-confluence-detection', 'value'),
-             Input('indicators-fvg-confluence-distance', 'value'),
-             Input('indicators-fvg-structural-break-confirmation', 'value'),
-             Input('indicators-fvg-retest-sensitivity', 'value'),
-             Input('indicators-fvg-max-retest-count', 'value'),
-             Input('indicators-fvg-dynamic-opacity', 'value'),
-             Input('indicators-fvg-strength-line-width', 'value'),
-             Input('indicators-fvg-show-distance-to-price', 'value'),
-             Input('indicators-fvg-max-gaps-display', 'value'),
-             Input('indicators-fvg-auto-alerts', 'value'),
-             Input('indicators-fvg-alert-distance', 'value'),
-             Input('indicators-fvg-rsi-confirmation', 'value'),
-             Input('indicators-fvg-fibonacci-levels', 'value'),
-             Input('indicators-fvg-session-filter', 'value'),
-             Input('indicators-fvg-news-filter', 'value'),
-             Input('indicators-fvg-weekend-gaps', 'value'),
-             # Smart Money Order Blocks Inputs
-             Input('indicators-ob-switch', 'value'),
-             Input('indicators-ob-lookback', 'value'),
-             Input('indicators-ob-strength', 'value'),
-             Input('indicators-ob-show-labels', 'value'),
-             Input('indicators-ob-opacity', 'value'),
-             # Trading Style Input pour synchronisation automatique
-             Input('indicators-trading-style', 'value')]
+             Input('crypto-timeframe-selector', 'value')],
+            prevent_initial_call=False
         )
-        def update_main_chart(symbol, timeframe, sma_enabled, sma_period, ema_enabled, ema_period, 
-                             sr_enabled, sr_strength, sr_lookback, sr_support_color, sr_resistance_color, sr_line_style, sr_line_width,
-                             fibonacci_enabled, fibonacci_swing, fibonacci_line_style, fibonacci_line_width, fibonacci_transparency,
-                             pivot_enabled, pivot_method, pivot_line_style, pivot_line_width,
-                             # FVG Parameters
-                             fvg_enabled, fvg_threshold, fvg_max_age, fvg_volume_confirmation, fvg_show_labels, fvg_opacity,
-                             # FVG Advanced Parameters
-                             fvg_min_gap_size, fvg_volume_multiplier, fvg_immediate_fill_threshold, fvg_confluence_detection, 
-                             fvg_confluence_distance, fvg_structural_break_confirmation, fvg_retest_sensitivity, fvg_max_retest_count,
-                             fvg_dynamic_opacity, fvg_strength_line_width, fvg_show_distance_to_price, fvg_max_gaps_display,
-                             fvg_auto_alerts, fvg_alert_distance, fvg_rsi_confirmation, fvg_fibonacci_levels,
-                             fvg_session_filter, fvg_news_filter, fvg_weekend_gaps,
-                             # Order Blocks Parameters
-                             ob_enabled, ob_lookback, ob_strength, ob_show_labels, ob_opacity,
-                             # Trading Style Parameter
-                             trading_style):
-            "Met à jour le graphique principal"
+        def update_charts(selected_symbol, selected_timeframe):
+            """Met à jour tous les graphiques quand symbole ou timeframe change"""
             try:
-                # CORRECTION: Être strict sur le symbole, pas de fallback
-                if not symbol:
-                    return go.Figure().add_annotation(
-                        text="Aucun symbole sélectionné",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False
-                    )
+                if not selected_symbol:
+                    selected_symbol = 'BTCUSDT'
+                if not selected_timeframe:
+                    selected_timeframe = '1h'
                 
-                # IMPORTANT: Mettre à jour self.current_symbol UNIQUEMENT ici
-                if symbol != self.current_symbol:
-                    self.current_symbol = symbol
-                    print(f"🔄 Graphique principal: symbole changé vers {symbol}")
+                print(f"🔄 Mise à jour graphiques: {selected_symbol} - {selected_timeframe}")
                 
-                # Charger les données pour le nouveau symbole
-                data = self.load_market_data(symbol, timeframe)
-                
-                if data.empty:
-                    return go.Figure().add_annotation(
-                        text="Aucune donnée disponible",
-                        xref="paper", yref="paper",
-                        x=0.5, y=0.5, showarrow=False
-                    )
-                
-                # Créer des subplots : graphique principal + volume
-                fig = make_subplots(
-                    rows=2, cols=1,
-                    shared_xaxes=True,
-                    vertical_spacing=0.03,
-                    subplot_titles=('', ''),  # Titres supprimés (redondant)
-                    row_heights=[0.75, 0.25]  # 75% pour prix, 25% pour volume
+                # Récupérer les données OHLCV depuis Binance
+                df = binance_provider.get_klines(
+                    symbol=selected_symbol,
+                    interval=selected_timeframe,
+                    limit=200
                 )
                 
-                # Candlesticks avec tooltip enrichi
-                fig.add_trace(go.Candlestick(
-                    x=data.index,
-                    open=data['open'],
-                    high=data['high'],
-                    low=data['low'],
-                    close=data['close'],
-                    name=symbol,
-                    increasing_line_color='#00ff88',
-                    decreasing_line_color='#ff4444',
-                    hoverinfo='all',
-                    showlegend=True
-                ), row=1, col=1)
-                
-                # Volume bipolaire amélioré : une seule série avec couleurs conditionnelles
-                volume_values = []
-                volume_colors = []
-                volume_signals = []
-                
-                for i, (close, open_price, vol) in enumerate(zip(data['close'], data['open'], data['volume'])):
-                    if close >= open_price:  # Chandelier haussier
-                        volume_values.append(vol)
-                        volume_colors.append('#00ff88')
-                        volume_signals.append('Pression acheteuse')
-                    else:  # Chandelier baissier
-                        volume_values.append(-vol)  # Volume négatif pour visualisation
-                        volume_colors.append('#ff4444')
-                        volume_signals.append('Pression vendeuse')
-                
-                # Volume unique avec tooltip enrichi
-                fig.add_trace(go.Bar(
-                    x=data.index,
-                    y=volume_values,
-                    name='Volume',
-                    marker_color=volume_colors,
-                    opacity=0.7,
-                    showlegend=False,
-                    hovertemplate='<b>Volume</b><br>' +
-                                 '<b>Date</b>: %{x}<br>' +
-                                 '<b>Volume</b>: %{text:,.0f}<br>' +
-                                 '<b>Signal</b>: %{customdata}<br>' +
-                                 '<extra></extra>',
-                    text=[abs(vol) for vol in volume_values],  # Valeurs absolues pour affichage
-                    customdata=volume_signals
-                ), row=2, col=1)
-                
-                # Utiliser les valeurs des indicateurs reçues en paramètres
-                # Tous les paramètres sont maintenant connectés aux switchs de la modal
-                # sr_enabled, sr_strength, fibonacci_enabled, fibonacci_swing, pivot_enabled, pivot_method
-                # sont déjà disponibles via les inputs du callback
-                
-                # Ajouter SMA si activé (sur le graphique principal) avec tooltip
-                if sma_enabled and sma_period:
-                    sma = data['close'].rolling(window=sma_period).mean()
-                    fig.add_trace(go.Scatter(
-                        x=data.index,
-                        y=sma,
-                        mode='lines',
-                        name=f'SMA {sma_period}',
-                        line=dict(color='#ffa500', width=2),
-                        hovertemplate='<b>SMA %{fullData.name}</b><br>' +
-                                     '<b>Date</b>: %{x}<br>' +
-                                     '<b>Valeur</b>: %{y:.2f}<br>' +
-                                     '<b>Type</b>: Moyenne mobile simple<br>' +
-                                     '<b>Période</b>: ' + str(sma_period) + ' périodes<br>' +
-                                     '<extra></extra>'
-                    ), row=1, col=1)
-                
-                # Ajouter EMA si activé (sur le graphique principal) avec tooltip
-                if ema_enabled and ema_period:
-                    ema = data['close'].ewm(span=ema_period).mean()
-                    fig.add_trace(go.Scatter(
-                        x=data.index,
-                        y=ema,
-                        mode='lines',
-                        name=f'EMA {ema_period}',
-                        line=dict(color='#00bfff', width=2),
-                        hovertemplate='<b>EMA %{fullData.name}</b><br>' +
-                                     '<b>Date</b>: %{x}<br>' +
-                                     '<b>Valeur</b>: %{y:.2f}<br>' +
-                                     '<b>Type</b>: Moyenne mobile exponentielle<br>' +
-                                     '<b>Période</b>: ' + str(ema_period) + ' périodes<br>' +
-                                     '<b>Réactivité</b>: Plus sensible que SMA<br>' +
-                                     '<extra></extra>'
-                    ), row=1, col=1)
-                
-                # === INDICATEURS STRUCTURELS (PHASE 1) ===
-                # Calculer et ajouter les indicateurs structurels
-                try:
-                    # Paramètres visuels pour les indicateurs
-                    visual_params = {
-                        'support_resistance': {
-                            'lookback': sr_lookback or 50,
-                            'support_color': sr_support_color or '#27AE60',
-                            'resistance_color': sr_resistance_color or '#E74C3C',
-                            'line_style': sr_line_style or 'solid',
-                            'line_width': sr_line_width or 2
-                        },
-                        'fibonacci': {
-                            'line_style': fibonacci_line_style or 'dashed',
-                            'line_width': fibonacci_line_width or 1,
-                            'transparency': fibonacci_transparency or 0.8
-                        },
-                        'pivot': {
-                            'line_style': pivot_line_style or 'dot',
-                            'line_width': pivot_line_width or 2
-                        }
-                    }
-                    
-                    structural_data = self.calculate_structural_indicators(
-                        data,
-                        sr_enabled=sr_enabled,
-                        sr_strength=sr_strength or 2,
-                        fibonacci_enabled=fibonacci_enabled,
-                        fibonacci_swing=fibonacci_swing or 20,
-                        pivot_enabled=pivot_enabled,
-                        pivot_method=pivot_method or 'standard',
-                        visual_params=visual_params
+                if df is None or df.empty:
+                    # Retourner des graphiques vides en cas d'erreur
+                    empty_fig = go.Figure()
+                    empty_fig.add_annotation(
+                        text=f"Données non disponibles pour {selected_symbol}",
+                        xref="paper", yref="paper",
+                        x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                        showarrow=False, font=dict(size=16, color="gray")
                     )
-                    
-                    # Ajouter les niveaux structurels au graphique
-                    fig = self.add_structural_levels_to_chart(fig, structural_data, visual_params)
-                    
-                    # Ajouter annotation pour indiquer les indicateurs actifs
-                    active_indicators = []
-                    if sr_enabled and structural_data.get('support_resistance'):
-                        active_indicators.append("S/R")
-                    if fibonacci_enabled and structural_data.get('fibonacci'):
-                        active_indicators.append("Fibonacci")
-                    if pivot_enabled and structural_data.get('pivot_points'):
-                        active_indicators.append("Pivots")
-                    
-                    if active_indicators:
-                        fig.add_annotation(
-                            text=f"Phase 1: {', '.join(active_indicators)}",
-                            xref="paper", yref="paper",
-                            x=0.02, y=0.98,
-                            showarrow=False,
-                            font=dict(color='#00ff88', size=10),
-                            bgcolor='rgba(0,0,0,0.5)',
-                            bordercolor='#00ff88',
-                            borderwidth=1
-                        )
-                        
-                except Exception as e:
-                    print(f"⚠️ Erreur indicateurs structurels: {e}")
+                    empty_fig.update_layout(
+                        template="plotly_dark",
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        height=300
+                    )
+                    return empty_fig, empty_fig, empty_fig, empty_fig
                 
-                # === SMART MONEY ANALYSIS - FAIR VALUE GAPS ===
-                try:
-                    if fvg_enabled and SMART_MONEY_AVAILABLE:
-                        # Valeurs par défaut pour éviter les erreurs
-                        fvg_threshold = fvg_threshold if fvg_threshold is not None else 0.1
-                        fvg_max_age = fvg_max_age if fvg_max_age is not None else 50
-                        # Style de trading par défaut pour FVG (sera synchronisé par la modal)
-                        fvg_trading_style = 'day_trading'
-                        fvg_volume_confirmation = fvg_volume_confirmation if fvg_volume_confirmation is not None else True
-                        fvg_show_labels = fvg_show_labels if fvg_show_labels is not None else True
-                        fvg_opacity = fvg_opacity if fvg_opacity is not None else 30
-                        
-                        # Paramètres avancés avec fallbacks
-                        fvg_min_gap_size = fvg_min_gap_size if fvg_min_gap_size is not None else 0.05
-                        fvg_volume_multiplier = fvg_volume_multiplier if fvg_volume_multiplier is not None else 1.5
-                        fvg_immediate_fill_threshold = fvg_immediate_fill_threshold if fvg_immediate_fill_threshold is not None else 0.3
-                        fvg_confluence_detection = fvg_confluence_detection if fvg_confluence_detection is not None else True
-                        fvg_confluence_distance = fvg_confluence_distance if fvg_confluence_distance is not None else 0.5
-                        fvg_structural_break_confirmation = fvg_structural_break_confirmation if fvg_structural_break_confirmation is not None else False
-                        fvg_retest_sensitivity = fvg_retest_sensitivity if fvg_retest_sensitivity is not None else 0.1
-                        fvg_max_retest_count = fvg_max_retest_count if fvg_max_retest_count is not None else 3
-                        fvg_dynamic_opacity = fvg_dynamic_opacity if fvg_dynamic_opacity is not None else True
-                        fvg_strength_line_width = fvg_strength_line_width if fvg_strength_line_width is not None else True
-                        fvg_show_distance_to_price = fvg_show_distance_to_price if fvg_show_distance_to_price is not None else True
-                        fvg_max_gaps_display = fvg_max_gaps_display if fvg_max_gaps_display is not None else 20
-                        fvg_auto_alerts = fvg_auto_alerts if fvg_auto_alerts is not None else False
-                        fvg_alert_distance = fvg_alert_distance if fvg_alert_distance is not None else 0.2
-                        fvg_rsi_confirmation = fvg_rsi_confirmation if fvg_rsi_confirmation is not None else False
-                        fvg_fibonacci_levels = fvg_fibonacci_levels if fvg_fibonacci_levels is not None else True
-                        fvg_session_filter = fvg_session_filter if fvg_session_filter is not None else True
-                        fvg_news_filter = fvg_news_filter if fvg_news_filter is not None else False
-                        fvg_weekend_gaps = fvg_weekend_gaps if fvg_weekend_gaps is not None else True
-                        
-                        # Configuration FVG complète avec paramètres avancés
-                        fvg_config = FVGConfig(
-                            gap_threshold=fvg_threshold,
-                            min_gap_size=fvg_min_gap_size,
-                            max_gap_age=fvg_max_age,
-                            volume_confirmation=fvg_volume_confirmation,
-                            volume_multiplier=fvg_volume_multiplier,
-                            immediate_fill_threshold=fvg_immediate_fill_threshold / 100.0,  # Convertir % en décimal
-                            confluence_detection=fvg_confluence_detection,
-                            confluence_distance=fvg_confluence_distance,
-                            structural_break_confirmation=fvg_structural_break_confirmation,
-                            retest_sensitivity=fvg_retest_sensitivity,
-                            max_retest_count=fvg_max_retest_count,
-                            session_filter=fvg_session_filter,
-                            news_filter=fvg_news_filter,
-                            weekend_gaps=fvg_weekend_gaps,
-                            dynamic_opacity=fvg_dynamic_opacity,
-                            strength_line_width=fvg_strength_line_width,
-                            show_distance_to_price=fvg_show_distance_to_price,
-                            max_gaps_display=fvg_max_gaps_display,
-                            auto_alerts=fvg_auto_alerts,
-                            alert_distance=fvg_alert_distance,
-                            rsi_confirmation=fvg_rsi_confirmation,
-                            fibonacci_levels=fvg_fibonacci_levels,
-                            show_gap_labels=fvg_show_labels,
-                            gap_opacity=fvg_opacity / 100.0
-                        )
-                        
-                        # Appliquer le preset du style de trading si spécifié
-                        if fvg_trading_style:
-                            from src.thebot.indicators.smart_money.fair_value_gaps import get_trading_style_preset, TradingStyle
-                            try:
-                                style_config = get_trading_style_preset(TradingStyle(fvg_trading_style))
-                                # Garder les paramètres utilisateur, mais utiliser les couleurs du preset
-                                fvg_config.bullish_gap_color = style_config.bullish_gap_color
-                                fvg_config.bearish_gap_color = style_config.bearish_gap_color
-                            except Exception as e:
-                                print(f"⚠️ Erreur preset FVG: {e}")
-                        
-                        # Créer l'analyseur FVG avec configuration complète
-                        fvg_analyzer = create_fvg_analyzer(fvg_trading_style, {
-                            'gap_threshold': fvg_threshold,
-                            'min_gap_size': fvg_min_gap_size,
-                            'volume_confirmation': fvg_volume_confirmation,
-                            'max_gap_age': fvg_max_age,
-                            'volume_multiplier': fvg_volume_multiplier,
-                            'confluence_detection': fvg_confluence_detection,
-                            'retest_sensitivity': fvg_retest_sensitivity
-                        })
-                        
-                        # Analyser les gaps
-                        gaps = fvg_analyzer.analyze_gaps(data)
-                        
-                        # Ajouter les gaps au graphique
-                        if gaps:
-                            fig = fvg_analyzer.create_visualization(fig, data.index.tolist())
-                            
-                            # Compter les gaps actifs et forts
-                            active_gaps = fvg_analyzer.get_active_gaps()
-                            strong_gaps = fvg_analyzer.get_strong_gaps()
-                            near_gaps = fvg_analyzer.get_gaps_near_price(
-                                float(data['close'].iloc[-1]), 
-                                fvg_alert_distance * 5  # Zone élargie pour affichage
-                            )
-                            
-                            # Annotation informative avec détails avancés
-                            info_text = f"🧠 FVG: {len(active_gaps)} actifs ({len(strong_gaps)} forts)"
-                            if near_gaps:
-                                info_text += f" | {len(near_gaps)} proches"
-                            if fvg_confluence_detection:
-                                info_text += " | Confluence✓"
-                            if fvg_rsi_confirmation:
-                                info_text += " | RSI✓"
-                            
-                            fig.add_annotation(
-                                text=info_text,
-                                xref="paper", yref="paper",
-                                x=0.02, y=0.94,
-                                showarrow=False,
-                                font=dict(color='#6f42c1', size=10),
-                                bgcolor='rgba(111, 66, 193, 0.1)',
-                                bordercolor='#6f42c1',
-                                borderwidth=1
-                            )
-                            
-                            print(f"✅ Fair Value Gaps Avancés: {len(gaps)} détectés, {len(active_gaps)} actifs, {len(strong_gaps)} forts")
-                        
-                except Exception as e:
-                    print(f"⚠️ Erreur Fair Value Gaps: {e}")
-                    # En cas d'erreur, ajouter une annotation d'information
-                    if fvg_enabled:
-                        fig.add_annotation(
-                            text="⚠️ FVG: Configuration en cours...",
-                            xref="paper", yref="paper",
-                            x=0.02, y=0.94,
-                            showarrow=False,
-                            font=dict(color='#ffc107', size=10),
-                            bgcolor='rgba(255, 193, 7, 0.1)',
-                            bordercolor='#ffc107',
-                            borderwidth=1
-                        )
+                # 1. Graphique principal (Candlestick)
+                main_fig = self.create_candlestick_chart(df, selected_symbol, selected_timeframe)
                 
-                # ==================== ORDER BLOCKS SMART MONEY ====================
-                # Configuration Order Blocks avec paramètres avancés
-                if ORDER_BLOCKS_AVAILABLE:
-                    # Initialiser ob_enabled en dehors du try pour éviter UnboundLocalError
-                    # 📦 Order Blocks Smart Money
-                    if ob_enabled:
-                        try:
-                            # Configuration basée sur le style de trading sélectionné
-                            from src.thebot.indicators.smart_money.order_blocks.config import OrderBlockConfig, OrderBlockType
-                            from dash_modules.core.style_trading import trading_style_manager
-                            
-                            # Style de trading (utiliser le paramètre reçu ou défaut)
-                            ob_trading_style = trading_style if trading_style else 'day_trading'
-                            
-                            # Récupérer la configuration du style pour Order Blocks
-                            style_config = trading_style_manager.get_style_config(ob_trading_style)
-                            
-                            # CORRECTION CRITIQUE: Accès correct aux paramètres
-                            ob_indicator_config = style_config.get('order_blocks')
-                            ob_style_params = ob_indicator_config.parameters if ob_indicator_config else {}
-                            
-                            print(f"🎯 Order Blocks Style: {ob_trading_style}")
-                            print(f"🔧 Style Params: lookback={ob_style_params.get('lookback_period')}, threshold={ob_style_params.get('strong_threshold')}")
-                            
-                            # Créer la configuration Order Blocks (priorité: utilisateur > style > défaut)
-                            ob_config = OrderBlockConfig(
-                                # Paramètres du style comme base, inputs utilisateur prioritaires
-                                lookback_period=ob_lookback if ob_lookback is not None else ob_style_params.get('lookback_period', 20),
-                                strong_threshold=ob_strength if ob_strength is not None else ob_style_params.get('strong_threshold', 0.7),
-                                weak_threshold=ob_style_params.get('weak_threshold', 0.3),
-                                max_age_bars=ob_style_params.get('max_age_bars', 100),
-                                # Paramètres de détection du style
-                                min_body_size=ob_style_params.get('min_body_size', 0.002),
-                                volume_confirmation=ob_style_params.get('volume_confirmation', True),
-                                min_impulse_strength=ob_style_params.get('min_impulse_strength', 0.5),
-                                max_wick_ratio=ob_style_params.get('max_wick_ratio', 0.5),
-                                # Paramètres d'impulsion CRITIQUES
-                                min_impulse_bars=ob_style_params.get('min_impulse_bars', 1),
-                                max_impulse_bars=ob_style_params.get('max_impulse_bars', 10),
-                                volume_multiplier=ob_style_params.get('volume_multiplier', 0.5),
-                                # Paramètres d'affichage (inputs utilisateur prioritaires)
-                                show_labels=ob_show_labels if ob_show_labels is not None else ob_style_params.get('show_labels', True),
-                                show_retest_count=ob_style_params.get('show_retest_count', True),
-                                opacity_active=(ob_opacity if ob_opacity is not None else ob_style_params.get('opacity_active', 0.3) * 100) / 100.0,
-                                opacity_broken=ob_style_params.get('opacity_broken', 0.15)
-                            )
-                            
-                            # Créer l'analyseur Order Blocks avec configuration complète
-                            from src.thebot.indicators.smart_money.order_blocks.calculator import OrderBlockCalculator
-                            from src.thebot.indicators.smart_money.order_blocks.plotter import OrderBlockPlotter
-                            
-                            ob_calculator = OrderBlockCalculator(ob_config)
-                            ob_plotter = OrderBlockPlotter(ob_config)
-                            
-                            # Analyser les Order Blocks
-                            order_blocks = ob_calculator.analyze_blocks(data)
-                            
-                            # Ajouter les Order Blocks au graphique
-                            if order_blocks:
-                                fig = ob_plotter.add_blocks_to_chart(fig, order_blocks, data)
-                                
-                                # Compter les Order Blocks actifs et forts
-                                active_blocks = [ob for ob in order_blocks if ob.is_active]
-                                strong_blocks = [ob for ob in order_blocks if ob.strength_score >= ob_config.strong_threshold]
-                                bullish_blocks = [ob for ob in active_blocks if ob.type == OrderBlockType.BULLISH]
-                                bearish_blocks = [ob for ob in active_blocks if ob.type == OrderBlockType.BEARISH]
-                                
-                                # Annotation informative avec détails avancés
-                                info_text = f"📦 OB: {len(active_blocks)} actifs ({len(bullish_blocks)}🟢/{len(bearish_blocks)}🔴)"
-                                if strong_blocks:
-                                    info_text += f" | {len(strong_blocks)} forts"
-                                
-                                fig.add_annotation(
-                                    text=info_text,
-                                    xref="paper", yref="paper",
-                                    x=0.02, y=0.14, xanchor="left", yanchor="bottom",
-                                    bgcolor="rgba(0,0,0,0.7)", font=dict(color="white", size=11),
-                                    bordercolor="rgba(255,255,255,0.2)", borderwidth=1
-                                )
-                                
-                                print(f"✅ Order Blocks: {len(order_blocks)} détectés, {len(active_blocks)} actifs")
-                            else:
-                                print("ℹ️ Aucun Order Block détecté")
-                        
-                        except Exception as e:
-                            print(f"❌ Erreur Order Blocks: {e}")
-                            fig.add_annotation(
-                                text="❌ Erreur Order Blocks",
-                                xref="paper", yref="paper",
-                                x=0.02, y=0.14, xanchor="left", yanchor="bottom",
-                                bgcolor="rgba(255,0,0,0.7)", font=dict(color="white", size=11)
-                            )
+                # 2. Graphique RSI
+                rsi_fig = self.create_rsi_chart(df)
                 
-                # Style du graphique
-                fig.update_layout(
-                    title=f"{symbol} - {timeframe}",
-                    template='plotly_dark',
-                    height=600,  # Augmenté pour 2 subplots
-                    showlegend=True,
-                    margin=dict(l=0, r=0, t=30, b=0)
-                )
+                # 3. Graphique ATR
+                atr_fig = self.create_atr_chart(df)
                 
-                # Configurer les axes sans labels encombrants
-                fig.update_yaxes(title_text="", row=1, col=1)  # Supprimer "Prix (USDT)"
-                fig.update_yaxes(title_text="", row=2, col=1)  # Supprimer "Volume"
-                fig.update_xaxes(title_text="Date", row=2, col=1)
+                # 4. Graphique MACD
+                macd_fig = self.create_macd_chart(df)
                 
-                # Supprimer le mini-graphique de zoom
-                fig.update_xaxes(rangeslider_visible=False)
-                
-                return fig
+                return main_fig, rsi_fig, atr_fig, macd_fig
                 
             except Exception as e:
-                print(f"❌ Erreur graphique principal: {e}")
-                return go.Figure().add_annotation(
+                print(f"❌ Erreur mise à jour graphiques: {e}")
+                # Retourner des graphiques d'erreur
+                error_fig = go.Figure()
+                error_fig.add_annotation(
                     text=f"Erreur: {str(e)}",
                     xref="paper", yref="paper",
-                    x=0.5, y=0.5, showarrow=False
+                    x=0.5, y=0.5, xanchor='center', yanchor='middle',
+                    showarrow=False, font=dict(size=14, color="red")
                 )
-        """
-        # FIN DU CALLBACK PRINCIPAL DÉSACTIVÉ
-        
-        # 🔧 CALLBACKS TEMPORAIRES SIMPLIFIÉS - NOUVEAU SYSTÈME MODULAIRE (DÉSACTIVÉS)
-        # Ces callbacks temporaires affichent les graphiques sans dépendre des anciens IDs
-        
-        # @app.callback(
-        #     Output('crypto-main-chart', 'figure'),
-        #     [Input('crypto-symbol-search', 'value'),
-        #      Input('crypto-timeframe-selector', 'value')]
-        # )
-        # def update_main_chart_simplified(symbol, timeframe):
-        #     """Met à jour le graphique principal (version simplifiée temporaire)"""
-        #     try:
-        #         if not symbol:
-        #             return go.Figure().add_annotation(
-        #                 text="Aucun symbole sélectionné",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False
-        #             )
-        #         
-        #         # Charger les données
-        #         data = self.load_market_data(symbol, timeframe)
-        #         if data.empty:
-        #             return go.Figure().add_annotation(
-        #                 text=f"Pas de données pour {symbol}",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False
-        #             )
-        #         
-        #         # Créer un graphique de base avec chandelier
-        #         fig = go.Figure()
-        #         
-        #         fig.add_trace(go.Candlestick(
-        #             x=data.index,
-        #             open=data['open'],
-        #             high=data['high'],
-        #             low=data['low'],
-        #             close=data['close'],
-        #             name=symbol,
-        #             increasing_line_color='#00ff88',
-        #             decreasing_line_color='#ff4444'
-        #         ))
-        #         
-        #         # Ajouter par défaut les indicateurs demandés : SMA, EMA (selon config nouveau système)
-        #         try:
-        #             # SMA 20 par défaut (activé dans nouveau système)
-        #             sma_20 = data['close'].rolling(window=20).mean()
-        #             fig.add_trace(go.Scatter(
-        #                 x=data.index, y=sma_20, mode='lines',
-        #                 name='SMA 20', line=dict(color='#2196F3', width=2)
-        #             ))
-        #             
-        #             # EMA 12 par défaut (activé dans nouveau système)  
-        #             ema_12 = data['close'].ewm(span=12).mean()
-        #             fig.add_trace(go.Scatter(
-        #                 x=data.index, y=ema_12, mode='lines',
-        #                 name='EMA 12', line=dict(color='#FF9800', width=2)
-        #             ))
-        #         except Exception as e:
-        #             print(f"⚠️ Erreur calcul indicateurs par défaut: {e}")
-        #         
-        #         # Configuration du layout
-        #         fig.update_layout(
-        #             title=f"{symbol} - {timeframe} (Nouveau Système)",
-        #             yaxis_title="Prix",
-        #             template="plotly_dark",
-        #             showlegend=True,
-        #             height=500
-        #         )
-        #         
-        #         fig.update_xaxes(rangeslider_visible=False)
-        #         
-        #         print(f"✅ Graphique principal mis à jour: {symbol} (système simplifié)")
-        #         return fig
-                
-        #         except Exception as e:
-        #             print(f"❌ Erreur graphique principal simplifié: {e}")
-        #             return go.Figure().add_annotation(
-        #                 text=f"Erreur: {str(e)}",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False
-        #             )
-        # FIN CALLBACK TEMPORAIRE SIMPLIFIÉ DÉSACTIVÉ
-        
-        # 🚫 CALLBACK TEMPORAIREMENT DÉSACTIVÉ - CONFLIT AVEC NOUVEAU SYSTÈME MODULAIRE
-        # Ce callback sera réactivé une fois que le nouveau système modulaire
-        # aura implémenté les IDs correspondants
-        # @app.callback(
-        #     [Output('crypto-rsi-chart', 'figure'),
-        #      Output('crypto-atr-chart', 'figure'),
-        #      Output('crypto-macd-chart', 'figure')],
-        #     [Input('crypto-symbol-search', 'value'),
-        #      Input('crypto-timeframe-selector', 'value'),
-        #      Input('indicators-rsi-switch', 'value'),
-        #      Input('indicators-rsi-period', 'value'),
-        #      Input('indicators-rsi-overbought', 'value'),
-        #      Input('indicators-rsi-oversold', 'value'),
-        #      Input('indicators-atr-switch', 'value'),
-        #      Input('indicators-atr-period', 'value'),
-        #      Input('indicators-atr-multiplier', 'value'),
-        #      Input('indicators-macd-switch', 'value'),
-        #      Input('indicators-macd-fast', 'value'),
-        #      Input('indicators-macd-slow', 'value'),
-        #      Input('indicators-macd-signal', 'value'),
-        #      Input('indicators-macd-color', 'value'),
-        #      Input('indicators-macd-signal-color', 'value'),
-        #      Input('indicators-macd-histogram', 'value')]
-        # )
-        # def update_secondary_charts(symbol, timeframe, rsi_enabled, rsi_period, rsi_overbought, rsi_oversold, atr_enabled, atr_period, atr_multiplier,
-        #                            macd_enabled, macd_fast, macd_slow, macd_signal, 
-        #                            macd_color, macd_signal_color, macd_histogram):
-        #     \"\"\"Met à jour les graphiques secondaires (RSI, ATR) - Volume intégré au principal\"\"\"
-        #     try:
-        #         # CORRECTION: Utiliser directement le symbole du callback, pas de fallback
-        #         if not symbol:
-        #             return go.Figure(), go.Figure(), go.Figure()
-        #         
-        #         # Mettre à jour le symbole courant pour synchronisation
-        #         if symbol != self.current_symbol:
-        #             self.current_symbol = symbol
-        #         
-        #         # Utiliser les valeurs des indicateurs reçues en paramètres
-        #         # rsi_enabled, rsi_period, atr_enabled, atr_period sont déjà disponibles
-        #         
-        #         print(f"🔄 Graphiques secondaires: symbole synchronisé vers {symbol}")
-        #             
-        #         data = self.current_data if not self.current_data.empty else self.load_market_data(symbol, timeframe)
-        #         
-        #         if data.empty:
-        #             empty_fig = go.Figure().add_annotation(
-        #                 text="Pas de données",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False
-        #             )
-        #             return empty_fig, empty_fig, empty_fig  # 3 figures pour RSI, ATR, MACD
-        #         
-        #         # RSI Chart Professionnel avec signaux avancés
-        #         rsi_fig = go.Figure()
-        #         if rsi_enabled and rsi_period and rsi_period > 0:
-        #             # Calcul RSI avec signaux avancés
-        #             from dash_modules.core.calculators import TechnicalCalculators
-        #             calc = TechnicalCalculators()
-        #             rsi_data = calc.calculate_rsi_signals(
-        #                 data['close'].tolist(), 
-        #                 period=rsi_period,
-        #                 overbought=rsi_overbought,
-        #                 oversold=rsi_oversold
-        #             )
-        #             
-        #             rsi_values = rsi_data['rsi_values']
-        #             signals = rsi_data['signals']
-        #             signal_strength = rsi_data['signal_strength']
-        #             signal_descriptions = rsi_data['signal_descriptions']
-        #             
-        #             # Zones d'arrière-plan colorées
-        #             rsi_fig.add_hrect(y0=rsi_overbought, y1=100, fillcolor="rgba(255, 0, 0, 0.1)", 
-        #                               line_width=0)
-        #             rsi_fig.add_hrect(y0=0, y1=rsi_oversold, fillcolor="rgba(0, 255, 0, 0.1)", 
-        #                               line_width=0)
-        #             rsi_fig.add_hrect(y0=rsi_oversold, y1=rsi_overbought, fillcolor="rgba(128, 128, 128, 0.05)", 
-        #                               line_width=0)
-        #             
-        #             # Ligne RSI principale avec signaux dans tooltip
-        #             rsi_fig.add_trace(go.Scatter(
-        #                 x=data.index,
-        #                 y=rsi_values,
-        #                 mode='lines',
-        #                 name='RSI',
-        #                 line=dict(color='#00bfff', width=2),
-        #                 showlegend=False,
-        #                 hovertemplate='<b>RSI</b>: %{y:.1f}<br>' +
-        #                              '<b>Date</b>: %{x}<br>' +
-        #                              '<b>Signal</b>: %{customdata}<br>' +
-        #                              '<extra></extra>',
-        #                 customdata=signal_descriptions
-        #             ))
-        #             
-        #             # Ajouter les signaux de trading comme marqueurs
-        #             for i, (signal, strength, desc) in enumerate(zip(signals, signal_strength, signal_descriptions)):
-        #                 if signal in ['buy', 'strong_buy'] and strength > 0.5:
-        #                     rsi_fig.add_trace(go.Scatter(
-        #                         x=[data.index[i]],
-        #                         y=[rsi_values[i]],
-        #                         mode='markers',
-        #                         marker=dict(
-        #                             symbol='triangle-up',
-        #                             size=12 + (strength * 8),  # Taille selon force
-        #                             color='#00ff88',
-        #                             line=dict(color='#004400', width=2)
-        #                         ),
-        #                         name='Signal Achat',
-        #                         showlegend=False,
-        #                         hovertemplate=f'<b>SIGNAL ACHAT</b><br>' +
-        #                                      f'Force: {strength:.1%}<br>' +
-        #                                      f'{desc}<br>' +
-        #                                      '<extra></extra>'
-        #                     ))
-        #                 elif signal in ['sell', 'strong_sell'] and strength > 0.5:
-        #                     rsi_fig.add_trace(go.Scatter(
-        #                         x=[data.index[i]],
-        #                         y=[rsi_values[i]],
-        #                         mode='markers',
-        #                         marker=dict(
-        #                             symbol='triangle-down',
-        #                             size=12 + (strength * 8),  # Taille selon force
-        #                             color='#ff4444',
-        #                             line=dict(color='#440000', width=2)
-        #                         ),
-        #                         name='Signal Vente',
-        #                         showlegend=False,
-        #                         hovertemplate=f'<b>SIGNAL VENTE</b><br>' +
-        #                                      f'Force: {strength:.1%}<br>' +
-        #                                      f'{desc}<br>' +
-        #                                      '<extra></extra>'
-        #                     ))
-        #             
-        #             # Ajouter signaux de divergence (losanges dorés)
-        #             for i, is_divergence in enumerate(rsi_data['divergence_signals']):
-        #                 if is_divergence:
-        #                     rsi_fig.add_trace(go.Scatter(
-        #                         x=[data.index[i]],
-        #                         y=[rsi_values[i]],
-        #                         mode='markers',
-        #                         marker=dict(
-        #                             symbol='diamond',
-        #                             size=15,
-        #                             color='#ffd700',
-        #                             line=dict(color='#ffaa00', width=2)
-        #                         ),
-        #                         name='Divergence',
-        #                         showlegend=False,
-        #                         hovertemplate='<b>🔄 DIVERGENCE RSI</b><br>' +
-        #                                      'Signal de retournement potentiel<br>' +
-        #                                      f'{signal_descriptions[i]}<br>' +
-        #                                      '<extra></extra>'
-        #                     ))
-        #             
-        #             # Lignes de niveaux critiques
-        #             rsi_fig.add_hline(y=rsi_overbought, line=dict(color='#ff4444', dash='dash', width=1))
-        #             rsi_fig.add_hline(y=rsi_oversold, line=dict(color='#00ff88', dash='dash', width=1))
-        #             rsi_fig.add_hline(y=50, line=dict(color='#888888', dash='dot', width=1))
-        #             
-        #             # Annotations pour les seuils (plus discrètes)
-        #             rsi_fig.add_annotation(
-        #                 x=data.index[-1], y=rsi_overbought,
-        #                 text=f"Surachat {rsi_overbought}",
-        #                 showarrow=False,
-        #                 xanchor="left",
-        #                 font=dict(size=10, color="#ff4444")
-        #             )
-        #             rsi_fig.add_annotation(
-        #                 x=data.index[-1], y=rsi_oversold,
-        #                 text=f"Survente {rsi_oversold}",
-        #                 showarrow=False,
-        #                 xanchor="left",
-        #                 font=dict(size=10, color="#00ff88")
-        #             )
-        #         
-        #         if not rsi_enabled:
-        #             rsi_fig.add_annotation(
-        #                 text="RSI désactivé",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False,
-        #                 font=dict(size=14, color="#666666")
-        #             )
-        #             rsi_fig.add_annotation(
-        #                 text="RSI désactivé",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False,
-        #                 font=dict(size=14, color="#666666")
-        #             )
-        #         
-        #         rsi_fig.update_layout(
-        #             title="RSI - Surachat/Survente",
-        #             template='plotly_dark',
-        #             height=200,
-        #             margin=dict(l=0, r=0, t=30, b=0),
-        #             yaxis_range=[0, 100],
-        #             showlegend=False
-        #         )
-        #         
-        #         # ATR Chart Professionnel avec signaux de croisement et zones de volatilité
-        #         atr_fig = go.Figure()
-        #         if atr_enabled and atr_period and atr_period > 0:
-        #             # Utiliser le multiplier de l'interface (fallback à 2.0 si None)
-        #             atr_multiplier_value = atr_multiplier if atr_multiplier is not None else 2.0
-        #             atr_data = self.calculate_atr_signals(data, atr_period, atr_multiplier_value)
-        #             
-        #             atr = pd.Series(atr_data['atr'])
-        #             atr_ma = pd.Series(atr_data['atr_ma'])
-        #             upper_threshold = pd.Series(atr_data['upper_threshold'])
-        #             lower_threshold = pd.Series(atr_data['lower_threshold'])
-        #             
-        #             # Obtenir les valeurs fixes des seuils
-        #             upper_value = upper_threshold.iloc[0] if len(upper_threshold) > 0 else atr.max() * 1.5
-        #             lower_value = lower_threshold.iloc[0] if len(lower_threshold) > 0 else 0
-        #             
-        #             # Zones de volatilité avec rectangles horizontaux fixes
-        #             # Zone de volatilité faible (0 à seuil bas) - Vert
-        #             if lower_value > 0:
-        #                 atr_fig.add_hrect(
-        #                     y0=0, y1=lower_value,
-        #                     fillcolor="rgba(0, 255, 0, 0.1)",
-        #                     line_width=0
-        #                 )
-        #             
-        #             # Zone de volatilité normale (seuil bas à seuil haut) - Jaune
-        #             atr_fig.add_hrect(
-        #                 y0=lower_value, y1=upper_value,
-        #                 fillcolor="rgba(255, 255, 0, 0.1)",
-        #                 line_width=0
-        #             )
-        #             
-        #             # Zone de volatilité élevée (seuil haut à max) - Rouge
-        #             atr_fig.add_hrect(
-        #                 y0=upper_value, y1=atr.max() * 1.2,
-        #                 fillcolor="rgba(255, 0, 0, 0.1)",
-        #                 line_width=0
-        #             )
-        #             
-        #             # ATR principal avec tooltip enrichi
-        #             atr_fig.add_trace(go.Scatter(
-        #                 x=data.index,
-        #                 y=atr,
-        #                 mode='lines',
-        #                 name='ATR',
-        #                 line=dict(color='#00bfff', width=2),
-        #                 showlegend=False,
-        #                 hovertemplate='<b>ATR</b>: %{y:.4f}<br>' +
-        #                              '<b>Date</b>: %{x}<br>' +
-        #                              '<b>Stop suggéré</b>: ±%{customdata:.4f}<br>' +
-        #                              '<extra></extra>',
-        #                 customdata=atr * 2  # Stop loss suggéré à 2x ATR
-        #             ))
-        #             
-        #             # ATR Moyenne Mobile avec tooltip explicatif
-        #             atr_fig.add_trace(go.Scatter(
-        #                 x=data.index,
-        #                 y=atr_ma,
-        #                 mode='lines',
-        #                 name='ATR Tendance',
-        #                 line=dict(color='#ffa500', width=1, dash='dot'),
-        #                 opacity=0.7,
-        #                 showlegend=False,
-        #                 hovertemplate='<b>ATR Tendance</b>: %{y:.4f}<br>' +
-        #                              '<b>Date</b>: %{x}<br>' +
-        #                              '<b>Évolution</b>: Tendance de volatilité<br>' +
-        #                              '<extra></extra>'
-        #             ))
-        #             
-        #             # Seuils de volatilité HORIZONTAUX FIXES
-        #             # Ligne de seuil haute volatilité (rouge)
-        #             atr_fig.add_hline(
-        #                 y=upper_value,
-        #                 line=dict(color='#ff4444', dash='dash', width=2),
-        #                 annotation_text=f"Seuil Élevé: {upper_value:.4f}",
-        #                 annotation_position="top right"
-        #             )
-        #             
-        #             # Ligne de seuil basse volatilité (vert)
-        #             if lower_value > 0:
-        #                 atr_fig.add_hline(
-        #                     y=lower_value,
-        #                     line=dict(color='#00ff88', dash='dash', width=2),
-        #                     annotation_text=f"Seuil Faible: {lower_value:.4f}",
-        #                     annotation_position="bottom right"
-        #                 )
-        #             
-        #             # === SIGNAUX DE CROISEMENT ATR ===
-        #             
-        #             # Signaux de haute volatilité (croix vers le haut)
-        #             for signal in atr_data['volatility_signals']:
-        #                 if signal['type'] == 'high_volatility':
-        #                     atr_fig.add_trace(go.Scatter(
-        #                         x=[data.index[signal['index']]],
-        #                         y=[signal['value']],
-        #                         mode='markers',
-        #                         marker=dict(symbol='triangle-up', size=12, color='red'),
-        #                         name='⚠️ Volatilité Élevée',
-        #                         showlegend=False,
-        #                         hovertemplate=f'<b>🔺 {signal["description"]}</b><br>' +
-        #                                      f'ATR: {signal["value"]:.4f}<br>' +
-        #                                      f'Seuil: {signal["threshold"]:.4f}<br>' +
-        #                                      'Signal: Marché agité - Prudence!<br>' +
-        #                                      '<extra></extra>'
-        #                     ))
-        #             
-        #             # Signaux de basse volatilité (croix vers le bas)
-        #             for signal in atr_data['volatility_signals']:
-        #                 if signal['type'] == 'low_volatility':
-        #                     atr_fig.add_trace(go.Scatter(
-        #                         x=[data.index[signal['index']]],
-        #                         y=[signal['value']],
-        #                         mode='markers',
-        #                         marker=dict(symbol='triangle-down', size=12, color='green'),
-        #                         name='📉 Volatilité Faible',
-        #                         showlegend=False,
-        #                         hovertemplate=f'<b>🔻 {signal["description"]}</b><br>' +
-        #                                      f'ATR: {signal["value"]:.4f}<br>' +
-        #                                      f'Seuil: {signal["threshold"]:.4f}<br>' +
-        #                                      'Signal: Marché calme - Stabilité<br>' +
-        #                                      '<extra></extra>'
-        #                     ))
-        #             
-        #             # Signaux d'expansion de volatilité (étoiles rouges)
-        #             for signal in atr_data['expansion_signals']:
-        #                 atr_fig.add_trace(go.Scatter(
-        #                     x=[data.index[signal['index']]],
-        #                     y=[signal['value']],
-        #                     mode='markers',
-        #                     marker=dict(symbol='star', size=14, color='orangered'),
-        #                     name='💥 Expansion',
-        #                     showlegend=False,
-        #                     hovertemplate=f'<b>💥 {signal["description"]}</b><br>' +
-        #                                  f'ATR: {signal["value"]:.4f}<br>' +
-        #                                  f'Précédent: {signal["previous"]:.4f}<br>' +
-        #                                  f'Ratio: {signal["ratio"]:.2f}x<br>' +
-        #                                  'Signal: Explosion de volatilité!<br>' +
-        #                                  '<extra></extra>'
-        #                 ))
-        #             
-        #             # Signaux de contraction de volatilité (diamants bleus)
-        #             for signal in atr_data['contraction_signals']:
-        #                 atr_fig.add_trace(go.Scatter(
-        #                     x=[data.index[signal['index']]],
-        #                     y=[signal['value']],
-        #                     mode='markers',
-        #                     marker=dict(symbol='diamond', size=12, color='lightblue'),
-        #                     name='💎 Contraction',
-        #                     showlegend=False,
-        #                     hovertemplate=f'<b>💎 {signal["description"]}</b><br>' +
-        #                                  f'ATR: {signal["value"]:.4f}<br>' +
-        #                                  f'Précédent: {signal["previous"]:.4f}<br>' +
-        #                                  f'Ratio: {signal["ratio"]:.2f}x<br>' +
-        #                                  'Signal: Compression de volatilité<br>' +
-        #                                  '<extra></extra>'
-        #                 ))
-        #             
-        #             # Signaux de tendance de volatilité (flèches)
-        #             for signal in atr_data['trend_signals']:
-        #                 if signal['type'] == 'volatility_increasing':
-        #                     atr_fig.add_trace(go.Scatter(
-        #                         x=[data.index[signal['index']]],
-        #                         y=[signal['ma_value']],
-        #                         mode='markers',
-        #                         marker=dict(symbol='arrow-up', size=10, color='orange'),
-        #                         name='📈 Tendance Hausse',
-        #                         showlegend=False,
-        #                         hovertemplate=f'<b>📈 {signal["description"]}</b><br>' +
-        #                                      f'ATR: {signal["value"]:.4f}<br>' +
-        #                                      f'Tendance: {signal["ma_value"]:.4f}<br>' +
-        #                                      'Signal: Volatilité en hausse<br>' +
-        #                                      '<extra></extra>'
-        #                     ))
-        #                 elif signal['type'] == 'volatility_decreasing':
-        #                     atr_fig.add_trace(go.Scatter(
-        #                         x=[data.index[signal['index']]],
-        #                         y=[signal['ma_value']],
-        #                         mode='markers',
-        #                         marker=dict(symbol='arrow-down', size=10, color='lightgreen'),
-        #                         name='📉 Tendance Baisse',
-        #                         showlegend=False,
-        #                         hovertemplate=f'<b>📉 {signal["description"]}</b><br>' +
-        #                                      f'ATR: {signal["value"]:.4f}<br>' +
-        #                                      f'Tendance: {signal["ma_value"]:.4f}<br>' +
-        #                                      'Signal: Volatilité en baisse<br>' +
-        #                                      '<extra></extra>'
-        #                     ))
-        #         
-        #         if not atr_enabled:
-        #             atr_fig.add_annotation(
-        #                 text="ATR désactivé",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False,
-        #                 font=dict(size=14, color="#666666")
-        #             )
-        #         
-        #         atr_fig.update_layout(
-        #             title="ATR - Volatilité",
-        #             template='plotly_dark',
-        #             height=200,
-        #             margin=dict(l=0, r=0, t=30, b=0),
-        #             showlegend=False
-        #         )
-        #         
-        #         # === GRAPHIQUE MACD ===
-        #         macd_fig = go.Figure()
-        #         
-        #         if macd_enabled and len(data) > max(macd_slow, 50):
-        #             # Calculer MACD
-        #             macd_data = self.calculate_macd(data['close'], macd_fast, macd_slow, macd_signal)
-        #             
-        #             # Histogramme MACD (barres)
-        #             if macd_histogram:
-        #                 colors = ['green' if x >= 0 else 'red' for x in macd_data['histogram']]
-        #                 macd_fig.add_trace(go.Bar(
-        #                     x=data.index,
-        #                     y=macd_data['histogram'],
-        #                     name='Histogramme',
-        #                     marker_color=colors,
-        #                     opacity=0.6,
-        #                     showlegend=False,
-        #                     hovertemplate='<b>Histogramme</b>: %{y:.4f}<br>' +
-        #                                  '<b>Date</b>: %{x}<br>' +
-        #                                  '<b>Signal</b>: %{customdata}<br>' +
-        #                                  '<extra></extra>',
-        #                     customdata=[
-        #                         'Force haussière' if x > 0 else 'Force baissière' 
-        #                         for x in macd_data['histogram']
-        #                     ]
-        #                 ))
-        #             
-        #             # Ligne MACD
-        #             macd_fig.add_trace(go.Scatter(
-        #                 x=data.index,
-        #                 y=macd_data['macd'],
-        #                 mode='lines',
-        #                 name='MACD',
-        #                 line=dict(color=macd_color, width=2),
-        #                 showlegend=False,
-        #                 hovertemplate='<b>MACD</b>: %{y:.4f}<br>' +
-        #                              '<b>Date</b>: %{x}<br>' +
-        #                              '<b>Calcul</b>: EMA(' + str(macd_fast) + ') - EMA(' + str(macd_slow) + ')<br>' +
-        #                              '<extra></extra>'
-        #             ))
-        #             
-        #             # Ligne Signal
-        #             macd_fig.add_trace(go.Scatter(
-        #                 x=data.index,
-        #                 y=macd_data['signal'],
-        #                 mode='lines',
-        #                 name='Signal',
-        #                 line=dict(color=macd_signal_color, width=2),
-        #                 showlegend=False,
-        #                 hovertemplate='<b>Signal</b>: %{y:.4f}<br>' +
-        #                              '<b>Date</b>: %{x}<br>' +
-        #                              '<b>Calcul</b>: EMA(' + str(macd_signal) + ') du MACD<br>' +
-        #                              '<extra></extra>'
-        #             ))
-        #             
-        #             # Ligne zéro
-        #             macd_fig.add_hline(y=0, line=dict(color='white', dash='dot', width=1))
-        #             
-        #             # Tooltips pour signaux
-        #             # Crossover positif récent
-        #             crossover_points = []
-        #             for i in range(1, len(macd_data['macd'])):
-        #                 if (macd_data['macd'].iloc[i] > macd_data['signal'].iloc[i] and 
-        #                     macd_data['macd'].iloc[i-1] <= macd_data['signal'].iloc[i-1]):
-        #                     crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'achat'))
-        #                 elif (macd_data['macd'].iloc[i] < macd_data['signal'].iloc[i] and 
-        #                       macd_data['macd'].iloc[i-1] >= macd_data['signal'].iloc[i-1]):
-        #                     crossover_points.append((data.index[i], macd_data['macd'].iloc[i], 'vente'))
-        #             
-        #             # Afficher les 3 derniers crossovers
-        #             for point in crossover_points[-3:]:
-        #                 color = 'lime' if point[2] == 'achat' else 'red'
-        #                 symbol = 'triangle-up' if point[2] == 'achat' else 'triangle-down'
-        #                 macd_fig.add_trace(go.Scatter(
-        #                     x=[point[0]], y=[point[1]],
-        #                     mode='markers',
-        #                     marker=dict(size=8, color=color, symbol=symbol),
-        #                     hovertemplate=f'<b>Signal {point[2].title()}</b><br>' +
-        #                                  f'Date: {point[0]}<br>' +
-        #                                  f'MACD: {point[1]:.4f}<br>' +
-        #                                  ('📈 MACD croise au-dessus du Signal' if point[2] == 'achat' else 
-        #                                   '📉 MACD croise en-dessous du Signal') + '<br>' +
-        #                                  '<extra></extra>',
-        #                     showlegend=False,
-        #                     name=f'Signal {point[2]}'
-        #                 ))
-        #         
-        #         if not macd_enabled:
-        #             macd_fig.add_annotation(
-        #                 text="MACD désactivé",
-        #                 xref="paper", yref="paper",
-        #                 x=0.5, y=0.5, showarrow=False,
-        #                 font=dict(size=14, color="#666666")
-        #             )
-        #         
-        #         macd_fig.update_layout(
-        #             title="MACD - Convergence/Divergence",
-        #             template='plotly_dark',
-        #             height=200,
-        #             margin=dict(l=0, r=0, t=30, b=0),
-        #             showlegend=False
-        #         )
-        #         
-        #         return rsi_fig, atr_fig, macd_fig  # Retourner les 3 figures
-        #         
-        #     except Exception as e:
-        #         print(f"❌ Erreur graphiques secondaires: {e}")
-        #         empty_fig = go.Figure().add_annotation(
-        #             text=f"Erreur: {str(e)}",
-        #             xref="paper", yref="paper",
-        #             x=0.5, y=0.5, showarrow=False
-        #         )
-        #         return empty_fig, empty_fig, empty_fig  # Retourner 3 figures vides
-        # FIN DU CALLBACK DÉSACTIVÉ
-        
-        # 🔧 CALLBACKS SECONDAIRES TEMPORAIRES SIMPLIFIÉS (DÉSACTIVÉS)
-        # @app.callback(
-        #     [Output('crypto-rsi-chart', 'figure'),
-        #      Output('crypto-atr-chart', 'figure'), 
-        #      Output('crypto-macd-chart', 'figure')],
-        #     [Input('crypto-symbol-search', 'value'),
-        #      Input('crypto-timeframe-selector', 'value')]
-        # )
-        # def update_secondary_charts_simplified(symbol, timeframe):
-        #     """Met à jour les graphiques secondaires (version simplifiée temporaire)"""
-        #     try:
-        #         if not symbol:
-        #             empty_fig = go.Figure().add_annotation(
-        #                 text="Aucun symbole",
-        #                 xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
-        #             )
-        #             return empty_fig, empty_fig, empty_fig
-        #         
-        #         # Charger les données
-        #         data = self.load_market_data(symbol, timeframe)
-        #         if data.empty:
-        #             empty_fig = go.Figure().add_annotation(
-        #                 text="Pas de données",
-        #                 xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
-        #             )
-        #             return empty_fig, empty_fig, empty_fig
-        #         
-        #         # RSI simplifié (calcul direct)
-        #         try:
-        #             delta = data['close'].diff()
-        #             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        #             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        #             rs = gain / loss
-        #             rsi_values = 100 - (100 / (1 + rs))
-        #             rsi_values = rsi_values.fillna(50)  # Remplacer NaN par 50
-        #             
-        #             rsi_fig = go.Figure()
-        #             rsi_fig.add_trace(go.Scatter(
-        #                 x=data.index, y=rsi_values, mode='lines',
-        #                 name='RSI 14', line=dict(color='#9C27B0', width=2)
-        #             ))
-        #             rsi_fig.add_hline(y=70, line_dash="dash", line_color="red", annotation_text="Surachat")
-        #             rsi_fig.add_hline(y=30, line_dash="dash", line_color="green", annotation_text="Survente")
-        #             rsi_fig.update_layout(
-        #                 title="RSI (par défaut)", yaxis_title="RSI", 
-        #                 template="plotly_dark", height=200, showlegend=False
-        #             )
-        #         except Exception as e:
-        #             print(f"⚠️ Erreur calcul RSI: {e}")
-        #             rsi_fig = go.Figure().add_annotation(
-        #                 text="Erreur RSI", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
-        #             )
-        #         
-        #         # ATR simplifié (calcul direct)
-        #         try:
-        #             high_low = data['high'] - data['low']
-        #             high_close = abs(data['high'] - data['close'].shift())
-        #             low_close = abs(data['low'] - data['close'].shift())
-        #             true_range = pd.DataFrame({'hl': high_low, 'hc': high_close, 'lc': low_close}).max(axis=1)
-        #             atr_values = true_range.rolling(window=14).mean()
-        #             atr_values = atr_values.fillna(0)  # Remplacer NaN par 0
-        #             
-        #             atr_fig = go.Figure()
-        #             atr_fig.add_trace(go.Scatter(
-        #                 x=data.index, y=atr_values, mode='lines',
-        #                 name='ATR 14', line=dict(color='#4CAF50', width=2)
-        #             ))
-        #             atr_fig.update_layout(
-        #                 title="ATR (par défaut)", yaxis_title="ATR",
-        #                 template="plotly_dark", height=200, showlegend=False
-        #             )
-        #         except Exception as e:
-        #             print(f"⚠️ Erreur calcul ATR: {e}")
-        #             atr_fig = go.Figure().add_annotation(
-        #                 text="Erreur ATR", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
-        #             )
-        #         
-        #         # MACD simplifié (calcul direct)
-        #         try:
-        #             ema12 = data['close'].ewm(span=12).mean()
-        #             ema26 = data['close'].ewm(span=26).mean()
-        #             macd_line = ema12 - ema26
-        #             macd_signal = macd_line.ewm(span=9).mean()
-        #             macd_histogram = macd_line - macd_signal
-        #             
-        #             # Remplacer NaN par 0
-        #             macd_line = macd_line.fillna(0)
-        #             macd_signal = macd_signal.fillna(0)
-        #             macd_histogram = macd_histogram.fillna(0)
-        #             
-        #             macd_fig = go.Figure()
-        #             macd_fig.add_trace(go.Scatter(
-        #                 x=data.index, y=macd_line, mode='lines',
-        #                 name='MACD', line=dict(color='#2196F3', width=2)
-        #             ))
-        #             macd_fig.add_trace(go.Scatter(
-        #                 x=data.index, y=macd_signal, mode='lines',
-        #                 name='Signal', line=dict(color='#FF5722', width=1)
-        #             ))
-        #             macd_fig.add_trace(go.Bar(
-        #                 x=data.index, y=macd_histogram,
-        #                 name='Histogramme', marker_color='#FFC107', opacity=0.7
-        #             ))
-        #             macd_fig.update_layout(
-        #                 title="MACD (par défaut)", yaxis_title="MACD",
-        #                 template="plotly_dark", height=200, showlegend=False
-        #             )
-        #         except Exception as e:
-        #             print(f"⚠️ Erreur calcul MACD: {e}")
-        #             macd_fig = go.Figure().add_annotation(
-        #                 text="Erreur MACD", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
-        #             )
-        #         
-        #         print(f"✅ Graphiques secondaires mis à jour: {symbol} (système simplifié)")
-        #         return rsi_fig, atr_fig, macd_fig
-        #         
-        #         except Exception as e:
-        #             print(f"❌ Erreur graphiques secondaires simplifiés: {e}")
-        #             empty_fig = go.Figure().add_annotation(
-        #                 text=f"Erreur: {str(e)}",
-        #                 xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False
-        #             )
-        #             return empty_fig, empty_fig, empty_fig
-        # FIN CALLBACK TEMPORAIRE SIMPLIFIÉ DÉSACTIVÉ
-
-    def calculate_rsi(self, prices, period=14):
-        """Calcule le RSI"""
-        try:
-        #     delta = prices.diff()
-        #     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        #     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        #     rs = gain / loss
-            rsi = 100 - (100 / (1 + rs))
-            return rsi
-        except:
-            return pd.Series([50] * len(prices), index=prices.index)
-
-    def calculate_atr(self, data, period=14):
-        """Calcule l'ATR"""
-        try:
-            high_low = data['high'] - data['low']
-            high_close = np.abs(data['high'] - data['close'].shift())
-            low_close = np.abs(data['low'] - data['close'].shift())
-            ranges = pd.concat([high_low, high_close, low_close], axis=1)
-            true_range = np.max(ranges, axis=1)
-            atr = true_range.rolling(period).mean()
-            return atr
-        except:
-            return pd.Series([1] * len(data), index=data.index)
-
-    def calculate_atr_signals(self, data, period=14, multiplier=2.0):
-        """Calcule l'ATR avec signaux de croisement et volatilité"""
-        try:
-            from dash_modules.core.calculators import TechnicalCalculators
-            calculator = TechnicalCalculators()
-            
-            # Utiliser la nouvelle méthode du calculateur
-            return calculator.calculate_atr_signals(
-                highs=data['high'].tolist(),
-                lows=data['low'].tolist(),
-                closes=data['close'].tolist(),
-                period=period,
-                multiplier=multiplier
-            )
-        except Exception as e:
-            print(f"⚠️ Erreur calcul ATR signaux: {e}")
-            # Fallback vers ATR simple
-            atr_simple = self.calculate_atr(data, period)
-            return {
-                'atr': atr_simple.tolist(),
-                'atr_ma': atr_simple.rolling(window=period//2).mean().tolist(),
-                'upper_threshold': (atr_simple * (1 + multiplier)).tolist(),
-                'lower_threshold': (atr_simple * (1 - multiplier/2)).tolist(),
-                'volatility_signals': [],
-                'trend_signals': [],
-                'expansion_signals': [],
-                'contraction_signals': []
-            }
-
-    def calculate_macd(self, prices, fast=12, slow=26, signal=9):
-        """Calcule le MACD en utilisant le module dédié"""
-        try:
-            # Importer le module MACD
-            from src.thebot.indicators.momentum.macd import MACD, MACDConfig
-            
-            # Créer configuration
-            config = MACDConfig(
-                fast_period=fast,
-                slow_period=slow,
-                signal_period=signal,
-                source="close"
-            )
-            
-            # Créer indicateur MACD
-            macd = MACD(config)
-            
-            # Préparer données au format attendu
-            if isinstance(prices, (list, tuple)):
-                # Convertir liste en Series pandas avec index numérique
-                prices_series = pd.Series(prices)
-            else:
-                # Déjà une Series pandas
-                prices_series = prices
-            
-            data = pd.DataFrame({
-                'open': prices_series,
-                'high': prices_series * 1.01,  # Approximation si pas de données OHLC complètes
-                'low': prices_series * 0.99,
-                'close': prices_series,
-                'volume': [1000] * len(prices_series)
-            })
-            
-            # Calculer MACD
-            result = macd.calculate(data, include_signals=False)
-            
-            return result['data']  # Retourne {'macd', 'signal', 'histogram'}
-            
-        except Exception as e:
-            print(f"⚠️ Erreur MACD modulaire: {e}")
-            # Fallback vers calcul simple
-            return self._calculate_macd_fallback(prices, fast, slow, signal)
-    
-    def _calculate_macd_fallback(self, prices, fast=12, slow=26, signal=9):
-        """Calcul MACD de secours en cas d'erreur du module"""
-        try:
-            # EMA rapide et lente
-            ema_fast = prices.ewm(span=fast).mean()
-            ema_slow = prices.ewm(span=slow).mean()
-            
-            # Ligne MACD
-            macd_line = ema_fast - ema_slow
-            
-            # Ligne de signal (EMA du MACD)
-            signal_line = macd_line.ewm(span=signal).mean()
-            
-            # Histogramme (MACD - Signal)
-            histogram = macd_line - signal_line
-            
-            return {
-                'macd': macd_line,
-                'signal': signal_line,
-                'histogram': histogram
-            }
-        except Exception as e:
-            print(f"⚠️ Erreur calcul MACD fallback: {e}")
-            # Retourner des valeurs par défaut
-            return {
-                'macd': pd.Series([0] * len(prices), index=prices.index),
-                'signal': pd.Series([0] * len(prices), index=prices.index),
-                'histogram': pd.Series([0] * len(prices), index=prices.index)
-            }
-
-    # === NOUVEAUX INDICATEURS STRUCTURELS (PHASE 1) ===
-    
-    # === INDICATEURS STRUCTURELS SIMPLIFIÉS (PHASE 1) ===
-    
-    def calculate_support_resistance_simple(self, data, strength=2, lookback=50, 
-                                           support_color='#27AE60', resistance_color='#E74C3C', 
-                                           line_style='solid', line_width=2):
-        """Version simplifiée du calcul Support/Resistance"""
-        try:
-            if len(data) < lookback:
-                return {'support_levels': [], 'resistance_levels': []}
-            
-            # Utiliser les dernières données
-            recent_data = data.tail(lookback)
-            current_price = data['close'].iloc[-1]
-            
-            # Trouver les niveaux de support et résistance simples
-            support_levels = []
-            resistance_levels = []
-            
-            # Recherche de niveaux basée sur les minima/maxima locaux
-            window = 10
-            for i in range(window, len(recent_data) - window):
-                price_window = recent_data['close'].iloc[i-window:i+window+1]
-                current_val = recent_data['close'].iloc[i]
-                
-                # Support (minimum local)
-                if current_val == price_window.min() and current_val < current_price:
-                    support_levels.append({
-                        'y': current_val,
-                        'strength': strength,
-                        'label': f"S: {format_price_label_adaptive(current_val)}",
-                        'color': support_color,
-                        'line_width': line_width,
-                        'line_dash': line_style
-                    })
-                
-                # Résistance (maximum local)
-                if current_val == price_window.max() and current_val > current_price:
-                    resistance_levels.append({
-                        'y': current_val,
-                        'strength': strength,
-                        'label': f"R: {format_price_label_adaptive(current_val)}",
-                        'color': resistance_color,
-                        'line_width': line_width,
-                        'line_dash': line_style
-                    })
-            
-            # Limiter le nombre de niveaux et éliminer les doublons
-            support_levels = sorted(support_levels, key=lambda x: abs(x['y'] - current_price))[:5]
-            resistance_levels = sorted(resistance_levels, key=lambda x: abs(x['y'] - current_price))[:5]
-            
-            return {
-                'support_levels': support_levels,
-                'resistance_levels': resistance_levels
-            }
-            
-        except Exception as e:
-            print(f"⚠️ Erreur calcul S/R: {e}")
-            return {'support_levels': [], 'resistance_levels': []}
-    
-    def calculate_fibonacci_simple(self, data, min_swing_pct=2, line_style='dashed', line_width=1, transparency=0.8):
-        """Version simplifiée du calcul Fibonacci"""
-        try:
-            if len(data) < 50:
-                return {'retracement_levels': [], 'extension_levels': []}
-            
-            # Trouver le swing high et low récents
-            recent_data = data.tail(100)
-            swing_high = recent_data['high'].max()
-            swing_low = recent_data['low'].min()
-            
-            # Vérifier que le swing est assez grand
-            swing_size = (swing_high - swing_low) / swing_low * 100
-            if swing_size < min_swing_pct:
-                return {'retracement_levels': [], 'extension_levels': []}
-            
-            # Ratios de Fibonacci
-            fib_ratios = [0.236, 0.382, 0.5, 0.618, 0.786]
-            extension_ratios = [1.272, 1.414, 1.618]
-            
-            fib_colors = {
-                0.236: '#FFE4B5', 0.382: '#FFA500', 0.5: '#FF6347',
-                0.618: '#DC143C', 0.786: '#8B0000', 1.272: '#9370DB',
-                1.414: '#8A2BE2', 1.618: '#4B0082'
-            }
-            
-            retracement_levels = []
-            extension_levels = []
-            
-            # Calculer les retracements (du high vers le low)
-            for ratio in fib_ratios:
-                fib_price = swing_high - (swing_high - swing_low) * ratio
-                retracement_levels.append({
-                    'y': fib_price,
-                    'ratio': ratio,
-                    'label': f"Fib {ratio:.1%}: {format_price_label_adaptive(fib_price)}",
-                    'color': fib_colors.get(ratio, '#888888'),
-                    'line_width': line_width + (1 if ratio in [0.382, 0.5, 0.618] else 0),  # Niveaux importants légèrement plus épais
-                    'line_dash': line_style
-                })
-            
-            # Calculer les extensions
-            for ratio in extension_ratios:
-                ext_price = swing_high + (swing_high - swing_low) * (ratio - 1.0)
-                extension_levels.append({
-                    'y': ext_price,
-                    'ratio': ratio,
-                    'label': f"Ext {ratio:.1%}: {format_price_label_adaptive(ext_price)}",
-                    'color': fib_colors.get(ratio, '#888888'),
-                    'line_width': line_width,
-                    'line_dash': line_style
-                })
-            
-            return {
-                'retracement_levels': retracement_levels,
-                'extension_levels': extension_levels
-            }
-            
-        except Exception as e:
-            print(f"⚠️ Erreur calcul Fibonacci: {e}")
-            return {'retracement_levels': [], 'extension_levels': []}
-    
-    def calculate_pivot_points_simple(self, data, method='standard', line_style='dot', line_width=2):
-        """Version simplifiée du calcul Pivot Points"""
-        try:
-            if len(data) < 2:
-                return {'pivot_levels': []}
-            
-            # Utiliser les données de la veille (ou dernière session complète)
-            prev_data = data.iloc[-24:] if len(data) >= 24 else data
-            
-            high = prev_data['high'].max()
-            low = prev_data['low'].min()
-            close = prev_data['close'].iloc[-1]
-            
-            levels = []
-            
-            if method == 'standard':
-                # Pivot Points standard
-                pp = (high + low + close) / 3
-                r1 = 2 * pp - low
-                s1 = 2 * pp - high
-                r2 = pp + (high - low)
-                s2 = pp - (high - low)
-                r3 = high + 2 * (pp - low)
-                s3 = low - 2 * (high - pp)
-                
-                pivot_data = [
-                    (pp, 'PP', '#FFFF00', line_width + 1),
-                    (r1, 'R1', '#FF6B6B', line_width), (s1, 'S1', '#4ECDC4', line_width),
-                    (r2, 'R2', '#FF8E8E', max(1, line_width - 1)), (s2, 'S2', '#7EDDD8', max(1, line_width - 1)),
-                    (r3, 'R3', '#FFB3B3', max(1, line_width - 1)), (s3, 'S3', '#AFEEED', max(1, line_width - 1))
-                ]
-                
-            elif method == 'fibonacci':
-                # Pivot Points Fibonacci
-                pp = (high + low + close) / 3
-                range_hl = high - low
-                
-                pivot_data = [
-                    (pp, 'PP', '#FFFF00', line_width + 1),
-                    (pp + 0.382 * range_hl, 'R1', '#FF6B6B', line_width),
-                    (pp - 0.382 * range_hl, 'S1', '#4ECDC4', line_width),
-                    (pp + 0.618 * range_hl, 'R2', '#FF8E8E', max(1, line_width - 1)),
-                    (pp - 0.618 * range_hl, 'S2', '#7EDDD8', max(1, line_width - 1)),
-                    (pp + 1.000 * range_hl, 'R3', '#FFB3B3', max(1, line_width - 1)),
-                    (pp - 1.000 * range_hl, 'S3', '#AFEEED', max(1, line_width - 1))
-                ]
-                
-            else:  # camarilla
-                # Pivot Points Camarilla
-                pivot_data = [
-                    (close, 'PP', '#FFFF00', line_width + 1),
-                    (close + (high - low) * 1.1 / 12, 'R1', '#FF6B6B', line_width),
-                    (close - (high - low) * 1.1 / 12, 'S1', '#4ECDC4', line_width),
-                    (close + (high - low) * 1.1 / 6, 'R2', '#FF8E8E', max(1, line_width - 1)),
-                    (close - (high - low) * 1.1 / 6, 'S2', '#7EDDD8', max(1, line_width - 1)),
-                    (close + (high - low) * 1.1 / 4, 'R3', '#FFB3B3', max(1, line_width - 1)),
-                    (close - (high - low) * 1.1 / 4, 'S3', '#AFEEED', max(1, line_width - 1))
-                ]
-            
-            for price, name, color, width in pivot_data:
-                levels.append({
-                    'y': price,
-                    'label': f"{name}: {format_price_label_adaptive(price)}",
-                    'color': color,
-                    'line_width': width,
-                    'line_dash': line_style,
-                    'level_type': 'pivot' if name == 'PP' else ('support' if name.startswith('S') else 'resistance'),
-                    'touches': 0
-                })
-            
-            return {'pivot_levels': levels}
-            
-        except Exception as e:
-            print(f"⚠️ Erreur calcul Pivots: {e}")
-            return {'pivot_levels': []}
-
-    def calculate_structural_indicators(self, data, 
-                                      sr_enabled=False, sr_strength=2,
-                                      fibonacci_enabled=False, fibonacci_swing=2,
-                                      pivot_enabled=False, pivot_method='standard',
-                                      visual_params=None):
-        """
-        Version simplifiée des indicateurs structurels
-        """
-        results = {
-            'support_resistance': None,
-            'fibonacci': None,
-            'pivot_points': None
-        }
-        
-        if data.empty or len(data) < 10:
-            return results
-        
-        # Paramètres visuels par défaut
-        if visual_params is None:
-            visual_params = {}
-        
-        try:
-            # Support/Resistance avec paramètres visuels
-            if sr_enabled:
-                sr_visual = visual_params.get('support_resistance', {})
-                results['support_resistance'] = self.calculate_support_resistance_simple(
-                    data, 
-                    strength=sr_strength or 2,
-                    lookback=sr_visual.get('lookback', 50),
-                    support_color=sr_visual.get('support_color', '#27AE60'),
-                    resistance_color=sr_visual.get('resistance_color', '#E74C3C'),
-                    line_style=sr_visual.get('line_style', 'solid'),
-                    line_width=sr_visual.get('line_width', 2)
+                error_fig.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    height=300
                 )
-            
-            # Fibonacci avec paramètres visuels
-            if fibonacci_enabled:
-                fib_visual = visual_params.get('fibonacci', {})
-                results['fibonacci'] = self.calculate_fibonacci_simple(
-                    data, 
-                    min_swing_pct=fibonacci_swing or 2,
-                    line_style=fib_visual.get('line_style', 'dashed'),
-                    line_width=fib_visual.get('line_width', 1),
-                    transparency=fib_visual.get('transparency', 0.8)
-                )
-            
-            # Pivot Points avec paramètres visuels
-            if pivot_enabled:
-                pivot_visual = visual_params.get('pivot', {})
-                results['pivot_points'] = self.calculate_pivot_points_simple(
-                    data, 
-                    method=pivot_method or 'standard',
-                    line_style=pivot_visual.get('line_style', 'dot'),
-                    line_width=pivot_visual.get('line_width', 2)
-                )
-                
-        except Exception as e:
-            print(f"❌ Erreur calcul indicateurs structurels: {e}")
-        
-        return results
+                return error_fig, error_fig, error_fig, error_fig
 
-    def add_structural_levels_to_chart(self, fig, structural_data, visual_params=None):
-        """
-        Ajoute les niveaux structurels au graphique principal
-        
-        Args:
-            fig: Figure Plotly (avec subplots)
-            structural_data: Données des indicateurs structurels
-            visual_params: Paramètres visuels pour chaque indicateur
-        """
-        if not structural_data or not any(structural_data.values()):
-            return fig
-        
-        try:
-            # Support/Resistance
-            if structural_data.get('support_resistance'):
-                sr_data = structural_data['support_resistance']
-                
-                # Supports (ajoutés au subplot prix - row=1)
-                for level in sr_data.get('support_levels', []):
-                    fig.add_hline(
-                        y=level['y'],
-                        line=dict(
-                            color=level['color'],
-                            width=level['line_width'],
-                            dash='solid'
-                        ),
-                        annotation_text=level['label'],
-                        annotation_position="right",
-                        row=1, col=1  # Spécifier le subplot prix
-                    )
-                
-                # Résistances (ajoutées au subplot prix - row=1)
-                for level in sr_data.get('resistance_levels', []):
-                    fig.add_hline(
-                        y=level['y'],
-                        line=dict(
-                            color=level['color'],
-                            width=level['line_width'],
-                            dash='solid'
-                        ),
-                        annotation_text=level['label'],
-                        annotation_position="right",
-                        row=1, col=1  # Spécifier le subplot prix
-                    )
-            
-            # Fibonacci
-            if structural_data.get('fibonacci'):
-                fib_data = structural_data['fibonacci']
-                
-                # Retracements
-                for level in fib_data.get('retracement_levels', []):
-                    fig.add_hline(
-                        y=level['y'],
-                        line=dict(
-                            color=level['color'],
-                            width=level['line_width'],
-                            dash=level['line_dash']
-                        ),
-                        annotation_text=level['label'],
-                        annotation_position="left",
-                        row=1, col=1  # Spécifier le subplot prix
-                    )
-                
-                # Extensions
-                for level in fib_data.get('extension_levels', []):
-                    fig.add_hline(
-                        y=level['y'],
-                        line=dict(
-                            color=level['color'],
-                            width=level['line_width'],
-                            dash=level['line_dash']
-                        ),
-                        annotation_text=level['label'],
-                        annotation_position="left",
-                        row=1, col=1  # Spécifier le subplot prix
-                    )
-            
-            # Pivot Points
-            if structural_data.get('pivot_points'):
-                pivot_data = structural_data['pivot_points']
-                
-                for level in pivot_data.get('pivot_levels', []):
-                    fig.add_hline(
-                        y=level['y'],
-                        line=dict(
-                            color=level['color'],
-                            width=level['line_width'],
-                            dash=level['line_dash']
-                        ),
-                        annotation_text=level['label'],
-                        annotation_position="top right",
-                        row=1, col=1  # Spécifier le subplot prix
-                    )
-            
-        except Exception as e:
-            print(f"⚠️ Erreur ajout niveaux structurels: {e}")
-        
-        return fig
+    # =====================================================
+    # 🔧 MÉTHODES DE COMPATIBILITÉ LAUNCHER
+    # =====================================================
+    
+    def get_sidebar(self):
+        """Retourne la sidebar pour compatibilité avec le launcher"""
+        # Retourner un div vide pour éviter les doublons
+        # Le contenu est intégré dans le layout principal
+        return html.Div()
+    
+    def get_content(self):
+        """Retourne le contenu principal pour compatibilité avec le launcher"""
+        return self.get_layout()
 
 # =====================================================
-# 🔧 FONCTION D'ENREGISTREMENT DES CALLBACKS NOUVEAU SYSTÈME
+# 🔧 FONCTION PRINCIPALE DE CRÉATION DU LAYOUT
 # =====================================================
 
-# =====================================================
-# 🔧 CALLBACKS DÉSACTIVÉS - REMPLACÉS PAR VERSION PROPRE
-# =====================================================
-# Les callbacks sont maintenant dans crypto_callbacks_clean.py
+def create_crypto_layout():
+    """
+    Fonction principale pour créer le layout crypto complet
+    Utilise l'architecture modulaire ou les composants intégrés
+    """
+    try:
+        # Créer l'instance du module crypto
+        crypto_module = CryptoModule()
+        
+        # Générer le layout complet
+        layout = crypto_module.get_layout()
+        
+        print("✅ Layout crypto créé avec succès")
+        return layout
+        
+    except Exception as e:
+        print(f"❌ Erreur création layout crypto: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Layout d'erreur de secours
+        return dbc.Container([
+            dbc.Alert([
+                html.H4("❌ Erreur de chargement", className="alert-heading"),
+                html.P(f"Impossible de charger le module crypto: {str(e)}"),
+                html.Hr(),
+                html.P("Veuillez vérifier la configuration et réessayer.", className="mb-0")
+            ], color="danger")
+        ])
 
-# Fonction vide pour compatibilité
+# =====================================================
+# 🚀 PHASE 5 : SYSTÈME DE CALLBACKS MODULAIRES
+# =====================================================
+
+def setup_callbacks(app):
+    """Fonction setup_callbacks pour le launcher"""
+    try:
+        crypto_module = CryptoModule()
+        crypto_module.setup_callbacks(app)
+        return True
+    except Exception as e:
+        print(f"❌ Erreur setup callbacks crypto: {e}")
+        return False
+
 def register_new_crypto_callbacks(dash_app):
-    """Fonction vide - callbacks maintenant dans crypto_callbacks_clean.py"""
-    pass
+    """Enregistre les callbacks Phase 6 - Version directe sans conflits"""
+    try:
+        # Utiliser directement nos callbacks intégrés
+        crypto_module = CryptoModule()
+        crypto_module.register_callbacks(dash_app)
+        print("🚀 Phase 6: Callbacks directs activés (sans conflits)")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur enregistrement callbacks: {e}")
+        return False
+
+def register_essential_callbacks(dash_app):
+    """Callbacks essentiels de secours"""
+    # Créer une instance pour accéder aux méthodes
+    crypto_module = CryptoModule()
+    crypto_module.register_callbacks(dash_app)
+    print("✅ Callbacks essentiels de secours enregistrés")
+
+# Export de la fonction pour l'utilisation externe
+__all__ = ['create_crypto_layout', 'CryptoModule', 'register_new_crypto_callbacks']

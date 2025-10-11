@@ -522,16 +522,15 @@ def register_ai_modal_callbacks(app):
          Output("ai-modal-content", "children"),
          Output("ai-modal-symbol", "children"),
          Output("ai-analysis-timestamp", "children")],
-        [Input("generate-ai-insights-btn", "n_clicks"),
-         Input("ai-modal-close", "n_clicks"),
+        [Input("ai-modal-close", "n_clicks"),
          Input("ai-modal-close-btn", "n_clicks")],
-        [State("crypto-symbol-dropdown", "value"),
-         State("crypto-timeframe-dropdown", "value"),
+        [State("crypto-symbol-search", "value"),
+         State("crypto-timeframe-selector", "value"),
          State("crypto-ai-engine-dropdown", "value"),
          State("crypto-ai-confidence-slider", "value"),
          State("ai-trading-modal", "is_open")]
     )
-    def toggle_ai_modal(generate_clicks, close_clicks, close_btn_clicks, symbol, timeframe, 
+    def toggle_ai_modal(close_clicks, close_btn_clicks, symbol, timeframe, 
                        ai_engine, confidence_threshold, is_open):
         """Toggle modal et génération d'analyse avec paramètres IA (IA toujours activée)"""
         ctx = dash.callback_context
@@ -545,65 +544,8 @@ def register_ai_modal_callbacks(app):
         if trigger_id in ["ai-modal-close", "ai-modal-close-btn"]:
             return False, ai_trading_modal._create_placeholder_content(), "", ""
         
-        # Génération d'analyse (IA toujours activée)
-        if trigger_id == "generate-ai-insights-btn" and generate_clicks and symbol:
-            if not AI_AVAILABLE:
-                error_content = dbc.Alert([
-                    html.I(className="fas fa-exclamation-triangle me-2"),
-                    "Modules IA non disponibles. Vérifiez la configuration."
-                ], color="danger")
-                return True, error_content, f"({symbol})", ""
-            
-            try:
-                # Générer l'analyse IA avec paramètres personnalisés
-                analysis_data = generate_ai_analysis(
-                    symbol, 
-                    timeframe, 
-                    ai_engine=ai_engine or 'local',
-                    confidence_threshold=confidence_threshold or 70
-                )
-                content = ai_trading_modal._create_analysis_content(analysis_data)
-                timestamp = f"Analysé le {datetime.now().strftime('%d/%m/%Y à %H:%M')} • Moteur: {ai_engine or 'local'} • Seuil: {confidence_threshold or 70}%"
-                
-                return True, content, f"({symbol})", timestamp
-                
-            except Exception as e:
-                logger.error(f"Erreur génération analyse IA: {e}")
-                error_content = dbc.Alert([
-                    html.I(className="fas fa-exclamation-triangle me-2"),
-                    f"Erreur lors de l'analyse: {str(e)}"
-                ], color="danger")
-                return True, error_content, f"({symbol})", ""
-        
         return is_open, ai_trading_modal._create_placeholder_content(), "", ""
     
-    # Callback pour mettre à jour le bouton selon les paramètres (IA toujours activée)
-    @app.callback(
-        [Output("generate-ai-insights-btn", "children"),
-         Output("generate-ai-insights-btn", "color")],
-        [Input("crypto-ai-engine-dropdown", "value"),
-         Input("crypto-ai-confidence-slider", "value")]
-    )
-    def update_ai_button(ai_engine, confidence_threshold):
-        """Mettre à jour l'apparence du bouton selon les paramètres (IA toujours activée)"""
-        # Icône selon le moteur IA
-        if ai_engine == "smart":
-            icon = "fas fa-brain"
-            engine_text = "Smart AI"
-            color = "info"
-        elif ai_engine == "hybrid":
-            icon = "fas fa-network-wired"
-            engine_text = "Hybrid AI"
-            color = "warning"
-        else:
-            icon = "fas fa-microchip"
-            engine_text = "Local AI"
-            color = "primary"
-        
-        return [
-            html.I(className=f"{icon} me-2"), 
-            f"{engine_text}"
-        ], color
     
     # Callback client-side pour rendre le modal déplaçable
     app.clientside_callback(

@@ -31,7 +31,8 @@ from dash_modules.components.market_status import market_status_manager
 from dash_modules.core.api_config import api_config
 
 # Import modules modulaires
-from dash_modules.tabs.crypto_module import CryptoModule, create_crypto_layout, register_new_crypto_callbacks
+from dash_modules.tabs.crypto_module import CryptoModule
+from crypto_callbacks_clean import register_new_crypto_callbacks
 from dash_modules.tabs.forex_module import ForexModule
 from dash_modules.tabs.stocks_module import StocksModule
 from dash_modules.tabs.economic_news_module import EconomicNewsModule
@@ -118,7 +119,7 @@ class THEBOTDashApp:
             }
             
             self.modules = {
-                'crypto': CryptoModule(),  # Phase 5: Nouveau CryptoModule sans paramètres
+                'crypto': CryptoModule(calculators=shared_calculators),
                 'forex': ForexModule(calculators=shared_calculators),
                 'stocks': StocksModule(calculators=shared_calculators),
                 'economic_news': EconomicNewsModule(calculators=shared_calculators),
@@ -134,11 +135,9 @@ class THEBOTDashApp:
             if 'crypto' in self.modules and hasattr(self.modules['crypto'], 'setup_callbacks'):
                 self.modules['crypto'].setup_callbacks(self.app)
             
-            # Enregistrer les nouveaux callbacks du système modulaire Phase 5
-            # DÉSACTIVÉ Phase 6 - from dash_modules.tabs.crypto_module import register_new_crypto_callbacks
-            # DÉSACTIVÉ Phase 6 - register_new_crypto_callbacks(self.app)
-            # DÉSACTIVÉ Phase 6 - print("🚀 Phase 6: Callbacks crypto directs activés")
-            print("� Phase 5: Callbacks modulaires crypto enregistrés")
+            # Enregistrer les nouveaux callbacks du système modulaire
+            register_new_crypto_callbacks(self.app)
+            print("🔧 Callbacks nouveau système modulaire enregistrés")
             print("✅ Callbacks Crypto configurés")
             
             if 'economic_news' in self.modules and hasattr(self.modules['economic_news'], 'setup_callbacks'):
@@ -490,103 +489,6 @@ class THEBOTDashApp:
                         {{%css%}}
                         <style>
                             {modal_css}
-                            
-                            /* CSS pour dropdowns crypto en blanc */
-                            .crypto-dropdown-white .Select-control {{
-                                background-color: #2c2c2e !important;
-                                border: 1px solid #3a3a3c !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-value-label {{
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-input > input {{
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-placeholder {{
-                                color: #adb5bd !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-arrow-zone {{
-                                border-left: 1px solid #3a3a3c !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-menu-outer {{
-                                background-color: #2c2c2e !important;
-                                border: 1px solid #3a3a3c !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-option {{
-                                background-color: #2c2c2e !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-option.is-focused {{
-                                background-color: #0d6efd !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white .Select-option.is-selected {{
-                                background-color: #495057 !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            /* Styles pour les nouveaux composants Dash */
-                            .crypto-dropdown-white div[role="combobox"] {{
-                                background-color: #2c2c2e !important;
-                                border: 1px solid #3a3a3c !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white div[role="combobox"] > div:first-child {{
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white input[type="text"] {{
-                                color: #ffffff !important;
-                                background-color: transparent !important;
-                            }}
-                            
-                            /* Menu dropdown */
-                            .crypto-dropdown-white div[class*="menu"] {{
-                                background-color: #2c2c2e !important;
-                                border: 1px solid #3a3a3c !important;
-                            }}
-                            
-                            .crypto-dropdown-white div[class*="option"] {{
-                                background-color: #2c2c2e !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            .crypto-dropdown-white div[class*="option"]:hover {{
-                                background-color: #0d6efd !important;
-                                color: #ffffff !important;
-                            }}
-                            
-                            /* Force white text for dropdowns */
-                            #crypto-symbol-search, #crypto-timeframe-selector {{
-                                color: #ffffff !important;
-                            }}
-                            
-                            #crypto-symbol-search div, #crypto-timeframe-selector div {{
-                                color: #ffffff !important;
-                            }}
-                            
-                            #crypto-symbol-search .VirtualizedSelectOption,
-                            #crypto-timeframe-selector .VirtualizedSelectOption {{
-                                color: #ffffff !important;
-                                background-color: #2c2c2e !important;
-                            }}
-                            
-                            #crypto-symbol-search .VirtualizedSelectFocusedOption,
-                            #crypto-timeframe-selector .VirtualizedSelectFocusedOption {{
-                                background-color: #0d6efd !important;
-                                color: #ffffff !important;
-                            }}
                             
                             /* CSS Responsif pour adaptation automatique */
                             * {{
@@ -1330,33 +1232,27 @@ class THEBOTDashApp:
                             # Crypto en pleine largeur (nouvelle interface)
                             print("🔄 DEBUG: Generating crypto layout...")
                             try:
-                                print("🔧 DEBUG: Getting crypto layout...")
                                 crypto_layout = self.modules[active_tab].get_layout()
-                                print(f"🔧 DEBUG: Layout type: {type(crypto_layout)}")
-                                
-                                print("🔧 DEBUG: Getting crypto sidebar...")
                                 crypto_sidebar = self.modules[active_tab].get_sidebar()
-                                print(f"🔧 DEBUG: Sidebar type: {type(crypto_sidebar)}")
-                                
                                 print("✅ DEBUG: Crypto layout and sidebar generated successfully")
-                                
-                                # Vérification des types avant retour
-                                result = [crypto_layout, crypto_sidebar, 0, 12]
-                                print(f"🔧 DEBUG: Return types: {[type(x) for x in result]}")
-                                
-                                return result
+                                return (
+                                    crypto_layout,
+                                    crypto_sidebar,  # Contient les dropdowns cachés
+                                    0,  # Pas de sidebar visible
+                                    12  # Pleine largeur
+                                )
                             except Exception as crypto_error:
                                 print(f"❌ DEBUG: Error generating crypto layout: {crypto_error}")
                                 import traceback
                                 traceback.print_exc()
-                                return [
+                                return (
                                     html.Div([
                                         dbc.Alert(f"Erreur module crypto: {crypto_error}", color="danger")
                                     ]),
                                     html.Div(),
                                     0,
                                     12
-                                ]
+                                )
                         else:
                             # Forex et Stocks gardent l'ancienne interface avec sidebar
                             return (

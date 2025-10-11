@@ -121,21 +121,22 @@ class BinanceProvider:
         
         response = self._make_request(endpoint, params)
         if response:
+            # Format compatible avec les callbacks (clés comme l'API Binance originale)
             ticker_data = {
                 'symbol': response['symbol'],
-                'price_change': float(response['priceChange']),
-                'price_change_percent': float(response['priceChangePercent']),
-                'weighted_avg_price': float(response['weightedAvgPrice']),
-                'prev_close_price': float(response['prevClosePrice']),
-                'last_price': float(response['lastPrice']),
-                'bid_price': float(response['bidPrice']),
-                'ask_price': float(response['askPrice']),
-                'open_price': float(response['openPrice']),
-                'high_price': float(response['highPrice']),
-                'low_price': float(response['lowPrice']),
-                'volume': float(response['volume']),
-                'quote_volume': float(response['quoteVolume']),
-                'count': int(response['count']),
+                'priceChange': response['priceChange'],
+                'priceChangePercent': response['priceChangePercent'],
+                'weightedAvgPrice': response['weightedAvgPrice'],
+                'prevClosePrice': response['prevClosePrice'],
+                'lastPrice': response['lastPrice'],  # Clé compatible 
+                'bidPrice': response['bidPrice'],
+                'askPrice': response['askPrice'],
+                'openPrice': response['openPrice'],
+                'highPrice': response['highPrice'],
+                'lowPrice': response['lowPrice'],
+                'volume': response['volume'],
+                'quoteVolume': response['quoteVolume'],
+                'count': response['count'],
                 'timestamp': datetime.now()
             }
             self.cache[cache_key] = (time.time(), ticker_data)
