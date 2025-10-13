@@ -174,6 +174,30 @@ def register_chart_callbacks(app) -> None:
                         from dash_modules.components.crypto_chart_components import CryptoChartComponents
                         chart_components = CryptoChartComponents()
                         fig = chart_components.create_candlestick_chart(df, symbol, timeframe)
+                        
+                        # AJOUTER LIGNE PRIX TEMPS RÉEL
+                        try:
+                            from dash_modules.data_providers.binance_api import binance_provider
+                            ticker_data = binance_provider.get_ticker_24hr(symbol)
+                            if ticker_data:
+                                current_price = float(ticker_data['lastPrice'])
+                                
+                                # Ligne horizontale en pointillés
+                                fig.add_hline(
+                                    y=current_price,
+                                    line_dash="dash",
+                                    line_color="#FFD700",  # Or
+                                    line_width=2,
+                                    annotation_text=f"Prix actuel: ${current_price:,.6f}".rstrip('0').rstrip('.'),
+                                    annotation_position="bottom right",
+                                    annotation_bgcolor="rgba(255,215,0,0.8)",
+                                    annotation_bordercolor="#FFD700",
+                                    annotation_font_color="black",
+                                    row=1
+                                )
+                        except Exception as price_error:
+                            logger.warning(f"⚠️ Erreur ligne prix temps réel: {price_error}")
+                        
                         logger.info(f"✅ Graphique chandelles + volume créé: {symbol}")
                         return fig
                     except Exception as chart_error:
@@ -218,6 +242,29 @@ def register_chart_callbacks(app) -> None:
                             marker_color=colors,
                             showlegend=False
                         ), row=2, col=1)
+                        
+                        # AJOUTER LIGNE PRIX TEMPS RÉEL
+                        try:
+                            from dash_modules.data_providers.binance_api import binance_provider
+                            ticker_data = binance_provider.get_ticker_24hr(symbol)
+                            if ticker_data:
+                                current_price = float(ticker_data['lastPrice'])
+                                
+                                # Ligne horizontale en pointillés
+                                fig.add_hline(
+                                    y=current_price,
+                                    line_dash="dash",
+                                    line_color="#FFD700",  # Or
+                                    line_width=2,
+                                    annotation_text=f"Prix actuel: ${current_price:,.6f}".rstrip('0').rstrip('.'),
+                                    annotation_position="bottom right",
+                                    annotation_bgcolor="rgba(255,215,0,0.8)",
+                                    annotation_bordercolor="#FFD700",
+                                    annotation_font_color="black",
+                                    row=1
+                                )
+                        except Exception as price_error:
+                            logger.warning(f"⚠️ Erreur ligne prix temps réel: {price_error}")
                         
                         fig.update_layout(
                             template="plotly_dark",

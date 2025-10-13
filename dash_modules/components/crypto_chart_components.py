@@ -3,6 +3,7 @@ THEBOT - Crypto Chart Components
 Module dédié pour tous les composants graphiques crypto
 """
 
+import logging
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import dash_bootstrap_components as dbc
@@ -10,6 +11,8 @@ from dash import html, dcc
 import pandas as pd
 from typing import Dict, Any, Optional
 from dash_modules.core.price_formatter import format_crypto_price_adaptive, format_percentage_change, format_volume_adaptive
+
+logger = logging.getLogger("thebot.crypto_chart_components")
 
 
 class CryptoChartComponents:
@@ -206,6 +209,29 @@ class CryptoChartComponents:
         fig.update_xaxes(title_text="", row=2, col=1)
         fig.update_yaxes(title_text="", row=1, col=1)
         fig.update_yaxes(title_text="", row=2, col=1)
+        
+        # AJOUTER LIGNE PRIX TEMPS RÉEL
+        try:
+            from dash_modules.data_providers.binance_api import binance_provider
+            ticker_data = binance_provider.get_ticker_24hr(symbol)
+            if ticker_data:
+                current_price = float(ticker_data['lastPrice'])
+                
+                # Ligne horizontale en pointillés
+                fig.add_hline(
+                    y=current_price,
+                    line_dash="dash",
+                    line_color="#FFD700",  # Or
+                    line_width=2,
+                    annotation_text=f"Prix actuel: ${current_price:,.6f}".rstrip('0').rstrip('.'),
+                    annotation_position="bottom right",
+                    annotation_bgcolor="rgba(255,215,0,0.8)",
+                    annotation_bordercolor="#FFD700",
+                    annotation_font_color="black",
+                    row=1
+                )
+        except Exception as price_error:
+            logger.warning(f"⚠️ Erreur ligne prix temps réel: {price_error}")
         
         return fig
 

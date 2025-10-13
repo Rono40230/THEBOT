@@ -505,6 +505,7 @@ class CryptoModule:
                     dbc.Col([
                         html.Div([
                             dbc.Button("📊 Analyse", color="success", size="sm", className="me-2"),
+                            dbc.Button("📈 Indicateurs", color="info", size="sm", className="me-2", id="crypto-indicators-btn"),
                             dbc.Button("🔔 Alertes", color="warning", size="sm")
                         ])
                     ], width=5)
