@@ -17,6 +17,7 @@ import logging
 from typing import Optional, List, Dict, Any
 import pandas as pd
 from datetime import datetime
+import plotly.graph_objects as go
 
 import dash
 from dash import Input, Output, State, callback_context
@@ -73,31 +74,31 @@ def register_dropdown_callbacks(app) -> None:
     def update_crypto_search_options(search_value: Optional[str]) -> List[Dict[str, str]]:
         """Met à jour dynamiquement les options de recherche crypto."""
         try:
-            # Symboles populaires par défaut
-            popular_symbols = [
-                'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
-                'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT',
-                'LTCUSDT', 'BCHUSDT', 'XLMUSDT', 'ATOMUSDT', 'UNIUSDT'
-            ]
+            # Récupérer TOUS les symboles (même source que le dropdown)
+            from dash_modules.data_providers.binance_api import binance_provider
+            all_symbols = binance_provider.get_all_symbols()
             
             if not search_value or len(search_value) < 2:
-                return [{'label': s, 'value': s} for s in popular_symbols]
+                # Pas de recherche: afficher les 50 premiers (populaires)
+                top_symbols = all_symbols[:50] if len(all_symbols) > 50 else all_symbols
+                # S'assurer que BTCUSDT est en premier
+                if 'BTCUSDT' in top_symbols:
+                    top_symbols.remove('BTCUSDT')
+                top_symbols.insert(0, 'BTCUSDT')
+                return [{'label': s, 'value': s} for s in top_symbols]
             
-            # Recherche avec API Binance
-            try:
-                from dash_modules.data_providers.binance_api import binance_provider
-                all_symbols = binance_provider.get_all_symbols()
-                search_upper = search_value.upper()
-                filtered = [s for s in all_symbols if search_upper in s][:20]
-                
-                if filtered:
-                    return [{'label': s, 'value': s} for s in filtered]
+            # Recherche active: filtrer parmi TOUS les symboles
+            search_upper = search_value.upper()
+            filtered = [s for s in all_symbols if search_upper in s][:20]
+            
+            if filtered:
+                return [{'label': s, 'value': s} for s in filtered]
                     
-            except Exception as api_error:
-                logger.warning(f"⚠️ Erreur API Binance recherche: {api_error}")
-            
-            # Fallback sur symboles populaires
-            return [{'label': s, 'value': s} for s in popular_symbols]
+            top_symbols = all_symbols[:50] if len(all_symbols) > 50 else all_symbols
+            if 'BTCUSDT' in top_symbols:
+                top_symbols.remove('BTCUSDT')
+            top_symbols.insert(0, 'BTCUSDT')
+            return [{'label': s, 'value': s} for s in top_symbols]
             
         except Exception as e:
             logger.error(f"❌ Erreur callback recherche crypto: {e}")
@@ -118,10 +119,10 @@ def register_chart_callbacks(app) -> None:
     @app.callback(
         Output('crypto-main-chart', 'figure'),
         [Input('crypto-symbol-search', 'value'),
-         Input('crypto-timeframe-selector', 'value')],
-        prevent_initial_call=True
+         Input('crypto-timeframe-selector', 'value'),
+         Input('crypto-symbol-search', 'options')]
     )
-    def update_crypto_main_chart(symbol: Optional[str], timeframe: Optional[str]) -> go.Figure:
+    def update_crypto_main_chart(symbol: Optional[str], timeframe: Optional[str], options: List[Dict]) -> go.Figure:
         """Met à jour le graphique principal crypto."""
         try:
             if not symbol:
@@ -162,31 +163,77 @@ def register_chart_callbacks(app) -> None:
                         'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore'
                     ])
                     
-                    # Conversion des types
+                    # Conversion des types et indexage
                     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                    df = df.set_index('timestamp')
                     for col in ['open', 'high', 'low', 'close', 'volume']:
                         df[col] = pd.to_numeric(df[col])
                     
-                    # Créer graphique candlestick
-                    fig = go.Figure(data=[go.Candlestick(
-                        x=df['timestamp'],
-                        open=df['open'],
-                        high=df['high'],
-                        low=df['low'],
-                        close=df['close'],
-                        name=symbol
-                    )])
-                    
-                    fig.update_layout(
-                        title=f"{symbol} - {timeframe}",
-                        template="plotly_dark",
-                        xaxis_title="Date",
-                        yaxis_title="Prix (USDT)",
-                        height=500,
-                        margin=dict(l=0, r=0, t=40, b=0)
-                    )
-                    
-                    return fig
+                    # Utiliser le composant chart pour créer le graphique avec volume
+                    try:
+                        from dash_modules.components.crypto_chart_components import CryptoChartComponents
+                        chart_components = CryptoChartComponents()
+                        fig = chart_components.create_candlestick_chart(df, symbol, timeframe)
+                        logger.info(f"✅ Graphique chandelles + volume créé: {symbol}")
+                        return fig
+                    except Exception as chart_error:
+                        logger.warning(f"⚠️ Erreur composant chart: {chart_error}")
+                        # Fallback - graphique avec volume intégré
+                        fig = make_subplots(
+                            rows=2, cols=1,
+                            shared_xaxes=True,
+                            vertical_spacing=0.02,
+                            subplot_titles=(f"{symbol} - {timeframe}", "Volume"),
+                            row_width=[0.7, 0.3]
+                        )
+                        
+                        # Chandelles principales
+                        fig.add_trace(go.Candlestick(
+                            x=df.index,
+                            open=df['open'],
+                            high=df['high'],
+                            low=df['low'],
+                            close=df['close'],
+                            name="Prix",
+                            increasing_line_color='#00ff88',
+                            decreasing_line_color='#ff4444'
+                        ), row=1, col=1)
+                        
+                        # Volume avec couleurs selon direction
+                        colors = ['#00ff88' if close >= open else '#ff4444' 
+                                for close, open in zip(df['close'], df['open'])]
+                        
+                        # Volume vert au-dessus, rouge en-dessous de l'axe 0
+                        volume_values = []
+                        for i, (close, open, vol) in enumerate(zip(df['close'], df['open'], df['volume'])):
+                            if close >= open:  # Vert au-dessus
+                                volume_values.append(vol)
+                            else:  # Rouge en-dessous
+                                volume_values.append(-vol)
+                        
+                        fig.add_trace(go.Bar(
+                            x=df.index,
+                            y=volume_values,
+                            name="Volume",
+                            marker_color=colors,
+                            showlegend=False
+                        ), row=2, col=1)
+                        
+                        fig.update_layout(
+                            template="plotly_dark",
+                            height=600,
+                            margin=dict(l=0, r=0, t=40, b=0),
+                            xaxis_rangeslider_visible=False,
+                            showlegend=False
+                        )
+                        
+                        # Supprimer les labels des axes
+                        fig.update_xaxes(title_text="", row=1, col=1)
+                        fig.update_xaxes(title_text="", row=2, col=1)
+                        fig.update_yaxes(title_text="", row=1, col=1)
+                        fig.update_yaxes(title_text="", row=2, col=1)
+                        
+                        return fig
                     
             except Exception as data_error:
                 logger.warning(f"⚠️ Erreur récupération données {symbol}: {data_error}")
@@ -249,8 +296,7 @@ def register_display_callbacks(app) -> None:
     @app.callback(
         [Output('crypto-price-display', 'children'),
          Output('crypto-price-display', 'className')],
-        [Input('crypto-symbol-search', 'value')],
-        prevent_initial_call=True
+        [Input('crypto-symbol-search', 'value')]
     )
     def update_crypto_price_display(symbol: Optional[str]) -> tuple:
         """Met à jour l'affichage du prix en temps réel."""
@@ -298,6 +344,48 @@ def register_display_callbacks(app) -> None:
         except Exception as e:
             logger.error(f"❌ Erreur callback prix: {e}")
             return "Erreur prix", "fw-bold text-danger"
+    
+    # =====================================================
+    # 📊 CALLBACK AFFICHAGE VOLUME
+    # =====================================================
+    @app.callback(
+        Output('crypto-volume-display', 'children'),
+        [Input('crypto-symbol-search', 'value')]
+    )
+    def update_crypto_volume_display(symbol: Optional[str]) -> str:
+        """Met à jour l'affichage du volume 24h."""
+        try:
+            if not symbol:
+                return "N/A"
+            
+            # Récupérer données ticker 24h
+            try:
+                from dash_modules.data_providers.binance_api import binance_provider
+                ticker_data = binance_provider.get_ticker_24hr(symbol)
+                
+                if ticker_data:
+                    volume = float(ticker_data['volume'])
+                    
+                    # Format volume avec unités (K, M, B)
+                    if volume >= 1_000_000_000:
+                        volume_str = f"{volume/1_000_000_000:.2f}B"
+                    elif volume >= 1_000_000:
+                        volume_str = f"{volume/1_000_000:.2f}M"
+                    elif volume >= 1_000:
+                        volume_str = f"{volume/1_000:.2f}K"
+                    else:
+                        volume_str = f"{volume:.2f}"
+                    
+                    return volume_str
+                    
+            except Exception as api_error:
+                logger.warning(f"⚠️ Erreur API volume {symbol}: {api_error}")
+            
+            return "N/A"
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur callback volume: {e}")
+            return "Erreur"
 
 
 # =====================================================
@@ -316,7 +404,8 @@ def test_callbacks_registration() -> bool:
             'update_crypto_search_options',
             'update_crypto_main_chart', 
             'sync_crypto_symbol_to_global_store',
-            'update_crypto_price_display'
+            'update_crypto_price_display',
+            'update_crypto_volume_display'
         ]
         
         # Cette vérification se ferait normalement avec l'app Dash

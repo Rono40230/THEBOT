@@ -65,11 +65,11 @@ class CryptoSearchBar:
             optionHeight=35,
             maxHeight=300,
             style={
-                'color': '#ffffff',
-                'backgroundColor': '#2c2c2e',
-                'border': '1px solid #3a3a3c'
+                'color': '#000000',
+                'backgroundColor': '#ffffff',
+                'border': '1px solid #cccccc'
             },
-            className='crypto-dropdown-white'
+            className='custom-dropdown'
         )
     
     def create_timeframe_selector(self) -> dcc.Dropdown:
@@ -80,11 +80,11 @@ class CryptoSearchBar:
             value='1h',
             clearable=False,
             style={
-                'color': '#ffffff',
-                'backgroundColor': '#2c2c2e',
-                'border': '1px solid #3a3a3c'
+                'color': '#000000',
+                'backgroundColor': '#ffffff',
+                'border': '1px solid #cccccc'
             },
-            className='crypto-dropdown-white'
+            className='custom-dropdown'
         )
     
     def create_action_buttons(self) -> html.Div:

@@ -88,12 +88,19 @@ class CryptoModule:
     def __init__(self):
         global global_crypto_module_instance
         
-        # Symboles crypto populaires
-        self.crypto_symbols = [
-            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
-            'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LTCUSDT',
-            'LINKUSDT', 'UNIUSDT', 'BCHUSDT', 'XLMUSDT', 'ATOMUSDT'
-        ]
+        # Charger VRAIES données Binance via API
+        try:
+            print("🔄 Chargement symboles Binance...")
+            self.crypto_symbols = binance_provider.get_all_symbols()
+            print(f"✅ {len(self.crypto_symbols)} symboles Binance chargés")
+        except Exception as e:
+            print(f"⚠️ Erreur API Binance, utilisation liste de fallback: {e}")
+            # Fallback en cas d'erreur API
+            self.crypto_symbols = [
+                'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
+                'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LTCUSDT',
+                'LINKUSDT', 'UNIUSDT', 'BCHUSDT', 'XLMUSDT', 'ATOMUSDT'
+            ]
         
         # Configuration des indicateurs techniques
         self.indicators_config = {
@@ -420,16 +427,36 @@ class CryptoModule:
     def get_crypto_symbols(self):
         """Retourne la liste des symboles avec formatage pour dropdown"""
         return [{'label': symbol, 'value': symbol} for symbol in self.crypto_symbols]
+    
+    def refresh_crypto_symbols(self):
+        """Rafraîchit la liste des symboles depuis Binance API"""
+        try:
+            print("🔄 Rafraîchissement symboles Binance...")
+            self.crypto_symbols = binance_provider.get_all_symbols()
+            print(f"✅ {len(self.crypto_symbols)} symboles mis à jour")
+            return True
+        except Exception as e:
+            print(f"❌ Erreur rafraîchissement symboles: {e}")
+            return False
 
     def create_search_component(self):
-        """Crée le composant de recherche - VERSION SIMPLIFIÉE QUI FONCTIONNE"""
+        """Crée le composant de recherche avec VRAIES données Binance"""
         
-        # Symboles populaires
-        popular_symbols = [
-            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
-            'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT',
-            'LTCUSDT', 'BCHUSDT', 'XLMUSDT', 'ATOMUSDT', 'UNIUSDT'
-        ]
+        # Utiliser TOUS les symboles pour que PEPE et autres fonctionnent
+        try:
+            # Charger TOUS les 429 symboles (pas seulement 50)
+            top_symbols = self.crypto_symbols
+            # S'assurer que BTCUSDT est en premier (pour l'affichage)
+            if 'BTCUSDT' in top_symbols:
+                top_symbols.remove('BTCUSDT')
+            top_symbols.insert(0, 'BTCUSDT')
+            print(f"🔄 Dropdown populé avec {len(top_symbols)} symboles")
+        except:
+            # Fallback symboles populaires si erreur
+            top_symbols = [
+                'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
+                'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT'
+            ]
         
         timeframes = [
             {'label': '1mn', 'value': '1m'},
@@ -447,15 +474,13 @@ class CryptoModule:
                     dbc.Col([
                         dcc.Dropdown(
                             id='crypto-symbol-search',
-                            options=[{'label': s, 'value': s} for s in popular_symbols],
+                            options=[{'label': s, 'value': s} for s in top_symbols],
                             value='BTCUSDT',
                             placeholder="Rechercher une crypto...",
                             searchable=True,
                             clearable=False,
-                            style={
-                                'backgroundColor': '#2c2c2e',
-                                'color': '#ffffff'
-                            }
+                            className='custom-dropdown',
+                            optionHeight=35
                         ),
                         # Informations prix/progression/volume
                         html.Div([
@@ -472,10 +497,8 @@ class CryptoModule:
                             options=timeframes,
                             value='1h',
                             clearable=False,
-                            style={
-                                'backgroundColor': '#2c2c2e',
-                                'color': '#ffffff'
-                            }
+                            className='custom-dropdown',
+                            optionHeight=35
                         )
                     ], width=3),
                     

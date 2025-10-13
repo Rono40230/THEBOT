@@ -167,20 +167,28 @@ class CryptoChartComponents:
             name=symbol,
             increasing_line_color='#00ff88',
             decreasing_line_color='#ff4444',
-            showlegend=True
+            showlegend=False
         ), row=1, col=1)
         
-        # Volume
+        # Volume avec couleurs selon direction prix + axe 0
         colors = ['#00ff88' if close >= open else '#ff4444' 
                  for close, open in zip(data['close'], data['open'])]
         
+        # Volume vert au-dessus, rouge en-dessous de l'axe 0
+        volume_values = []
+        for close, open, vol in zip(data['close'], data['open'], data['volume']):
+            if close >= open:  # Hausse = vert au-dessus
+                volume_values.append(vol)
+            else:  # Baisse = rouge en-dessous
+                volume_values.append(-vol)
+        
         fig.add_trace(go.Bar(
             x=data.index,
-            y=data['volume'],
+            y=volume_values,
             name='Volume',
             marker_color=colors,
-            opacity=0.6,
-            showlegend=True
+            opacity=0.7,
+            showlegend=False
         ), row=2, col=1)
         
         # Style du graphique
@@ -190,14 +198,14 @@ class CryptoChartComponents:
             template='plotly_dark',
             height=600,
             margin=dict(l=0, r=0, t=50, b=0),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            )
+            showlegend=False
         )
+        
+        # Supprimer les labels des axes
+        fig.update_xaxes(title_text="", row=1, col=1)
+        fig.update_xaxes(title_text="", row=2, col=1)
+        fig.update_yaxes(title_text="", row=1, col=1)
+        fig.update_yaxes(title_text="", row=2, col=1)
         
         return fig
 

@@ -1,0 +1,111 @@
+/* CSS pour les dropdowns crypto - FOND BLANC TEXTE NOIR */
+
+/* Support anciennes classes Dash */
+.custom-dropdown .Select-control {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ccc !important;
+}
+
+.custom-dropdown .Select-input > input {
+    color: #000000 !important;
+}
+
+.custom-dropdown .Select-placeholder {
+    color: #666666 !important;
+}
+
+.custom-dropdown .Select-value-label {
+    color: #000000 !important;
+}
+
+.custom-dropdown .Select-menu-outer {
+    background-color: #ffffff !important;
+    border: 1px solid #ccc !important;
+}
+
+.custom-dropdown .Select-option {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 8px 12px !important;
+}
+
+.custom-dropdown .Select-option.is-focused {
+    background-color: #007bff !important;
+    color: #ffffff !important;
+}
+
+.custom-dropdown .Select-option.is-selected {
+    background-color: #0056b3 !important;
+    color: #ffffff !important;
+}
+
+/* Support nouvelles classes Dash (versions récentes) */
+.custom-dropdown .dropdown__control {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ccc !important;
+}
+
+.custom-dropdown .dropdown__single-value {
+    color: #000000 !important;
+}
+
+.custom-dropdown .dropdown__input {
+    color: #000000 !important;
+}
+
+.custom-dropdown .dropdown__placeholder {
+    color: #666666 !important;
+}
+
+.custom-dropdown .dropdown__menu {
+    background-color: #ffffff !important;
+    border: 1px solid #ccc !important;
+}
+
+.custom-dropdown .dropdown__option {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 8px 12px !important;
+}
+
+.custom-dropdown .dropdown__option--is-focused {
+    background-color: #007bff !important;
+    color: #ffffff !important;
+}
+
+.custom-dropdown .dropdown__option--is-selected {
+    background-color: #0056b3 !important;
+    color: #ffffff !important;
+}
+
+/* Support classes CSS modules (dash-core-components récents) */
+.custom-dropdown [class*="control"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ccc !important;
+}
+
+.custom-dropdown [class*="singleValue"] {
+    color: #000000 !important;
+}
+
+.custom-dropdown [class*="input"] {
+    color: #000000 !important;
+}
+
+.custom-dropdown [class*="placeholder"] {
+    color: #666666 !important;
+}
+
+.custom-dropdown [class*="menu"] {
+    background-color: #ffffff !important;
+    border: 1px solid #ccc !important;
+}
+
+.custom-dropdown [class*="option"] {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 8px 12px !important;
+}
