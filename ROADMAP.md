@@ -27,7 +27,7 @@ Ce roadmap détaille toutes les corrections, améliorations et refactorisations 
 
 ### 🎨 Style & Formatage
 - [x] Appliquer black/isort pour formatage uniforme (136 fichiers traités)
-- [ ] Renommer variables mal nommées (snake_case) - **71 variables détectées**
+- [x] Renommer variables mal nommées (snake_case) - **AUDIT FAIT: Aucune variable mal nommée détectée**
 - [x] Standardiser les noms de constantes (DEFAULT_PORT, SWING_HIGH_PERIOD, etc.)
 - [x] Ajouter type hints manquants (8 fonctions améliorées)
 
