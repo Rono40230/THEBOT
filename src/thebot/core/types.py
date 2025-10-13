@@ -5,13 +5,14 @@ Ultra-modular design with single responsibility principle
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-from typing import Optional, Dict, Any, List
 from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class TimeFrame(Enum):
     """Trading timeframes"""
+
     M1 = "1m"
     M5 = "5m"
     M15 = "15m"
@@ -25,6 +26,7 @@ class TimeFrame(Enum):
 
 class SignalDirection(Enum):
     """Signal direction"""
+
     BUY = "buy"
     SELL = "sell"
     NEUTRAL = "neutral"
@@ -32,6 +34,7 @@ class SignalDirection(Enum):
 
 class SignalStrength(Enum):
     """Signal strength levels"""
+
     WEAK = "weak"
     MEDIUM = "medium"
     STRONG = "strong"
@@ -41,6 +44,7 @@ class SignalStrength(Enum):
 @dataclass
 class MarketData:
     """Core market data structure"""
+
     timestamp: datetime
     open: Decimal
     high: Decimal
@@ -49,7 +53,7 @@ class MarketData:
     volume: Decimal
     timeframe: TimeFrame
     symbol: str
-    
+
     def __post_init__(self):
         """Validate data integrity"""
         if self.high < max(self.open, self.close):
@@ -63,6 +67,7 @@ class MarketData:
 @dataclass
 class Signal:
     """Trading signal structure"""
+
     direction: SignalDirection
     strength: SignalStrength
     price: Decimal
@@ -70,7 +75,7 @@ class Signal:
     source: str
     confidence: float  # 0.0 to 1.0
     metadata: Optional[Dict[str, Any]] = None
-    
+
     def __post_init__(self):
         """Validate signal"""
         if not 0.0 <= self.confidence <= 1.0:
@@ -80,6 +85,7 @@ class Signal:
 @dataclass
 class IndicatorResult:
     """Generic indicator result"""
+
     value: Any
     timestamp: datetime
     indicator_name: str
@@ -90,6 +96,7 @@ class IndicatorResult:
 @dataclass
 class PriceLevel:
     """Price level (support/resistance)"""
+
     price: Decimal
     timestamp: datetime
     strength: float  # 0.0 to 1.0
@@ -100,6 +107,7 @@ class PriceLevel:
 @dataclass
 class EconomicEvent:
     """Economic calendar event"""
+
     name: str
     country: str
     timestamp: datetime

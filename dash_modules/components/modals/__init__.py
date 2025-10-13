@@ -12,4 +12,4 @@ Architecture séparée pour éviter le monolithe 4000+ lignes :
 
 from .modal_manager import ModalIndicatorsManager
 
-__all__ = ['ModalIndicatorsManager']
+__all__ = ["ModalIndicatorsManager"]

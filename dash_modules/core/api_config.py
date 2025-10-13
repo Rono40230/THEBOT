@@ -3,21 +3,23 @@ API Configuration Module for THEBOT
 Manages API keys and data provider settings
 """
 
+import hashlib
 import json
 import os
-from typing import Dict, List, Optional, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import dash_bootstrap_components as dbc
-from dash import html, dcc, Input, Output, State, callback, dash
-import hashlib
+from dash import Input, Output, State, callback, dash, dcc, html
+
 
 class APIConfig:
     """Manages API configuration and data providers"""
-    
+
     def __init__(self, config_file: str = "api_config.json"):
         self.config_file = config_file
         self.config = self._load_config()
-        
+
     def _load_config(self) -> Dict:
         """Load configuration from file"""
         default_config = {
@@ -37,9 +39,9 @@ class APIConfig:
                             "endpoints": {
                                 "base_url": "https://api.binance.com",
                                 "klines": "/api/v3/klines",
-                                "ticker": "/api/v3/ticker/24hr"
+                                "ticker": "/api/v3/ticker/24hr",
                             },
-                            "config": {}
+                            "config": {},
                         }
                     ],
                     "forex": [],
@@ -51,7 +53,15 @@ class APIConfig:
                             "status": "inactive",
                             "api_key_required": True,
                             "description": "Professional financial data provider - Forex, Stocks, News & Analysis",
-                            "data_types": ["fx_rates", "stocks", "etfs", "news", "sentiment", "historical", "real_time"],
+                            "data_types": [
+                                "fx_rates",
+                                "stocks",
+                                "etfs",
+                                "news",
+                                "sentiment",
+                                "historical",
+                                "real_time",
+                            ],
                             "rate_limit": "5 calls/minute (free)",
                             "cost": "Free tier: 5 calls/min, Pro: $49.99/month",
                             "priority": 1,
@@ -59,11 +69,9 @@ class APIConfig:
                                 "base_url": "https://www.alphavantage.co/query",
                                 "fx_daily": "function=FX_DAILY",
                                 "stocks_daily": "function=TIME_SERIES_DAILY",
-                                "news": "function=NEWS_SENTIMENT"
+                                "news": "function=NEWS_SENTIMENT",
                             },
-                            "config": {
-                                "api_key": ""
-                            }
+                            "config": {"api_key": ""},
                         },
                         {
                             "name": "CryptoPanic",
@@ -77,16 +85,14 @@ class APIConfig:
                             "priority": 2,
                             "endpoints": {
                                 "base_url": "https://cryptopanic.com/api/v1",
-                                "posts": "/posts/"
+                                "posts": "/posts/",
                             },
-                            "config": {
-                                "api_key": ""
-                            }
+                            "config": {"api_key": ""},
                         },
                         {
                             "name": "CoinGecko",
                             "type": "news",
-                            "status": "active", 
+                            "status": "active",
                             "api_key_required": True,
                             "description": "Cryptocurrency data and news provider",
                             "data_types": ["crypto_prices", "market_data", "news"],
@@ -95,11 +101,9 @@ class APIConfig:
                             "priority": 3,
                             "endpoints": {
                                 "base_url": "https://api.coingecko.com/api/v3",
-                                "news": "/news"
+                                "news": "/news",
                             },
-                            "config": {
-                                "api_key": ""
-                            }
+                            "config": {"api_key": ""},
                         },
                         {
                             "name": "Yahoo Finance",
@@ -113,9 +117,9 @@ class APIConfig:
                             "priority": 4,
                             "endpoints": {
                                 "base_url": "https://feeds.finance.yahoo.com",
-                                "rss": "/rss/2.0/headline"
+                                "rss": "/rss/2.0/headline",
                             },
-                            "config": {}
+                            "config": {},
                         },
                         {
                             "name": "FMP",
@@ -123,17 +127,19 @@ class APIConfig:
                             "status": "inactive",
                             "api_key_required": True,
                             "description": "Financial Modeling Prep - Professional financial data",
-                            "data_types": ["financial_news", "company_news", "market_analysis"],
+                            "data_types": [
+                                "financial_news",
+                                "company_news",
+                                "market_analysis",
+                            ],
                             "rate_limit": "250 calls/day (free)",
                             "cost": "Free: 250 calls/day, Pro: $14/month",
                             "priority": 5,
                             "endpoints": {
                                 "base_url": "https://financialmodelingprep.com/api/v3",
-                                "news": "/stock_news"
+                                "news": "/stock_news",
                             },
-                            "config": {
-                                "api_key": ""
-                            }
+                            "config": {"api_key": ""},
                         },
                         {
                             "name": "Twelve Data",
@@ -141,7 +147,17 @@ class APIConfig:
                             "status": "active",
                             "api_key_required": True,
                             "description": "Comprehensive financial data provider - Stocks, Forex, Crypto, News",
-                            "data_types": ["stocks", "forex", "crypto", "etf", "indices", "financial_news", "real_time", "historical", "fundamentals"],
+                            "data_types": [
+                                "stocks",
+                                "forex",
+                                "crypto",
+                                "etf",
+                                "indices",
+                                "financial_news",
+                                "real_time",
+                                "historical",
+                                "fundamentals",
+                            ],
                             "rate_limit": "800 calls/day (free)",
                             "cost": "Free: 800 calls/day, Basic: $8/month, Pro: $24/month",
                             "priority": 3,
@@ -151,12 +167,10 @@ class APIConfig:
                                 "real_time": "/price",
                                 "news": "/news",
                                 "forex": "/forex_pairs",
-                                "crypto": "/cryptocurrencies"
+                                "crypto": "/cryptocurrencies",
                             },
-                            "config": {
-                                "api_key": ""
-                            }
-                        }
+                            "config": {"api_key": ""},
+                        },
                     ],
                     "economic": [
                         {
@@ -165,7 +179,12 @@ class APIConfig:
                             "status": "active",
                             "api_key_required": True,
                             "description": "Professional economic calendar and financial data",
-                            "data_types": ["economic_events", "earnings", "market_data", "economic_indicators"],
+                            "data_types": [
+                                "economic_events",
+                                "earnings",
+                                "market_data",
+                                "economic_indicators",
+                            ],
                             "rate_limit": "60 calls/minute (free)",
                             "cost": "Free: 60 calls/min, Basic: $30/month",
                             "priority": 1,
@@ -173,13 +192,11 @@ class APIConfig:
                                 "base_url": "https://finnhub.io/api/v1",
                                 "economic_calendar": "/calendar/economic",
                                 "earnings": "/calendar/earnings",
-                                "quote": "/quote"
+                                "quote": "/quote",
                             },
-                            "config": {
-                                "api_key": ""
-                            }
+                            "config": {"api_key": ""},
                         }
-                    ]
+                    ],
                 },
                 "ai_providers": [
                     {
@@ -197,8 +214,8 @@ class APIConfig:
                             "api_key": "",
                             "model": "gpt-4",
                             "max_tokens": 1000,
-                            "temperature": 0.7
-                        }
+                            "temperature": 0.7,
+                        },
                     },
                     {
                         "name": "Anthropic Claude",
@@ -214,8 +231,8 @@ class APIConfig:
                         "config": {
                             "api_key": "",
                             "model": "claude-3-sonnet",
-                            "max_tokens": 1000
-                        }
+                            "max_tokens": 1000,
+                        },
                     },
                     {
                         "name": "HuggingFace",
@@ -223,37 +240,44 @@ class APIConfig:
                         "status": "active",
                         "api_key_required": True,
                         "description": "HuggingFace Transformers - Free AI models for sentiment analysis",
-                        "capabilities": ["sentiment_analysis", "text_classification", "embeddings"],
-                        "models": ["cardiffnlp/twitter-roberta-base-sentiment-latest", "ProsusAI/finbert"],
+                        "capabilities": [
+                            "sentiment_analysis",
+                            "text_classification",
+                            "embeddings",
+                        ],
+                        "models": [
+                            "cardiffnlp/twitter-roberta-base-sentiment-latest",
+                            "ProsusAI/finbert",
+                        ],
                         "rate_limit": "1000 calls/hour (free)",
                         "cost": "Free: 1000 calls/hour, Pro: $9/month",
                         "priority": 3,
                         "config": {
                             "api_key": "",
-                            "model": "cardiffnlp/twitter-roberta-base-sentiment-latest"
-                        }
-                    }
-                ]
+                            "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+                        },
+                    },
+                ],
             },
             "settings": {
                 "auto_fallback": True,
                 "health_monitoring": True,
                 "cost_tracking": True,
-                "last_updated": datetime.now().isoformat()
-            }
+                "last_updated": datetime.now().isoformat(),
+            },
         }
-        
+
         if os.path.exists(self.config_file):
             try:
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file, "r") as f:
                     loaded_config = json.load(f)
                     # Merge with defaults to ensure all keys exist
                     return self._merge_configs(default_config, loaded_config)
             except Exception as e:
                 print(f"⚠️ Error loading config: {e}")
-                
+
         return default_config
-    
+
     def _merge_configs(self, default: Dict, loaded: Dict) -> Dict:
         """Merge loaded config with defaults"""
         result = default.copy()
@@ -263,33 +287,33 @@ class APIConfig:
             else:
                 result[key] = value
         return result
-    
+
     def save_config(self):
         """Save configuration to file"""
         try:
             # Update timestamp
             self.config["settings"]["last_updated"] = datetime.now().isoformat()
-            
-            with open(self.config_file, 'w') as f:
+
+            with open(self.config_file, "w") as f:
                 json.dump(self.config, f, indent=2)
             print("✅ Configuration saved successfully")
             return True
         except Exception as e:
             print(f"❌ Error saving config: {e}")
             return False
-    
+
     def get_provider(self, data_type: str, provider_name: str) -> Optional[Dict]:
         """Get specific provider configuration"""
         if data_type == "ai":
             providers = self.config["providers"].get("ai_providers", [])
         else:
             providers = self.config["providers"]["data_sources"].get(data_type, [])
-        
+
         for provider in providers:
             if provider["name"] == provider_name:
                 return provider
         return None
-    
+
     def get_active_providers(self, data_type: str) -> List[Dict]:
         """Get active providers for a data type"""
         if data_type == "ai":
@@ -297,7 +321,7 @@ class APIConfig:
         else:
             providers = self.config["providers"]["data_sources"].get(data_type, [])
         return [p for p in providers if p["status"] == "active"]
-    
+
     def set_api_key(self, provider_name: str, data_type: str, api_key: str) -> bool:
         """Set API key for a provider"""
         provider = self.get_provider(data_type, provider_name)
@@ -306,31 +330,34 @@ class APIConfig:
             provider["status"] = "active" if api_key else "inactive"
             return self.save_config()
         return False
-    
+
     def test_provider(self, provider_name: str, data_type: str) -> Dict:
         """Test provider connection"""
         provider = self.get_provider(data_type, provider_name)
         if not provider:
             return {"success": False, "error": "Provider not found"}
-        
+
         if provider["name"] == "Alpha Vantage":
             # AlphaVantage API complètement supprimé
-            return {"success": False, "message": "AlphaVantage API removed - use Yahoo Finance, Binance, or RSS"}
+            return {
+                "success": False,
+                "message": "AlphaVantage API removed - use Yahoo Finance, Binance, or RSS",
+            }
         elif provider["name"] == "Binance":
             # Binance doesn't require API key for public data
             return {"success": True, "message": "Binance public API available"}
         else:
             return {"success": False, "error": "Provider test not implemented"}
-    
+
     def add_custom_provider(self, provider_config: Dict) -> bool:
         """Add a custom data provider"""
         data_type = provider_config.get("type")
         if data_type not in self.config["providers"]["data_sources"]:
             self.config["providers"]["data_sources"][data_type] = []
-        
+
         self.config["providers"]["data_sources"][data_type].append(provider_config)
         return self.save_config()
-    
+
     def remove_provider(self, provider_name: str, data_type: str) -> bool:
         """Remove a data provider"""
         providers = self.config["providers"]["data_sources"].get(data_type, [])
@@ -338,68 +365,89 @@ class APIConfig:
             p for p in providers if p["name"] != provider_name
         ]
         return self.save_config()
-    
+
     def save_finnhub_key(self, api_key: str) -> bool:
         """Save Finnhub API key specifically"""
         try:
             # Chercher Finnhub dans la catégorie economic
-            economic_providers = self.config["providers"]["data_sources"].get("economic", [])
+            economic_providers = self.config["providers"]["data_sources"].get(
+                "economic", []
+            )
             for provider in economic_providers:
                 if provider["name"] == "Finnhub":
                     provider["config"]["api_key"] = api_key
                     provider["status"] = "active" if api_key else "inactive"
                     return self.save_config()
-            
+
             print("⚠️ Finnhub provider not found in economic category")
             return False
         except Exception as e:
             print(f"❌ Error saving Finnhub key: {e}")
             return False
-    
+
     def get_api_config_modal(self) -> dbc.Modal:
         """Create the simplified API configuration modal"""
-        return dbc.Modal([
-            dbc.ModalHeader(dbc.ModalTitle([
-                html.I(className="fas fa-key me-2"),
-                "🔑 Configuration des Fournisseurs de Données"
-            ])),
-            dbc.ModalBody([
-                self._create_unified_providers_panel()
-            ]),
-            dbc.ModalFooter([
-                dbc.Button("Tester les Connexions", color="info", className="me-2", id="test-all-btn"),
-                dbc.Button("Enregistrer", color="success", className="me-2", id="save-config-btn"),
-                dbc.Button("Fermer", color="secondary", id="close-config-btn")
-            ])
-        ], id="api-config-modal", size="xl", is_open=False)
-    
+        return dbc.Modal(
+            [
+                dbc.ModalHeader(
+                    dbc.ModalTitle(
+                        [
+                            html.I(className="fas fa-key me-2"),
+                            "🔑 Configuration des Fournisseurs de Données",
+                        ]
+                    )
+                ),
+                dbc.ModalBody([self._create_unified_providers_panel()]),
+                dbc.ModalFooter(
+                    [
+                        dbc.Button(
+                            "Tester les Connexions",
+                            color="info",
+                            className="me-2",
+                            id="test-all-btn",
+                        ),
+                        dbc.Button(
+                            "Enregistrer",
+                            color="success",
+                            className="me-2",
+                            id="save-config-btn",
+                        ),
+                        dbc.Button("Fermer", color="secondary", id="close-config-btn"),
+                    ]
+                ),
+            ],
+            id="api-config-modal",
+            size="xl",
+            is_open=False,
+        )
+
     def _create_unified_providers_panel(self) -> html.Div:
         """Create unified providers configuration panel"""
-        
+
         # Récupérer tous les providers de toutes les catégories
         all_providers = []
         categories = {
             "crypto": {"icon": "💰", "name": "Crypto"},
-            "forex": {"icon": "💱", "name": "Forex"}, 
+            "forex": {"icon": "💱", "name": "Forex"},
             "stocks": {"icon": "📊", "name": "Actions"},
             "news": {"icon": "📰", "name": "News"},
             "economic": {"icon": "📈", "name": "Économique"},
-            "ai": {"icon": "🤖", "name": "AI"}
+            "ai": {"icon": "🤖", "name": "AI"},
         }
-        
+
         for data_type, type_info in categories.items():
             if data_type == "ai":
                 # Gérer ai_providers séparément
                 providers = self.config["providers"].get("ai_providers", [])
             else:
                 providers = self.config["providers"]["data_sources"].get(data_type, [])
-            
+
             for provider in providers:
                 provider_copy = provider.copy()
                 provider_copy["data_type"] = data_type
                 provider_copy["type_info"] = type_info
                 all_providers.append(provider_copy)
-        
+
         # Traiter les providers pour éviter les doublons
         unique_providers = {}
         for provider in all_providers:
@@ -416,308 +464,537 @@ class APIConfig:
                 # Fusionner les types de données
                 existing = unique_providers[name]
                 new_types = provider.get("data_types", [provider["data_type"]])
-                existing["data_types"] = list(set(existing.get("data_types", []) + new_types))
-        
+                existing["data_types"] = list(
+                    set(existing.get("data_types", []) + new_types)
+                )
+
         provider_cards = []
         for provider_name, provider in unique_providers.items():
             status_color = "success" if provider["status"] == "active" else "secondary"
             status_icon = "🟢" if provider["status"] == "active" else "🔴"
             status_text = "ACTIF" if provider["status"] == "active" else "INACTIF"
-            
+
             # Déterminer si une API key est requise
             needs_api_key = provider.get("api_key_required", False)
-            
-            card = dbc.Card([
-                dbc.CardHeader([
-                    dbc.Row([
-                        dbc.Col([
-                            html.H6([
-                                f"{provider['type_info']['icon']} {provider_name}",
-                            ], className="mb-0")
-                        ], width=8),
-                        dbc.Col([
-                            dbc.Badge(
-                                f"{status_icon} {status_text}",
-                                color=status_color,
-                                className="float-end"
+
+            card = dbc.Card(
+                [
+                    dbc.CardHeader(
+                        [
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.H6(
+                                                [
+                                                    f"{provider['type_info']['icon']} {provider_name}",
+                                                ],
+                                                className="mb-0",
+                                            )
+                                        ],
+                                        width=8,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            dbc.Badge(
+                                                f"{status_icon} {status_text}",
+                                                color=status_color,
+                                                className="float-end",
+                                            )
+                                        ],
+                                        width=4,
+                                    ),
+                                ]
                             )
-                        ], width=4)
-                    ])
-                ]),
-                dbc.CardBody([
-                    # Description
-                    html.P(provider["description"], className="text-muted small mb-2"),
-                    
-                    # Informations techniques en ligne
-                    dbc.Row([
-                        dbc.Col([
-                            html.Div([
-                                html.Strong("Types: ", className="small"),
-                                html.Span(", ".join(provider["data_types"]), className="small")
-                            ])
-                        ], width=6),
-                        dbc.Col([
-                            html.Div([
-                                html.Strong("Limites: ", className="small"),
-                                html.Span(provider["rate_limit"], className="small")
-                            ])
-                        ], width=6)
-                    ], className="mb-2"),
-                    
-                    dbc.Row([
-                        dbc.Col([
-                            html.Div([
-                                html.Strong("Coût: ", className="small"),
-                                html.Span(provider["cost"], className="small")
-                            ])
-                        ], width=12)
-                    ], className="mb-3"),
-                    
-                    # Champ API Key seulement pour CryptoPanic et CoinGecko
-                    html.Div([
-                        dbc.Label("Clé API:", className="small fw-bold"),
-                        dbc.InputGroup([
-                            dbc.Input(
-                                type="password",
-                                placeholder="Entrez votre clé API...",
-                                value=provider["config"].get("api_key", ""),
-                                id=f"api-key-{provider_name.lower().replace(' ', '-')}"
+                        ]
+                    ),
+                    dbc.CardBody(
+                        [
+                            # Description
+                            html.P(
+                                provider["description"],
+                                className="text-muted small mb-2",
                             ),
-                            dbc.Button(
-                                "Tester",
-                                color="outline-primary",
+                            # Informations techniques en ligne
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Strong(
+                                                        "Types: ", className="small"
+                                                    ),
+                                                    html.Span(
+                                                        ", ".join(
+                                                            provider["data_types"]
+                                                        ),
+                                                        className="small",
+                                                    ),
+                                                ]
+                                            )
+                                        ],
+                                        width=6,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Strong(
+                                                        "Limites: ", className="small"
+                                                    ),
+                                                    html.Span(
+                                                        provider["rate_limit"],
+                                                        className="small",
+                                                    ),
+                                                ]
+                                            )
+                                        ],
+                                        width=6,
+                                    ),
+                                ],
+                                className="mb-2",
+                            ),
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Strong(
+                                                        "Coût: ", className="small"
+                                                    ),
+                                                    html.Span(
+                                                        provider["cost"],
+                                                        className="small",
+                                                    ),
+                                                ]
+                                            )
+                                        ],
+                                        width=12,
+                                    )
+                                ],
+                                className="mb-3",
+                            ),
+                            # Champ API Key seulement pour CryptoPanic et CoinGecko
+                            (
+                                html.Div(
+                                    [
+                                        dbc.Label(
+                                            "Clé API:", className="small fw-bold"
+                                        ),
+                                        dbc.InputGroup(
+                                            [
+                                                dbc.Input(
+                                                    type="password",
+                                                    placeholder="Entrez votre clé API...",
+                                                    value=provider["config"].get(
+                                                        "api_key", ""
+                                                    ),
+                                                    id=f"api-key-{provider_name.lower().replace(' ', '-')}",
+                                                ),
+                                                dbc.Button(
+                                                    "Tester",
+                                                    color="outline-primary",
+                                                    size="sm",
+                                                    id=f"test-{provider_name.lower().replace(' ', '-')}",
+                                                ),
+                                            ]
+                                        ),
+                                    ],
+                                    className="mb-3",
+                                )
+                                if needs_api_key
+                                else html.Div()
+                            ),
+                            # Boutons d'action (sans bouton supprimer)
+                            dbc.ButtonGroup(
+                                [
+                                    dbc.Button(
+                                        (
+                                            "Activer"
+                                            if provider["status"] == "inactive"
+                                            else "Désactiver"
+                                        ),
+                                        size="sm",
+                                        color=(
+                                            "success"
+                                            if provider["status"] == "inactive"
+                                            else "warning"
+                                        ),
+                                        outline=True,
+                                        id=f"toggle-{provider_name.lower().replace(' ', '-')}",
+                                    ),
+                                    dbc.Button(
+                                        "Configurer",
+                                        size="sm",
+                                        color="primary",
+                                        outline=True,
+                                    ),
+                                ],
                                 size="sm",
-                                id=f"test-{provider_name.lower().replace(' ', '-')}"
-                            )
-                        ])
-                    ], className="mb-3") if needs_api_key else html.Div(),
-                    
-                    # Boutons d'action (sans bouton supprimer)
-                    dbc.ButtonGroup([
-                        dbc.Button(
-                            "Activer" if provider["status"] == "inactive" else "Désactiver",
-                            size="sm", 
-                            color="success" if provider["status"] == "inactive" else "warning",
-                            outline=True,
-                            id=f"toggle-{provider_name.lower().replace(' ', '-')}"
-                        ),
-                        dbc.Button("Configurer", size="sm", color="primary", outline=True)
-                    ], size="sm")
-                ])
-            ], className="mb-3")
-            
+                            ),
+                        ]
+                    ),
+                ],
+                className="mb-3",
+            )
+
             provider_cards.append(card)
-        
-        return html.Div([
-            html.Div(provider_cards)
-        ])
+
+        return html.Div([html.Div(provider_cards)])
 
     def _create_data_sources_panel(self) -> html.Div:
         """Legacy method - redirects to unified panel"""
         return self._create_unified_providers_panel()
-    
-    def _create_provider_section(self, data_type: str, title: str, section_id: str) -> html.Div:
+
+    def _create_provider_section(
+        self, data_type: str, title: str, section_id: str
+    ) -> html.Div:
         """Create a section for specific provider type"""
         providers = self.config["providers"]["data_sources"].get(data_type, [])
-        
+
         provider_cards = []
         for provider in providers:
             status_color = "success" if provider["status"] == "active" else "warning"
             status_icon = "✅" if provider["status"] == "active" else "⚠️"
-            
-            card = dbc.Card([
-                dbc.CardHeader([
-                    html.H6([
-                        f"{status_icon} {provider['name']}",
-                        dbc.Badge(
-                            provider["status"].title(),
-                            color=status_color,
-                            className="ms-2"
-                        )
-                    ], className="mb-0")
-                ]),
-                dbc.CardBody([
-                    html.P(provider["description"], className="text-muted small"),
-                    
-                    html.Div([
-                        html.Strong("Data Types: "),
-                        html.Span(", ".join(provider["data_types"]))
-                    ], className="small mb-2"),
-                    
-                    html.Div([
-                        html.Strong("Rate Limit: "),
-                        html.Span(provider["rate_limit"])
-                    ], className="small mb-2"),
-                    
-                    html.Div([
-                        html.Strong("Cost: "),
-                        html.Span(provider["cost"])
-                    ], className="small mb-3"),
-                    
-                    # API Key input if required
-                    html.Div([
-                        dbc.Label("API Key:", className="small fw-bold"),
-                        dbc.InputGroup([
-                            dbc.Input(
-                                type="password",
-                                placeholder="Enter API key..." if provider["api_key_required"] else "No API key required",
-                                value=provider["config"].get("api_key", ""),
-                                disabled=not provider["api_key_required"],
-                                id=f"api-key-{data_type}-{provider['name'].lower().replace(' ', '-')}"
-                            ),
-                            dbc.Button(
-                                "Test",
-                                color="outline-secondary",
-                                size="sm",
-                                id=f"test-{data_type}-{provider['name'].lower().replace(' ', '-')}"
+
+            card = dbc.Card(
+                [
+                    dbc.CardHeader(
+                        [
+                            html.H6(
+                                [
+                                    f"{status_icon} {provider['name']}",
+                                    dbc.Badge(
+                                        provider["status"].title(),
+                                        color=status_color,
+                                        className="ms-2",
+                                    ),
+                                ],
+                                className="mb-0",
                             )
-                        ])
-                    ], className="mb-2") if provider["api_key_required"] else html.Div(),
-                    
-                    dbc.ButtonGroup([
-                        dbc.Button("Configure", size="sm", color="primary", outline=True),
-                        dbc.Button(
-                            "Remove" if len(providers) > 1 else "Disable", 
-                            size="sm", 
-                            color="danger", 
-                            outline=True
-                        )
-                    ], size="sm")
-                ])
-            ], className="mb-3")
-            
-            provider_cards.append(card)
-        
-        return html.Div([
-            html.H6(title, className="text-primary"),
-            html.Div(provider_cards),
-            dbc.Button(
-                f"+ Add {data_type.title()} Provider",
-                size="sm",
-                color="success",
-                outline=True,
-                className="mt-2"
+                        ]
+                    ),
+                    dbc.CardBody(
+                        [
+                            html.P(
+                                provider["description"], className="text-muted small"
+                            ),
+                            html.Div(
+                                [
+                                    html.Strong("Data Types: "),
+                                    html.Span(", ".join(provider["data_types"])),
+                                ],
+                                className="small mb-2",
+                            ),
+                            html.Div(
+                                [
+                                    html.Strong("Rate Limit: "),
+                                    html.Span(provider["rate_limit"]),
+                                ],
+                                className="small mb-2",
+                            ),
+                            html.Div(
+                                [html.Strong("Cost: "), html.Span(provider["cost"])],
+                                className="small mb-3",
+                            ),
+                            # API Key input if required
+                            (
+                                html.Div(
+                                    [
+                                        dbc.Label(
+                                            "API Key:", className="small fw-bold"
+                                        ),
+                                        dbc.InputGroup(
+                                            [
+                                                dbc.Input(
+                                                    type="password",
+                                                    placeholder=(
+                                                        "Enter API key..."
+                                                        if provider["api_key_required"]
+                                                        else "No API key required"
+                                                    ),
+                                                    value=provider["config"].get(
+                                                        "api_key", ""
+                                                    ),
+                                                    disabled=not provider[
+                                                        "api_key_required"
+                                                    ],
+                                                    id=f"api-key-{data_type}-{provider['name'].lower().replace(' ', '-')}",
+                                                ),
+                                                dbc.Button(
+                                                    "Test",
+                                                    color="outline-secondary",
+                                                    size="sm",
+                                                    id=f"test-{data_type}-{provider['name'].lower().replace(' ', '-')}",
+                                                ),
+                                            ]
+                                        ),
+                                    ],
+                                    className="mb-2",
+                                )
+                                if provider["api_key_required"]
+                                else html.Div()
+                            ),
+                            dbc.ButtonGroup(
+                                [
+                                    dbc.Button(
+                                        "Configure",
+                                        size="sm",
+                                        color="primary",
+                                        outline=True,
+                                    ),
+                                    dbc.Button(
+                                        "Remove" if len(providers) > 1 else "Disable",
+                                        size="sm",
+                                        color="danger",
+                                        outline=True,
+                                    ),
+                                ],
+                                size="sm",
+                            ),
+                        ]
+                    ),
+                ],
+                className="mb-3",
             )
-        ])
-    
+
+            provider_cards.append(card)
+
+        return html.Div(
+            [
+                html.H6(title, className="text-primary"),
+                html.Div(provider_cards),
+                dbc.Button(
+                    f"+ Add {data_type.title()} Provider",
+                    size="sm",
+                    color="success",
+                    outline=True,
+                    className="mt-2",
+                ),
+            ]
+        )
+
     def _create_ai_providers_panel(self) -> html.Div:
         """Create AI providers configuration panel"""
-        return html.Div([
-            html.H5("AI Providers Configuration", className="mb-3"),
-            html.P("Configure AI services for market analysis and insights.", className="text-muted"),
-            
-            # AI providers cards will be generated here
-            html.Div(id="ai-providers-content")
-        ])
-    
+        return html.Div(
+            [
+                html.H5("AI Providers Configuration", className="mb-3"),
+                html.P(
+                    "Configure AI services for market analysis and insights.",
+                    className="text-muted",
+                ),
+                # AI providers cards will be generated here
+                html.Div(id="ai-providers-content"),
+            ]
+        )
+
     def _create_advanced_panel(self) -> html.Div:
         """Create advanced settings panel"""
-        return html.Div([
-            html.H5("Advanced Settings", className="mb-3"),
-            
-            dbc.Card([
-                dbc.CardBody([
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Switch(
-                                id="auto-fallback-switch",
-                                label="Auto Fallback",
-                                value=self.config["settings"].get("auto_fallback", True)
-                            ),
-                            html.Small("Automatically switch to backup providers if primary fails", className="text-muted")
-                        ], width=6),
-                        
-                        dbc.Col([
-                            dbc.Switch(
-                                id="health-monitoring-switch", 
-                                label="Health Monitoring",
-                                value=self.config["settings"].get("health_monitoring", True)
-                            ),
-                            html.Small("Monitor API health and performance", className="text-muted")
-                        ], width=6)
-                    ], className="mb-3"),
-                    
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Switch(
-                                id="cost-tracking-switch",
-                                label="Cost Tracking", 
-                                value=self.config["settings"].get("cost_tracking", True)
-                            ),
-                            html.Small("Track API usage and costs", className="text-muted")
-                        ], width=6)
-                    ])
-                ])
-            ])
-        ])
-    
+        return html.Div(
+            [
+                html.H5("Advanced Settings", className="mb-3"),
+                dbc.Card(
+                    [
+                        dbc.CardBody(
+                            [
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                dbc.Switch(
+                                                    id="auto-fallback-switch",
+                                                    label="Auto Fallback",
+                                                    value=self.config["settings"].get(
+                                                        "auto_fallback", True
+                                                    ),
+                                                ),
+                                                html.Small(
+                                                    "Automatically switch to backup providers if primary fails",
+                                                    className="text-muted",
+                                                ),
+                                            ],
+                                            width=6,
+                                        ),
+                                        dbc.Col(
+                                            [
+                                                dbc.Switch(
+                                                    id="health-monitoring-switch",
+                                                    label="Health Monitoring",
+                                                    value=self.config["settings"].get(
+                                                        "health_monitoring", True
+                                                    ),
+                                                ),
+                                                html.Small(
+                                                    "Monitor API health and performance",
+                                                    className="text-muted",
+                                                ),
+                                            ],
+                                            width=6,
+                                        ),
+                                    ],
+                                    className="mb-3",
+                                ),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            [
+                                                dbc.Switch(
+                                                    id="cost-tracking-switch",
+                                                    label="Cost Tracking",
+                                                    value=self.config["settings"].get(
+                                                        "cost_tracking", True
+                                                    ),
+                                                ),
+                                                html.Small(
+                                                    "Track API usage and costs",
+                                                    className="text-muted",
+                                                ),
+                                            ],
+                                            width=6,
+                                        )
+                                    ]
+                                ),
+                            ]
+                        )
+                    ]
+                ),
+            ]
+        )
+
     def _create_presets_panel(self) -> html.Div:
         """Create configuration presets panel"""
-        return html.Div([
-            html.H5("Configuration Presets", className="mb-3"),
-            
-            dbc.Row([
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader("🆓 Free Tier"),
-                        dbc.CardBody([
-                            html.P("Basic configuration using free APIs", className="small"),
-                            html.Ul([
-                                html.Li("Binance (Crypto) - Free"),
-                                html.Li("Alpha Vantage Free (Forex/Stocks) - 5 calls/min"),
-                                html.Li("Basic AI analysis")
-                            ], className="small"),
-                            dbc.Button("Apply Free Preset", color="success", size="sm")
-                        ])
-                    ])
-                ], width=4),
-                
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader("💼 Professional"),
-                        dbc.CardBody([
-                            html.P("Enhanced APIs for professional trading", className="small"),
-                            html.Ul([
-                                html.Li("Binance Pro (Crypto)"),
-                                html.Li("Alpha Vantage Pro (Forex/Stocks)"),
-                                html.Li("OpenAI GPT-4 (AI Analysis)")
-                            ], className="small"),
-                            dbc.Button("Apply Pro Preset", color="primary", size="sm")
-                        ])
-                    ])
-                ], width=4),
-                
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader("🚀 Enterprise"),
-                        dbc.CardBody([
-                            html.P("Full-featured enterprise setup", className="small"),
-                            html.Ul([
-                                html.Li("Multiple data providers"),
-                                html.Li("Redundancy & failover"),
-                                html.Li("Advanced AI models")
-                            ], className="small"),
-                            dbc.Button("Apply Enterprise Preset", color="warning", size="sm")
-                        ])
-                    ])
-                ], width=4)
-            ])
-        ])
-
+        return html.Div(
+            [
+                html.H5("Configuration Presets", className="mb-3"),
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                dbc.Card(
+                                    [
+                                        dbc.CardHeader("🆓 Free Tier"),
+                                        dbc.CardBody(
+                                            [
+                                                html.P(
+                                                    "Basic configuration using free APIs",
+                                                    className="small",
+                                                ),
+                                                html.Ul(
+                                                    [
+                                                        html.Li(
+                                                            "Binance (Crypto) - Free"
+                                                        ),
+                                                        html.Li(
+                                                            "Alpha Vantage Free (Forex/Stocks) - 5 calls/min"
+                                                        ),
+                                                        html.Li("Basic AI analysis"),
+                                                    ],
+                                                    className="small",
+                                                ),
+                                                dbc.Button(
+                                                    "Apply Free Preset",
+                                                    color="success",
+                                                    size="sm",
+                                                ),
+                                            ]
+                                        ),
+                                    ]
+                                )
+                            ],
+                            width=4,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Card(
+                                    [
+                                        dbc.CardHeader("💼 Professional"),
+                                        dbc.CardBody(
+                                            [
+                                                html.P(
+                                                    "Enhanced APIs for professional trading",
+                                                    className="small",
+                                                ),
+                                                html.Ul(
+                                                    [
+                                                        html.Li("Binance Pro (Crypto)"),
+                                                        html.Li(
+                                                            "Alpha Vantage Pro (Forex/Stocks)"
+                                                        ),
+                                                        html.Li(
+                                                            "OpenAI GPT-4 (AI Analysis)"
+                                                        ),
+                                                    ],
+                                                    className="small",
+                                                ),
+                                                dbc.Button(
+                                                    "Apply Pro Preset",
+                                                    color="primary",
+                                                    size="sm",
+                                                ),
+                                            ]
+                                        ),
+                                    ]
+                                )
+                            ],
+                            width=4,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Card(
+                                    [
+                                        dbc.CardHeader("🚀 Enterprise"),
+                                        dbc.CardBody(
+                                            [
+                                                html.P(
+                                                    "Full-featured enterprise setup",
+                                                    className="small",
+                                                ),
+                                                html.Ul(
+                                                    [
+                                                        html.Li(
+                                                            "Multiple data providers"
+                                                        ),
+                                                        html.Li(
+                                                            "Redundancy & failover"
+                                                        ),
+                                                        html.Li("Advanced AI models"),
+                                                    ],
+                                                    className="small",
+                                                ),
+                                                dbc.Button(
+                                                    "Apply Enterprise Preset",
+                                                    color="warning",
+                                                    size="sm",
+                                                ),
+                                            ]
+                                        ),
+                                    ]
+                                )
+                            ],
+                            width=4,
+                        ),
+                    ]
+                ),
+            ]
+        )
 
     def save_huggingface_key(self, api_key: str) -> bool:
         """Save HuggingFace API key specifically"""
         try:
             ai_providers = self.config["providers"].get("ai_providers", [])
-            
+
             for provider in ai_providers:
                 if provider.get("name") == "HuggingFace":
                     provider["config"]["api_key"] = api_key.strip() if api_key else ""
-                    provider["status"] = "active" if api_key and api_key.strip() else "inactive"
+                    provider["status"] = (
+                        "active" if api_key and api_key.strip() else "inactive"
+                    )
                     self.save_config()
                     print(f"✅ HuggingFace API key {'saved' if api_key else 'removed'}")
                     return True
-            
+
             return False
         except Exception as e:
             print(f"❌ Error saving HuggingFace API key: {e}")

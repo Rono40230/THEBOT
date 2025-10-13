@@ -4,77 +4,82 @@ Paramètres pour l'analyse de la distribution du volume par prix
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, Optional
+
 
 class VolumeProfileType(Enum):
     """Types de Volume Profile"""
-    FIXED_RANGE = "fixed_range"     # Période fixe
-    SESSION = "session"             # Par session trading
-    VISIBLE_RANGE = "visible_range" # Zone visible graphique
-    CUSTOM = "custom"               # Personnalisé
+
+    FIXED_RANGE = "fixed_range"  # Période fixe
+    SESSION = "session"  # Par session trading
+    VISIBLE_RANGE = "visible_range"  # Zone visible graphique
+    CUSTOM = "custom"  # Personnalisé
+
 
 class ValueAreaMethod(Enum):
     """Méthodes de calcul Value Area"""
-    PERCENTAGE = "percentage"       # 70% du volume
-    CUSTOM_PCT = "custom_percent"   # Pourcentage personnalisé
-    STANDARD_DEV = "standard_dev"   # Écart-type
+
+    PERCENTAGE = "percentage"  # 70% du volume
+    CUSTOM_PCT = "custom_percent"  # Pourcentage personnalisé
+    STANDARD_DEV = "standard_dev"  # Écart-type
+
 
 @dataclass
 class VolumeProfileConfig:
     """Configuration Volume Profile + POC"""
-    
+
     # === PARAMÈTRES DE BASE ===
     profile_type: VolumeProfileType = VolumeProfileType.SESSION
     bins_count: int = 100  # Nombre de niveaux de prix
     value_area_percent: float = 70.0  # % pour Value Area
-    
+
     # === PÉRIODE ET TIMEFRAME ===
     lookback_periods: int = 100  # Nombre de bougies à analyser
     session_start: str = "00:00"  # Début session
-    session_end: str = "23:59"    # Fin session
-    
+    session_end: str = "23:59"  # Fin session
+
     # === POC ET VALUE AREA ===
     poc_sensitivity: float = 1.0  # Sensibilité détection POC
     value_area_method: ValueAreaMethod = ValueAreaMethod.PERCENTAGE
     min_volume_threshold: float = 0.01  # Volume minimum % pour niveau
-    
+
     # === NIVEAUX SUPPORT/RÉSISTANCE ===
     high_volume_threshold: float = 80.0  # % pour High Volume Node
-    low_volume_threshold: float = 20.0   # % pour Low Volume Node
+    low_volume_threshold: float = 20.0  # % pour Low Volume Node
     support_resistance_strength: float = 0.7  # Force S/R basé volume
-    
+
     # === VISUALISATION ===
-    show_poc: bool = True           # Afficher POC
-    show_value_area: bool = True    # Afficher Value Area
-    show_high_volume_nodes: bool = True   # Afficher HVN
-    show_low_volume_nodes: bool = False   # Afficher LVN
-    show_volume_histogram: bool = True    # Histogramme
-    
+    show_poc: bool = True  # Afficher POC
+    show_value_area: bool = True  # Afficher Value Area
+    show_high_volume_nodes: bool = True  # Afficher HVN
+    show_low_volume_nodes: bool = False  # Afficher LVN
+    show_volume_histogram: bool = True  # Histogramme
+
     # === COULEURS ET STYLES ===
-    poc_color: str = "#FF6B35"           # Orange pour POC
-    value_area_color: str = "#4ECDC4"    # Teal pour Value Area
-    high_volume_color: str = "#45B7D1"   # Bleu pour HVN
-    low_volume_color: str = "#96CEB4"    # Vert clair pour LVN
-    histogram_color: str = "#FECA57"     # Jaune pour histogramme
-    
+    poc_color: str = "#FF6B35"  # Orange pour POC
+    value_area_color: str = "#4ECDC4"  # Teal pour Value Area
+    high_volume_color: str = "#45B7D1"  # Bleu pour HVN
+    low_volume_color: str = "#96CEB4"  # Vert clair pour LVN
+    histogram_color: str = "#FECA57"  # Jaune pour histogramme
+
     # === OPACITÉ ET ÉPAISSEUR ===
     poc_line_width: float = 3.0
     value_area_opacity: float = 0.2
     histogram_opacity: float = 0.6
     nodes_line_width: float = 2.0
-    
+
     # === ALERTES ET SIGNAUX ===
-    enable_poc_alerts: bool = True       # Alertes POC
-    enable_value_area_alerts: bool = True # Alertes Value Area
-    poc_proximity_percent: float = 0.5   # % proximité pour alerte
+    enable_poc_alerts: bool = True  # Alertes POC
+    enable_value_area_alerts: bool = True  # Alertes Value Area
+    poc_proximity_percent: float = 0.5  # % proximité pour alerte
     value_area_break_alert: bool = True  # Alerte cassure Value Area
-    
+
     # === CALCULS AVANCÉS ===
     volume_delta_analysis: bool = False  # Analyse delta buy/sell
-    time_weighted_volume: bool = True    # Volume pondéré temps
-    normalize_by_range: bool = True      # Normaliser par range prix
-    
+    time_weighted_volume: bool = True  # Volume pondéré temps
+    normalize_by_range: bool = True  # Normaliser par range prix
+
     def get_trading_style_config(self, style: str) -> Dict[str, Any]:
         """Retourne config optimisée selon style de trading"""
         configs = {
@@ -85,7 +90,7 @@ class VolumeProfileConfig:
                 "poc_sensitivity": 1.5,
                 "high_volume_threshold": 75.0,
                 "show_low_volume_nodes": True,
-                "histogram_opacity": 0.8
+                "histogram_opacity": 0.8,
             },
             "day_trading": {
                 "bins_count": 100,
@@ -94,7 +99,7 @@ class VolumeProfileConfig:
                 "poc_sensitivity": 1.0,
                 "high_volume_threshold": 80.0,
                 "show_low_volume_nodes": False,
-                "histogram_opacity": 0.6
+                "histogram_opacity": 0.6,
             },
             "swing_trading": {
                 "bins_count": 75,
@@ -103,7 +108,7 @@ class VolumeProfileConfig:
                 "poc_sensitivity": 0.8,
                 "high_volume_threshold": 85.0,
                 "show_low_volume_nodes": False,
-                "histogram_opacity": 0.5
+                "histogram_opacity": 0.5,
             },
             "position_trading": {
                 "bins_count": 50,
@@ -112,12 +117,12 @@ class VolumeProfileConfig:
                 "poc_sensitivity": 0.5,
                 "high_volume_threshold": 90.0,
                 "show_low_volume_nodes": False,
-                "histogram_opacity": 0.4
-            }
+                "histogram_opacity": 0.4,
+            },
         }
-        
+
         return configs.get(style, configs["day_trading"])
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Conversion en dictionnaire"""
         return {
@@ -153,14 +158,14 @@ class VolumeProfileConfig:
             "value_area_break_alert": self.value_area_break_alert,
             "volume_delta_analysis": self.volume_delta_analysis,
             "time_weighted_volume": self.time_weighted_volume,
-            "normalize_by_range": self.normalize_by_range
+            "normalize_by_range": self.normalize_by_range,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'VolumeProfileConfig':
+    def from_dict(cls, data: Dict[str, Any]) -> "VolumeProfileConfig":
         """Création depuis dictionnaire"""
         config = cls()
-        
+
         # Mise à jour des attributs
         for key, value in data.items():
             if hasattr(config, key):
@@ -170,5 +175,5 @@ class VolumeProfileConfig:
                     setattr(config, key, ValueAreaMethod(value))
                 else:
                     setattr(config, key, value)
-        
+
         return config
