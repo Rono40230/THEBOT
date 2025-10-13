@@ -33,10 +33,10 @@ from dash_modules.core.calculators import TechnicalCalculators
 # Instance partagée des calculateurs
 shared_calculators = TechnicalCalculators()
 
-# Configuration du logging conforme .clinerules
+# Configuration du logging - Mode Production Optimisé
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.WARNING,  # Réduire à WARNING pour accélerer le démarrage
+    format='%(levelname)s - %(message)s'  # Format simplifié
 )
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class THEBOTApp:
         # Callbacks handler
         self.callbacks_handler: Optional[LauncherCallbacks] = None
         
-        logger.info("🚀 THEBOTApp initialisé")
+        # Supprimé : log d'initialisation non critique
         
         # Initialisation complète
         self._initialize()
@@ -106,7 +106,7 @@ class THEBOTApp:
             )
             
             app.title = "THEBOT - Trading Intelligence Platform"
-            logger.info("✅ Application Dash créée")
+            # Supprimé : log création Dash non critique
             return app
             
         except Exception as e:
@@ -119,7 +119,7 @@ class THEBOTApp:
             self._init_modules()
             self._setup_layout()
             self._setup_callbacks()
-            logger.info("✅ Application THEBOT initialisée")
+            # Supprimé : log initialisation redondant
             
         except Exception as e:
             logger.error(f"❌ Erreur initialisation: {e}")
@@ -128,7 +128,7 @@ class THEBOTApp:
     def _init_modules(self) -> None:
         """Initialise tous les modules métier"""
         try:
-            logger.info("🔄 Initialisation des modules...")
+            # Supprimé : log modules redondant
             
             # Modules avec calculateurs partagés
             self.modules = {
@@ -146,11 +146,11 @@ class THEBOTApp:
                 if hasattr(module, 'setup_callbacks'):
                     try:
                         module.setup_callbacks(self.app)
-                        logger.info(f"✅ Callbacks {module_name} configurés")
+                        # Supprimé : log callbacks individual modules
                     except Exception as e:
                         logger.error(f"❌ Erreur callbacks {module_name}: {e}")
             
-            logger.info(f"✅ {len(self.modules)} modules initialisés")
+            # Supprimé : log count modules
             
         except Exception as e:
             logger.error(f"❌ Erreur initialisation modules: {e}")
@@ -166,7 +166,7 @@ class THEBOTApp:
             # Créer le layout via le LayoutManager avec les modules
             self.app.layout = self.layout_manager.get_main_layout(all_symbols, default_data, self.modules)
             
-            logger.info("✅ Layout configuré via LayoutManager")
+            # Supprimé : log layout setup
             
         except Exception as e:
             logger.error(f"❌ Erreur setup layout: {e}")
@@ -183,7 +183,7 @@ class THEBOTApp:
             )
             
             self.callbacks_handler.register_all_callbacks()
-            logger.info("✅ Callbacks configurés via LauncherCallbacks")
+            # Supprimé : log callbacks setup
             
         except Exception as e:
             logger.error(f"❌ Erreur setup callbacks: {e}")
@@ -276,12 +276,12 @@ class THEBOTApp:
             host: Adresse d'écoute
         """
         try:
-            logger.info(f"🚀 Lancement THEBOT sur http://{host}:{self.port}")
-            logger.info(f"🔧 Mode debug: {self.debug}")
+            # Seul log de démarrage vraiment utile
+            print(f"🚀 THEBOT démarré: http://{host}:{self.port}")  # Print simple plus rapide
             
             # Afficher les informations des modules
             module_info = self.get_module_info()
-            logger.info(f"📊 Modules chargés: {module_info['total_modules']}")
+            # Supprimé : info modules non critique
             
             # Lancer l'application
             self.app.run(

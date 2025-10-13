@@ -39,7 +39,7 @@ def register_all_crypto_callbacks(app) -> None:
         Un seul enregistrement par callback ID
     """
     try:
-        logger.info("🔄 Enregistrement callbacks crypto centralisés")
+        # Silencieux : Enregistrement callbacks crypto centralisés
         
         # Enregistrer par catégorie
         register_dropdown_callbacks(app)
@@ -47,7 +47,7 @@ def register_all_crypto_callbacks(app) -> None:
         register_data_callbacks(app)
         register_display_callbacks(app)
         
-        logger.info("✅ Callbacks crypto centralisés enregistrés")
+        # Silencieux : Callbacks crypto centralisés enregistrés
         
     except Exception as e:
         logger.error(f"❌ Erreur enregistrement callbacks crypto: {e}")
@@ -130,7 +130,7 @@ def register_chart_callbacks(app) -> None:
             if not timeframe:
                 timeframe = '1h'
                 
-            logger.info(f"🔄 Mise à jour graphiques: {symbol} - {timeframe}")
+            # Silencieux : Mise à jour graphiques
             
             # Récupérer données depuis data provider
             try:
@@ -198,7 +198,7 @@ def register_chart_callbacks(app) -> None:
                         except Exception as price_error:
                             logger.warning(f"⚠️ Erreur ligne prix temps réel: {price_error}")
                         
-                        logger.info(f"✅ Graphique chandelles + volume créé: {symbol}")
+                        # Silencieux : Graphique créé
                         return fig
                     except Exception as chart_error:
                         logger.warning(f"⚠️ Erreur composant chart: {chart_error}")
@@ -320,7 +320,7 @@ def register_data_callbacks(app) -> None:
         """Synchronise le symbole crypto avec le store global."""
         try:
             if crypto_symbol:
-                logger.info(f"🔄 Synchronisation store global: {crypto_symbol}")
+                # Silencieux : Synchronisation store global
                 return crypto_symbol
             return dash.no_update
             
@@ -351,7 +351,7 @@ def register_display_callbacks(app) -> None:
             if not symbol:
                 return "Sélectionnez un symbole", "fw-bold text-muted"
             
-            logger.info(f"🔄 Callback prix déclenché pour: {symbol}")
+            # Silencieux : Callback prix déclenché
             
             # Récupérer données ticker 24h
             try:
@@ -379,7 +379,7 @@ def register_display_callbacks(app) -> None:
                     
                     display_text = f"{price_str} {change_str}"
                     
-                    logger.info(f"✅ Prix mis à jour: {display_text}")
+                    # Silencieux : Prix mis à jour
                     return display_text, css_class
                     
             except Exception as api_error:
@@ -456,7 +456,7 @@ def test_callbacks_registration() -> bool:
         ]
         
         # Cette vérification se ferait normalement avec l'app Dash
-        logger.info("✅ Test callbacks crypto: Toutes les fonctions définies")
+        # Silencieux : Test callbacks crypto
         return True
         
     except Exception as e:
@@ -467,4 +467,4 @@ def test_callbacks_registration() -> bool:
 if __name__ == "__main__":
     # Test standalone
     test_callbacks_registration()
-    print("✅ Module crypto_callbacks.py validé")
+    # Silencieux : Module validé

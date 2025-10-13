@@ -31,9 +31,9 @@ class CryptoSearchBar:
             try:
                 self.all_symbols = binance_provider.get_all_symbols()
                 self.initial_symbols = binance_provider.get_popular_symbols()
-                print(f"✅ {len(self.all_symbols)} symboles Binance chargés")
-            except Exception as e:
-                print(f"⚠️ Erreur chargement symboles Binance: {e}")
+                pass  # Silencieux : Symboles Binance chargés
+            except Exception:
+                pass  # Silencieux : Erreur chargement symboles
                 self.all_symbols = self.default_symbols
                 self.initial_symbols = self.default_symbols
         else:

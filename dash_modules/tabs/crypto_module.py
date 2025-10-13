@@ -21,8 +21,8 @@ from ..data_providers.binance_api import binance_provider
 try:
     from ..components.ai_trading_modal import ai_trading_modal, register_ai_modal_callbacks
     AI_MODAL_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Modal IA non disponible: {e}")
+except ImportError:
+    # Silencieux : Modal IA optionnelle
     ai_trading_modal = None
     register_ai_modal_callbacks = None
     AI_MODAL_AVAILABLE = False
@@ -31,8 +31,8 @@ except ImportError as e:
 try:
     from ..components.price_alerts_modal import price_alerts_modal, register_alerts_modal_callbacks, alerts_store
     ALERTS_MODAL_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ Modal Alertes non disponible: {e}")
+except ImportError:
+    # Silencieux : Modal Alertes optionnelle
     price_alerts_modal = None
     register_alerts_modal_callbacks = None
     alerts_store = None
@@ -43,19 +43,15 @@ try:
     from ..components.crypto_search_bar import crypto_search_bar, CryptoSearchBar
     from ..components.technical_indicators import technical_indicators, TechnicalIndicators
     from ..components.crypto_chart_components import crypto_chart_components, CryptoChartComponents
-    print("🔄 Initialisation des modules modulaires...")
     MODULAR_COMPONENTS_AVAILABLE = True
-    print("✅ Modules modulaires disponibles")
-except ImportError as e:
-    print(f"⚠️ Modules modulaires non disponibles: {e}")
+except ImportError:
+    # Silencieux : Modules modulaires optionnels
     MODULAR_COMPONENTS_AVAILABLE = False
 
 # Indicateurs structurels Phase 1 - Import conditionnel
 try:
     from dash_modules.core.calculators import StructuralIndicatorsCalculator
     STRUCTURAL_INDICATORS_AVAILABLE = True
-    print("📊 Chargement des indicateurs structurels Phase 1...")
-    print("✅ Mode indicateurs structurels activé")
 except ImportError:
     STRUCTURAL_INDICATORS_AVAILABLE = False
 
@@ -70,8 +66,6 @@ try:
     
     SMART_MONEY_AVAILABLE = True
     smart_money_indicators = SmartMoneyIndicators()
-    print("🧠 Fair Value Gaps Smart Money disponibles")
-    print("📦 Order Blocks Smart Money disponibles")
 except ImportError:
     SMART_MONEY_AVAILABLE = False
     smart_money_indicators = None
@@ -88,14 +82,11 @@ class CryptoModule:
     def __init__(self):
         global global_crypto_module_instance
         
-        # Charger VRAIES données Binance via API
+        # Charger VRAIES données Binance via API (silencieux pour accélerer démarrage)
         try:
-            print("🔄 Chargement symboles Binance...")
             self.crypto_symbols = binance_provider.get_all_symbols()
-            print(f"✅ {len(self.crypto_symbols)} symboles Binance chargés")
-        except Exception as e:
-            print(f"⚠️ Erreur API Binance, utilisation liste de fallback: {e}")
-            # Fallback en cas d'erreur API
+        except Exception:
+            # Fallback silencieux en cas d'erreur API
             self.crypto_symbols = [
                 'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT',
                 'SOLUSDT', 'DOTUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LTCUSDT',
@@ -115,7 +106,7 @@ class CryptoModule:
         # Initialiser le symbole par défaut
         self.initialize_default_symbol()
         
-        print("✅ CryptoModule nouveau initialisé et enregistré globalement")
+        # Silencieux : Initialisation module crypto
 
     def get_supported_timeframes(self):
         """Retourne les timeframes supportés"""
@@ -133,8 +124,7 @@ class CryptoModule:
         """Initialise le symbole par défaut (BTCUSDT)"""
         self.current_symbol = 'BTCUSDT'
         self.current_timeframe = '1h'
-        print(f"🪙 Symbole par défaut initialisé: {self.current_symbol}")
-        print(f"⏰ Timeframe par défaut initialisé: {self.current_timeframe}")
+        # Silencieux : Symbole et timeframe par défaut
 
     # =====================================================
     # 📊 MÉTHODES DE CRÉATION DE GRAPHIQUES
@@ -431,12 +421,9 @@ class CryptoModule:
     def refresh_crypto_symbols(self):
         """Rafraîchit la liste des symboles depuis Binance API"""
         try:
-            print("🔄 Rafraîchissement symboles Binance...")
             self.crypto_symbols = binance_provider.get_all_symbols()
-            print(f"✅ {len(self.crypto_symbols)} symboles mis à jour")
             return True
-        except Exception as e:
-            print(f"❌ Erreur rafraîchissement symboles: {e}")
+        except Exception:
             return False
 
     def create_search_component(self):
@@ -450,7 +437,7 @@ class CryptoModule:
             if 'BTCUSDT' in top_symbols:
                 top_symbols.remove('BTCUSDT')
             top_symbols.insert(0, 'BTCUSDT')
-            print(f"🔄 Dropdown populé avec {len(top_symbols)} symboles")
+            # Silencieux : Dropdown populé
         except:
             # Fallback symboles populaires si erreur
             top_symbols = [
@@ -676,7 +663,7 @@ class CryptoModule:
         # Utiliser le nouveau système centralisé
         from .crypto_callbacks import register_all_crypto_callbacks
         register_all_crypto_callbacks(app)
-        print("✅ Callbacks crypto configurés via système centralisé")
+        # Silencieux : Callbacks crypto configurés
 
     def register_callbacks(self, app):
         """ANCIEN SYSTÈME - SUPPRIMÉ
@@ -686,7 +673,7 @@ class CryptoModule:
         """
         # Tous les callbacks ont été migrés vers crypto_callbacks.py
         # Cette méthode ne fait plus rien pour éviter les duplications
-        print("⚠️ register_callbacks() obsolète - utilise crypto_callbacks.py")
+        # Silencieux : Méthode obsolète
         pass
 
     # =====================================================
