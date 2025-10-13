@@ -55,13 +55,20 @@ class CoinGeckoAPI:
             self.rate_limit_calls += 1
 
             if response.status_code == 200:
-                return response.json()
+                try:
+                    return response.json()
+                except ValueError as e:
+                    print(f"❌ Erreur parsing JSON CoinGecko: {e}")
+                    return {}
             else:
                 print(f"❌ CoinGecko API error: {response.status_code}")
                 return {}
 
-        except Exception as e:
+        except requests.RequestException as e:
             print(f"❌ CoinGecko request error: {e}")
+            return {}
+        except Exception as e:
+            print(f"❌ CoinGecko unexpected error: {e}")
             return {}
 
     def get_market_data(
@@ -126,6 +133,13 @@ class CoinGeckoAPI:
 
     def get_price_data(self, coin_id: str, days: int = 7) -> pd.DataFrame:
         """Get historical price data for a specific coin"""
+        # Validation du coin_id
+        if not isinstance(coin_id, str) or not coin_id.strip():
+            print(f"❌ Coin ID invalide: {coin_id}")
+            return pd.DataFrame()
+
+        coin_id = coin_id.lower().strip()
+
         print(f"📈 Fetching price history for {coin_id}...")
 
         try:

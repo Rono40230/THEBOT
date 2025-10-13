@@ -137,6 +137,18 @@ def register_chart_callbacks(app) -> None:
             if not timeframe:
                 timeframe = "1h"
 
+            # Validation basique du symbole
+            if not isinstance(symbol, str) or not symbol.strip():
+                logger.warning(f"⚠️ Symbole invalide: {symbol}, utilisation BTCUSDT")
+                symbol = "BTCUSDT"
+            symbol = symbol.upper().strip()
+
+            # Validation du timeframe
+            valid_timeframes = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"]
+            if timeframe not in valid_timeframes:
+                logger.warning(f"⚠️ Timeframe invalide: {timeframe}, utilisation 1h")
+                timeframe = "1h"
+
             # Silencieux : Mise à jour graphiques
 
             # Récupérer données depuis data provider
@@ -165,7 +177,11 @@ def register_chart_callbacks(app) -> None:
 
                 response = requests.get(url, params=params, timeout=10)
                 if response.status_code == 200:
-                    data = response.json()
+                    try:
+                        data = response.json()
+                    except ValueError as e:
+                        logger.error(f"❌ Erreur parsing JSON Binance pour {symbol}: {e}")
+                        return self._create_empty_chart()
 
                     df = pd.DataFrame(
                         data,

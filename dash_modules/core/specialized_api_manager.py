@@ -60,6 +60,12 @@ class SpecializedAPIManager:
         """
         Détermine le provider optimal pour un symbole donné
         """
+        # Validation basique du symbole
+        if not isinstance(symbol, str) or not symbol.strip():
+            raise ValueError(f"Symbole invalide: {symbol}")
+
+        symbol = symbol.upper().strip()
+
         market_type = self._detect_market_type(symbol)
         config = self.specialization_config.get(market_type, {})
 

@@ -56,7 +56,11 @@ class FearGreedGaugeComponent:
                 logger.error(f"❌ Erreur API Fear & Greed: {response.status_code}")
                 return {}
 
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as e:
+                logger.error(f"❌ Erreur parsing JSON Fear & Greed: {e}")
+                return {}
 
             if not data.get("data"):
                 return {}
@@ -111,7 +115,11 @@ class FearGreedGaugeComponent:
                 )
                 return []
 
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as e:
+                logger.error(f"❌ Erreur parsing JSON Fear & Greed historique: {e}")
+                return []
 
             if not data.get("data"):
                 return []

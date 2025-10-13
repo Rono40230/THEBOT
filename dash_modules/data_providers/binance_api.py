@@ -71,30 +71,15 @@ class BinanceProvider:
         except Exception as e:
             logger.error(f"Erreur inattendue Binance: {e}")
             return None
-        """Effectuer une requête API Binance (GRATUITE)"""
-        try:
-            # Rate limiting très léger (Binance est généreux)
-            current_time = time.time()
-            time_since_last = current_time - self.last_request_time
-            if time_since_last < self.request_delay:
-                time.sleep(self.request_delay - time_since_last)
-
-            url = f"{self.base_url}/{endpoint}"
-            response = requests.get(url, params=params or {}, timeout=30)
-            self.last_request_time = time.time()
-
-            if response.status_code == 200:
-                return response.json()
-            else:
-                logger.error(f"Erreur HTTP Binance: {response.status_code}")
-                return None
-
-        except Exception as e:
-            logger.error(f"Erreur requête Binance: {str(e)}")
-            return None
 
     def get_ticker_price(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Récupérer prix actuel d'un symbole"""
+        # Validation du symbole
+        if not isinstance(symbol, str) or not symbol.strip():
+            logger.error(f"❌ Symbole invalide: {symbol}")
+            return None
+
+        symbol = symbol.upper().strip()
         cache_key = f"{symbol}_price"
 
         # Cache très court (5 secondes) pour prix en temps réel
@@ -120,6 +105,12 @@ class BinanceProvider:
 
     def get_ticker_24hr(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Récupérer statistiques 24h d'un symbole"""
+        # Validation du symbole
+        if not isinstance(symbol, str) or not symbol.strip():
+            logger.error(f"❌ Symbole invalide: {symbol}")
+            return None
+
+        symbol = symbol.upper().strip()
         cache_key = f"{symbol}_24hr"
 
         # Cache 30 secondes pour stats 24h
@@ -394,6 +385,13 @@ class BinanceProvider:
 
     def get_24hr_ticker(self, symbol: str = None) -> Dict:
         """Récupère les statistiques 24h pour un symbole ou tous"""
+        # Validation du symbole si fourni
+        if symbol is not None:
+            if not isinstance(symbol, str) or not symbol.strip():
+                logger.error(f"❌ Symbole invalide: {symbol}")
+                return {}
+            symbol = symbol.upper().strip()
+
         try:
             endpoint = "/ticker/24hr"
             params = {}
