@@ -1,6 +1,7 @@
 """
 THEBOT - Technical Indicators Module
 Module dédié pour tous les indicateurs techniques et structurels
+Utilise maintenant l'IndicatorFactory unifiée pour éviter les duplications
 """
 
 from typing import Any, Dict, List, Optional
@@ -10,9 +11,18 @@ import pandas as pd
 
 from dash_modules.core.price_formatter import format_price_label_adaptive
 
+# Import de la factory unifiée
+try:
+    from thebot.indicators.factory import get_indicator_factory
+    _indicator_factory = get_indicator_factory()
+    FACTORY_AVAILABLE = True
+except ImportError:
+    _indicator_factory = None
+    FACTORY_AVAILABLE = False
+
 
 class TechnicalIndicators:
-    """Classe pour tous les calculs d'indicateurs techniques"""
+    """Classe pour tous les calculs d'indicateurs techniques - Maintenant utilise IndicatorFactory"""
 
     def __init__(self):
         self.default_periods = {
@@ -28,37 +38,56 @@ class TechnicalIndicators:
     # === INDICATEURS DE BASE ===
 
     def calculate_sma(self, data: pd.Series, period: int = 20) -> pd.Series:
-        """Calcule la moyenne mobile simple"""
-        return data.rolling(window=period).mean()
+        """Calcule la moyenne mobile simple via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            result = _indicator_factory.calculate_sma(data, period=period)
+            return pd.Series(result, index=data.index)
+        else:
+            # Fallback direct (code original)
+            return data.rolling(window=period).mean()
 
     def calculate_ema(self, data: pd.Series, period: int = 21) -> pd.Series:
-        """Calcule la moyenne mobile exponentielle"""
-        return data.ewm(span=period, adjust=False).mean()
+        """Calcule la moyenne mobile exponentielle via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            result = _indicator_factory.calculate_ema(data, period=period)
+            return pd.Series(result, index=data.index)
+        else:
+            # Fallback direct (code original)
+            return data.ewm(span=period, adjust=False).mean()
 
     def calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
-        """Calcule le RSI"""
-        try:
-            delta = prices.diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-            rs = gain / loss
-            rsi = 100 - (100 / (1 + rs))
-            return rsi
-        except:
-            return pd.Series([50] * len(prices), index=prices.index)
+        """Calcule le RSI via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            result = _indicator_factory.calculate_rsi(prices, period=period)
+            return pd.Series(result, index=prices.index)
+        else:
+            # Fallback direct (code original)
+            try:
+                delta = prices.diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+                rs = gain / loss
+                rsi = 100 - (100 / (1 + rs))
+                return rsi
+            except:
+                return pd.Series([50] * len(prices), index=prices.index)
 
     def calculate_atr(self, data: pd.DataFrame, period: int = 14) -> pd.Series:
-        """Calcule l'ATR (Average True Range)"""
-        try:
-            high_low = data["high"] - data["low"]
-            high_close = np.abs(data["high"] - data["close"].shift())
-            low_close = np.abs(data["low"] - data["close"].shift())
-            ranges = pd.concat([high_low, high_close, low_close], axis=1)
-            true_range = ranges.max(axis=1)
-            atr = true_range.rolling(period).mean()
-            return atr
-        except:
-            return pd.Series([1] * len(data), index=data.index)
+        """Calcule l'ATR (Average True Range) via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_atr(data, period=period)
+        else:
+            # Fallback direct (code original)
+            try:
+                high_low = data["high"] - data["low"]
+                high_close = np.abs(data["high"] - data["close"].shift())
+                low_close = np.abs(data["low"] - data["close"].shift())
+                ranges = pd.concat([high_low, high_close, low_close], axis=1)
+                true_range = ranges.max(axis=1)
+                atr = true_range.rolling(period).mean()
+                return atr
+            except:
+                return pd.Series([1] * len(data), index=data.index)
 
     def calculate_atr_signals(
         self, data: pd.DataFrame, period: int = 14, multiplier: float = 2.0

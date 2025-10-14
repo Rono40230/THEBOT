@@ -1,6 +1,6 @@
 """
 Calculators Module - THEBOT Dash
-Calculs d'indicateurs techniques optimisés
+Calculs d'indicateurs techniques via IndicatorFactory unifiée
 """
 
 from typing import Any, Dict, List, Optional
@@ -8,51 +8,57 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-# Imports THEBOT avec gestion d'erreur
+# Import de la factory unifiée
 try:
-    import os
-    import sys
-
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
-
-    from thebot.indicators.basic.ema.calculator import EMACalculator
-    from thebot.indicators.basic.ema.config import EMAConfig
-    from thebot.indicators.basic.sma.calculator import SMACalculator
-    from thebot.indicators.basic.sma.config import SMAConfig
-    from thebot.indicators.oscillators.rsi.calculator import RSICalculator
-    from thebot.indicators.oscillators.rsi.config import RSIConfig
-    from thebot.indicators.volatility.atr.calculator import ATRCalculator
-    from thebot.indicators.volatility.atr.config import ATRConfig
-
-    THEBOT_AVAILABLE = True
-    print("✅ Calculateurs THEBOT chargés dans module")
-
+    from thebot.indicators.factory import get_indicator_factory
+    _indicator_factory = get_indicator_factory()
+    FACTORY_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️ Calculateurs THEBOT indisponibles: {e}")
-    THEBOT_AVAILABLE = False
+    print(f"⚠️ IndicatorFactory indisponible: {e}")
+    _indicator_factory = None
+    FACTORY_AVAILABLE = False
 
 
 class TechnicalCalculators:
-    """Calculateurs d'indicateurs techniques optimisés"""
+    """Calculateurs d'indicateurs techniques - Maintenant utilise IndicatorFactory"""
 
     def __init__(self):
-        self.thebot_available = THEBOT_AVAILABLE
+        self.factory_available = FACTORY_AVAILABLE
 
     def calculate_sma(self, prices: List[float], period: int = 20) -> List[float]:
-        """Calculer Simple Moving Average"""
+        """Calculer Simple Moving Average via IndicatorFactory"""
+        if self.factory_available:
+            return _indicator_factory.calculate_sma(prices, period=period)
+        else:
+            # Fallback pandas simple
+            return pd.Series(prices).rolling(window=period).mean().fillna(0).tolist()
 
-        if self.thebot_available and len(prices) >= period:
-            try:
-                # Tentative avec calculateur THEBOT
-                if hasattr(SMACalculator, "calculate_batch"):
-                    return SMACalculator.calculate_batch(prices, period)
-                else:
-                    print("Info SMA: Utilisation fallback pandas")
-            except Exception as e:
-                print(f"Info SMA: Fallback pandas - {e}")
+    def calculate_ema(self, prices: List[float], period: int = 12) -> List[float]:
+        """Calculer Exponential Moving Average via IndicatorFactory"""
+        if self.factory_available:
+            return _indicator_factory.calculate_ema(prices, period=period)
+        else:
+            # Fallback pandas simple
+            return pd.Series(prices).ewm(span=period).mean().fillna(0).tolist()
 
-        # Fallback pandas (très fiable)
-        return pd.Series(prices).rolling(window=period).mean().fillna(0).tolist()
+    def calculate_rsi(self, prices: List[float], period: int = 14) -> List[float]:
+        """Calculer Relative Strength Index via IndicatorFactory"""
+        if self.factory_available:
+            return _indicator_factory.calculate_rsi(prices, period=period)
+        else:
+            # Fallback pandas simple
+            if len(prices) < period + 1:
+                return [50.0] * len(prices)
+
+            series = pd.Series(prices)
+            delta = series.diff()
+            gain = delta.where(delta > 0, 0)
+            loss = -delta.where(delta < 0, 0)
+            avg_gain = gain.rolling(window=period).mean()
+            avg_loss = loss.rolling(window=period).mean()
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            return rsi.fillna(50).tolist()
 
     def calculate_ema(self, prices: List[float], period: int = 12) -> List[float]:
         """Calculer Exponential Moving Average"""
@@ -218,31 +224,24 @@ class TechnicalCalculators:
         closes: List[float],
         period: int = 14,
     ) -> List[float]:
-        """Calculer Average True Range"""
+        """Calculer Average True Range via IndicatorFactory"""
+        if self.factory_available:
+            return _indicator_factory.calculate_atr((highs, lows, closes), period=period)
+        else:
+            # Fallback direct
+            if len(closes) < period + 1:
+                return [0.0] * len(closes)
 
-        if len(closes) < period + 1:
-            return [0.0] * len(closes)
-
-        # Conversion en séries pandas
-        high_series = pd.Series(highs)
-        low_series = pd.Series(lows)
-        close_series = pd.Series(closes)
-
-        # Previous close
-        prev_close = close_series.shift(1)
-
-        # True Range components
-        tr1 = high_series - low_series  # High - Low
-        tr2 = abs(high_series - prev_close)  # High - Previous Close
-        tr3 = abs(low_series - prev_close)  # Low - Previous Close
-
-        # True Range = max des 3 composants
-        true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-
-        # ATR = moyenne mobile du True Range
-        atr = true_range.rolling(window=period).mean()
-
-        return atr.fillna(0).tolist()
+            high_series = pd.Series(highs)
+            low_series = pd.Series(lows)
+            close_series = pd.Series(closes)
+            prev_close = close_series.shift(1)
+            tr1 = high_series - low_series
+            tr2 = np.abs(high_series - prev_close)
+            tr3 = np.abs(low_series - prev_close)
+            true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+            atr = true_range.rolling(window=period).mean()
+            return atr.fillna(0).tolist()
 
     def calculate_atr_signals(
         self,
