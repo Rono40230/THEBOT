@@ -416,16 +416,28 @@ class RealDataManager:
     def get_market_summary(self) -> Dict[str, Any]:
         """Récupérer résumé général du marché"""
         try:
-            summary = self.provider.get_market_summary()
-            summary["supported_markets"] = len(self.supported_markets)
-            summary["provider"] = "binance"
-            return summary
+            # Compter les marchés par type
+            crypto_count = sum(1 for m in self.supported_markets.values() if m["type"] == "crypto")
+            stocks_count = sum(1 for m in self.supported_markets.values() if m["type"] == "stocks")
+            forex_count = sum(1 for m in self.supported_markets.values() if m["type"] == "forex")
+
+            return {
+                "total_markets": len(self.supported_markets),
+                "crypto_markets": crypto_count,
+                "stock_markets": stocks_count,
+                "forex_markets": forex_count,
+                "providers": list(self.providers.keys()),
+                "cache_enabled": self.cache is not None,
+            }
 
         except Exception as e:
             logger.error(f"Erreur résumé marché: {str(e)}")
             return {
-                "supported_markets": len(self.supported_markets),
-                "provider": "binance",
+                "total_markets": len(self.supported_markets),
+                "crypto_markets": 0,
+                "stock_markets": 0,
+                "forex_markets": 0,
+                "providers": list(self.providers.keys()),
                 "error": str(e),
             }
 
@@ -575,49 +587,116 @@ class RealDataManager:
         return results[:15]
 
     def get_api_status(self) -> Dict[str, Any]:
-        """Statut de l'API Binance"""
-        try:
-            # Test simple avec un symbole populaire
-            test_data = self.provider.get_ticker_price("BTCUSDT")
+        """Statut des APIs disponibles"""
+        status = {
+            "providers": {},
+            "cache_status": "enabled" if self.cache is not None else "disabled",
+            "total_markets": len(self.supported_markets),
+        }
 
-            return {
-                "binance": {
-                    "active": test_data is not None,
-                    "name": "Binance API",
-                    "markets_count": len(self.supported_markets),
-                    "type": "Gratuit et illimité",
-                    "last_test": datetime.now(),
-                    "test_result": "Success" if test_data else "Failed",
-                }
-            }
+        # Tester chaque provider
+        for provider_name, provider in self.providers.items():
+            try:
+                if provider_name == "binance":
+                    # Test simple avec un symbole populaire
+                    test_data = provider.get_ticker_price("BTCUSDT")
+                    status["providers"][provider_name] = {
+                        "active": test_data is not None,
+                        "name": "Binance API",
+                        "markets_count": sum(1 for m in self.supported_markets.values() if m["provider"] == "binance"),
+                        "type": "Gratuit et illimité",
+                        "last_test": datetime.now(),
+                        "test_result": "Success" if test_data else "Failed",
+                    }
+                elif provider_name == "coin_gecko":
+                    # Test CoinGecko
+                    test_data = provider.get_price("bitcoin")
+                    status["providers"][provider_name] = {
+                        "active": test_data is not None,
+                        "name": "CoinGecko API",
+                        "markets_count": sum(1 for m in self.supported_markets.values() if m["provider"] == "coin_gecko"),
+                        "type": "Gratuit avec rate limits",
+                        "last_test": datetime.now(),
+                        "test_result": "Success" if test_data else "Failed",
+                    }
+                elif provider_name == "twelve_data":
+                    # Test Twelve Data
+                    status["providers"][provider_name] = {
+                        "active": hasattr(provider, 'api_key') and provider.api_key is not None,
+                        "name": "Twelve Data API",
+                        "markets_count": sum(1 for m in self.supported_markets.values() if m["provider"] == "twelve_data"),
+                        "type": "Payant",
+                        "last_test": datetime.now(),
+                        "test_result": "Configured" if (hasattr(provider, 'api_key') and provider.api_key) else "No API Key",
+                    }
+                else:
+                    status["providers"][provider_name] = {
+                        "active": False,
+                        "name": f"{provider_name} API",
+                        "markets_count": 0,
+                        "type": "Unknown",
+                        "last_test": datetime.now(),
+                        "test_result": "Not implemented",
+                    }
 
-        except Exception as e:
-            return {
-                "binance": {
+            except Exception as e:
+                status["providers"][provider_name] = {
                     "active": False,
-                    "name": "Binance API",
+                    "name": f"{provider_name} API",
                     "markets_count": 0,
-                    "type": "Gratuit et illimité",
+                    "type": "Unknown",
                     "last_test": datetime.now(),
                     "test_result": f"Error: {str(e)}",
                 }
-            }
+
+        return status
 
     def get_configuration_info(self):
         """Afficher informations de configuration"""
         print("\n" + "=" * 60)
-        print("🚀 THEBOT - CONFIGURATION BINANCE API")
+        print("🚀 THEBOT - CONFIGURATION APIs MULTI-PROVIDERS")
         print("=" * 60)
         print()
-        print("✅ Binance API - GRATUITE et ILLIMITÉE")
+        print("✅ APIs configurées:")
         print(f"   📊 Marchés disponibles: {len(self.supported_markets)}")
-        print("   🔄 Données en temps réel")
-        print("   🎯 Aucune clé API requise")
-        print("   ⚡ Rate limit généreux (1200 req/min)")
+        print(f"   🔄 Providers actifs: {len(self.providers)}")
+        print("   🎯 Support multi-providers (Binance gratuit, CoinGecko, Twelve Data)")
         print()
 
-        # Test de connexion
+        # Test de connexion pour chaque provider
         status = self.get_api_status()
+
+        for provider_name, provider_status in status["providers"].items():
+            active = "✅" if provider_status["active"] else "❌"
+            print(f"{active} {provider_status['name']} - {provider_status['type']}")
+            print(f"   📊 Marchés: {provider_status['markets_count']}")
+            print(f"   🔄 Status: {provider_status['test_result']}")
+            print()
+
+        print("📈 Marchés supportés:")
+        crypto_count = sum(1 for m in self.supported_markets.values() if m["type"] == "crypto")
+        stocks_count = sum(1 for m in self.supported_markets.values() if m["type"] == "stocks")
+        forex_count = sum(1 for m in self.supported_markets.values() if m["type"] == "forex")
+
+        print(f"   • Crypto: {crypto_count} marchés")
+        print(f"   • Actions: {stocks_count} marchés")
+        print(f"   • Forex: {forex_count} marchés")
+        print()
+
+        print("=" * 60)
+        print("🎯 Prêt pour le trading avec des données multi-providers !")
+        print("=" * 60)
+
+        return {
+            "supported_providers": list(self.providers.keys()),
+            "market_types": {
+                "crypto": crypto_count,
+                "stocks": stocks_count,
+                "forex": forex_count,
+            },
+            "total_supported_markets": len(self.supported_markets),
+            "api_status": status,
+        }
         binance_status = status.get("binance", {})
 
         if binance_status.get("active", False):

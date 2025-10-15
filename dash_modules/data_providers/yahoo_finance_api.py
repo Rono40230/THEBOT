@@ -194,20 +194,6 @@ class YahooFinanceAPI:
 
         return self.get_stock_data(pair, period)
 
-    def get_quote(self, symbols: List[str]) -> Dict:
-        """Get current quotes for symbols"""
-        print(f"💰 Fetching quotes for {len(symbols)} symbols...")
-
-        endpoint = "/finance/quote"
-        params = {"symbols": ",".join(symbols)}
-
-        data = self._make_request(endpoint, params)
-
-        if not data or "quoteResponse" not in data:
-            return {}
-
-        return self._parse_quotes(data["quoteResponse"])
-
     def search_symbols(self, query: str) -> List[Dict]:
         """Search for symbols"""
         print(f"🔍 Searching Yahoo Finance for: {query}")

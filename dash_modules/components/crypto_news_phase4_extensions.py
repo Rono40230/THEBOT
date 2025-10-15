@@ -107,139 +107,12 @@ class CryptoNewsPhase4Extensions:
         )
 
     def register_callbacks(self):
-        """Enregistre les callbacks pour les widgets compacts"""
-        if not PHASE4_AVAILABLE:
-            return
-
-        # Callback Fear & Greed
-        @callback(
-            Output(f"{self.widget_prefix}-fear-greed", "children"),
-            [Input(f"{self.widget_prefix}-interval", "n_intervals")],
-            prevent_initial_call=False,
-        )
-        def update_fear_greed_compact(n_intervals):
-            try:
-                data = fear_greed_gauge.get_fear_greed_index()
-                if not data:
-                    return html.P("N/A", className="text-muted mb-0")
-
-                value = data["value"]
-                classification = data["value_classification"]
-
-                # Couleur selon valeur
-                if value <= 25:
-                    color_class = "text-danger"
-                    emoji = "😱"
-                elif value <= 45:
-                    color_class = "text-warning"
-                    emoji = "😰"
-                elif value <= 55:
-                    color_class = "text-secondary"
-                    emoji = "😐"
-                elif value <= 75:
-                    color_class = "text-info"
-                    emoji = "😊"
-                else:
-                    color_class = "text-success"
-                    emoji = "🤑"
-
-                return html.Div(
-                    [
-                        html.H5(f"{emoji} {value}", className=f"{color_class} mb-1"),
-                        html.P(classification, className="small text-muted mb-0"),
-                    ]
-                )
-
-            except Exception as e:
-                return html.P("Erreur", className="text-muted small mb-0")
-
-        # Callback Top Gainers
-        @callback(
-            Output(f"{self.widget_prefix}-gainers", "children"),
-            [Input(f"{self.widget_prefix}-interval", "n_intervals")],
-            prevent_initial_call=False,
-        )
-        def update_gainers_compact(n_intervals):
-            try:
-                gainers = top_performers.get_top_gainers(3)
-                if not gainers:
-                    return html.P("N/A", className="text-muted small mb-0")
-
-                items = []
-                for gainer in gainers:
-                    symbol = gainer["symbol"].replace("USDT", "")
-                    change = gainer["change_percent"]
-
-                    items.append(
-                        html.Div(
-                            [
-                                html.Span(f"{symbol}: ", className="fw-bold small"),
-                                html.Span(
-                                    f"+{change:.1f}%", className="text-success small"
-                                ),
-                            ],
-                            className="d-flex justify-content-between",
-                        )
-                    )
-
-                return html.Div(items)
-
-            except Exception as e:
-                return html.P("Erreur", className="text-muted small mb-0")
-
-        # Callback Market Trends
-        @callback(
-            Output(f"{self.widget_prefix}-trends", "children"),
-            [Input(f"{self.widget_prefix}-interval", "n_intervals")],
-            prevent_initial_call=False,
-        )
-        def update_trends_compact(n_intervals):
-            try:
-                # Volume analysis
-                volume_analysis = crypto_trends.get_volume_analysis()
-                if not volume_analysis:
-                    return html.P("N/A", className="text-muted small mb-0")
-
-                sentiment = volume_analysis.get("market_sentiment", "Unknown")
-                gainers_count = volume_analysis.get("gainers_count", 0)
-                losers_count = volume_analysis.get("losers_count", 0)
-
-                # Tendance générale
-                if gainers_count > losers_count:
-                    trend_emoji = "📈"
-                    trend_color = "text-success"
-                elif losers_count > gainers_count:
-                    trend_emoji = "📉"
-                    trend_color = "text-danger"
-                else:
-                    trend_emoji = "➡️"
-                    trend_color = "text-secondary"
-
-                return html.Div(
-                    [
-                        html.P(
-                            [
-                                html.Span(f"{trend_emoji} ", className=trend_color),
-                                html.Span(
-                                    f"{gainers_count}↗️ {losers_count}↘️",
-                                    className="small",
-                                ),
-                            ],
-                            className="mb-1",
-                        ),
-                        html.P(
-                            (
-                                sentiment.split()[1]
-                                if len(sentiment.split()) > 1
-                                else sentiment
-                            ),
-                            className="small text-muted mb-0",
-                        ),
-                    ]
-                )
-
-            except Exception as e:
-                return html.P("Erreur", className="text-muted small mb-0")
+        """CALLBACKS MIGRÉS vers NewsCallbacks manager"""
+        # Les callbacks suivants ont été déplacés dans dash_modules/callbacks/managers/news_callbacks.py
+        # - update_fear_greed_compact
+        # - update_gainers_compact
+        # - update_trends_compact
+        pass
 
 
 # Instance globale pour utilisation modulaire
@@ -252,8 +125,9 @@ def get_phase4_sidebar_widgets() -> html.Div:
 
 
 def register_phase4_callbacks():
-    """Fonction utilitaire pour enregistrer les callbacks Phase 4"""
-    crypto_news_phase4_extensions.register_callbacks()
+    """CALLBACKS MIGRÉS vers NewsCallbacks manager"""
+    # Les callbacks ont été déplacés dans dash_modules/callbacks/managers/news_callbacks.py
+    pass
 
 
 # Auto-registration des callbacks si importé

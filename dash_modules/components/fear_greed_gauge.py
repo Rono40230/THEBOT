@@ -16,6 +16,8 @@ import plotly.graph_objects as go
 import requests
 from dash import Input, Output, callback, dcc, html
 
+from ..core.intelligent_cache import get_global_cache
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,9 +26,7 @@ class FearGreedGaugeComponent:
 
     def __init__(self):
         self.api_url = "https://api.alternative.me/fng/"
-        self.cache_duration = 300  # 5 minutes pour Fear & Greed
-        self.last_update = {}
-        self.cache = {}
+        self.cache = get_global_cache()  # Utiliser le cache intelligent global
 
         # Niveaux d'alerte
         self.alert_levels = {
@@ -40,14 +40,12 @@ class FearGreedGaugeComponent:
     def get_fear_greed_index(self) -> Dict:
         """Récupère l'index Fear & Greed actuel"""
         try:
-            cache_key = "current_fear_greed"
-            now = datetime.now()
-
-            if (
-                cache_key in self.last_update
-                and (now - self.last_update[cache_key]).seconds < self.cache_duration
-            ):
-                return self.cache.get(cache_key, {})
+            # Vérifier le cache intelligent
+            cache_key = "fear_greed_current"
+            cached_result = self.cache.get(cache_key)
+            if cached_result is not None:
+                logger.debug("📋 Cache hit pour Fear & Greed index")
+                return cached_result
 
             # Requête API Fear & Greed
             response = requests.get(self.api_url, timeout=10)
@@ -81,8 +79,8 @@ class FearGreedGaugeComponent:
                 ),
             }
 
-            self.cache[cache_key] = result
-            self.last_update[cache_key] = now
+            # Mettre en cache le résultat avec le système intelligent
+            self.cache.set(cache_key, result)
 
             logger.info(
                 f"✅ Fear & Greed Index: {result['value']} ({result['value_classification']})"
@@ -96,14 +94,12 @@ class FearGreedGaugeComponent:
     def get_historical_data(self, days: int = 30) -> List[Dict]:
         """Récupère l'historique Fear & Greed"""
         try:
-            cache_key = f"historical_fear_greed_{days}"
-            now = datetime.now()
-
-            if (
-                cache_key in self.last_update
-                and (now - self.last_update[cache_key]).seconds < self.cache_duration
-            ):
-                return self.cache.get(cache_key, [])
+            # Vérifier le cache intelligent
+            cache_key = f"fear_greed_historical_{days}"
+            cached_result = self.cache.get(cache_key, days=days)
+            if cached_result is not None:
+                logger.debug(f"📋 Cache hit pour Fear & Greed historique ({days} jours)")
+                return cached_result
 
             # Requête historique
             url = f"{self.api_url}?limit={days}"
@@ -142,8 +138,8 @@ class FearGreedGaugeComponent:
             # Trier par date (plus récent en premier)
             historical.sort(key=lambda x: int(x["timestamp"]), reverse=True)
 
-            self.cache[cache_key] = historical
-            self.last_update[cache_key] = now
+            # Mettre en cache le résultat avec le système intelligent
+            self.cache.set(cache_key, historical, days=days)
 
             logger.info(f"✅ Historique Fear & Greed: {len(historical)} entrées")
             return historical
@@ -467,204 +463,5 @@ class FearGreedGaugeComponent:
 fear_greed_gauge = FearGreedGaugeComponent()
 
 
-# Callbacks pour le widget
-@callback(
-    [
-        Output("fear-greed-gauge-gauge", "figure"),
-        Output("fear-greed-gauge-historical-chart", "figure"),
-        Output("fear-greed-gauge-analysis", "children"),
-        Output("fear-greed-gauge-alerts-panel", "children"),
-    ],
-    [
-        Input("fear-greed-gauge-period", "value"),
-        Input("fear-greed-gauge-alerts", "value"),
-        Input("fear-greed-gauge-interval", "n_intervals"),
-    ],
-)
-def update_fear_greed_gauge(period, alert_types, n_intervals):
-    """Met à jour le widget Fear & Greed Gauge"""
-    try:
-        # Récupérer données actuelles et historiques
-        current_data = fear_greed_gauge.get_fear_greed_index()
-        historical_data = fear_greed_gauge.get_historical_data(period)
-
-        # Jauge principale
-        gauge_fig = go.Figure()
-
-        if current_data:
-            value = current_data["value"]
-
-            gauge_fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number+delta",
-                    value=value,
-                    domain={"x": [0, 1], "y": [0, 1]},
-                    title={
-                        "text": f"Fear & Greed Index<br>{current_data.get('value_classification', '')}"
-                    },
-                    delta={"reference": 50},
-                    gauge={
-                        "axis": {"range": [0, 100]},
-                        "bar": {"color": "darkblue"},
-                        "steps": [
-                            {"range": [0, 25], "color": "red"},
-                            {"range": [25, 45], "color": "orange"},
-                            {"range": [45, 55], "color": "yellow"},
-                            {"range": [55, 75], "color": "lightgreen"},
-                            {"range": [75, 100], "color": "green"},
-                        ],
-                        "threshold": {
-                            "line": {"color": "red", "width": 4},
-                            "thickness": 0.75,
-                            "value": value,
-                        },
-                    },
-                )
-            )
-
-        gauge_fig.update_layout(height=400, margin=dict(l=20, r=20, t=40, b=20))
-
-        # Graphique historique
-        hist_fig = go.Figure()
-
-        if historical_data:
-            dates = [
-                entry["date"] for entry in historical_data[::-1]
-            ]  # Inverser pour chronologique
-            values = [entry["value"] for entry in historical_data[::-1]]
-
-            hist_fig.add_trace(
-                go.Scatter(
-                    x=dates,
-                    y=values,
-                    mode="lines+markers",
-                    name="Fear & Greed Index",
-                    line=dict(color="blue", width=2),
-                    marker=dict(size=6),
-                )
-            )
-
-            # Ajouter zones colorées
-            hist_fig.add_hline(
-                y=25, line_dash="dash", line_color="red", annotation_text="Extreme Fear"
-            )
-            hist_fig.add_hline(
-                y=75,
-                line_dash="dash",
-                line_color="green",
-                annotation_text="Extreme Greed",
-            )
-            hist_fig.add_hrect(y0=0, y1=25, fillcolor="red", opacity=0.1)
-            hist_fig.add_hrect(y0=75, y1=100, fillcolor="green", opacity=0.1)
-
-        hist_fig.update_layout(
-            title=f"Fear & Greed Index - Last {period} Days",
-            xaxis_title="Date",
-            yaxis_title="Index Value",
-            height=300,
-            yaxis=dict(range=[0, 100]),
-        )
-
-        # Analyse des tendances
-        analysis_content = []
-        if current_data and historical_data:
-            trends = fear_greed_gauge.analyze_trends(historical_data)
-            sentiment = current_data.get("sentiment", {})
-            recommendation = current_data.get("recommendation", {})
-
-            analysis_content = [
-                html.Div(
-                    [
-                        html.H4("📊 Analyse Actuelle"),
-                        html.P(f"Valeur: {current_data['value']}/100"),
-                        html.P(
-                            f"Niveau: {current_data.get('level', 'Unknown').replace('_', ' ').title()}"
-                        ),
-                        html.P(
-                            f"Sentiment: {sentiment.get('emoji', '')} {sentiment.get('description', '')}"
-                        ),
-                        html.P(
-                            f"État marché: {sentiment.get('market_state', 'Unknown')}"
-                        ),
-                    ],
-                    className="analysis-current",
-                ),
-                (
-                    html.Div(
-                        [
-                            html.H4("📈 Tendances"),
-                            html.P(
-                                f"Direction: {trends.get('trend_direction', 'Unknown').title()}"
-                            ),
-                            html.P(f"Force: {trends.get('trend_strength', 0):.1f}"),
-                            html.P(f"Volatilité: {trends.get('volatility', 0):.1f}"),
-                            html.P(
-                                f"Durée zone: {trends.get('zone_duration', 0)} jours"
-                            ),
-                        ],
-                        className="analysis-trends",
-                    )
-                    if trends
-                    else html.Div()
-                ),
-                html.Div(
-                    [
-                        html.H4("💡 Recommandation"),
-                        html.P(f"Action: {recommendation.get('action', 'N/A')}"),
-                        html.P(
-                            f"Description: {recommendation.get('description', 'N/A')}"
-                        ),
-                        html.P(f"Risque: {recommendation.get('risk', 'N/A')}"),
-                        html.P(f"Horizon: {recommendation.get('timeframe', 'N/A')}"),
-                    ],
-                    className="analysis-recommendation",
-                ),
-            ]
-
-        # Alertes
-        alerts_content = []
-        if current_data and alert_types:
-            alerts = fear_greed_gauge.setup_alerts(current_data["value"])
-
-            for alert in alerts:
-                if alert["type"] in ["opportunity"] and "opportunities" in alert_types:
-                    alert_class = f"alert-{alert['level']}"
-                elif (
-                    alert["type"] in ["warning", "caution"]
-                    and "extremes" in alert_types
-                ):
-                    alert_class = f"alert-{alert['level']}"
-                elif alert["type"] == "transition" and "transitions" in alert_types:
-                    alert_class = "alert-info"
-                else:
-                    continue
-
-                alert_div = html.Div(
-                    [
-                        html.P(alert["message"], className="alert-message"),
-                        html.P(f"Action: {alert['action']}", className="alert-action"),
-                        html.P(
-                            f"Confiance: {alert['confidence']}%",
-                            className="alert-confidence",
-                        ),
-                    ],
-                    className=f"alert-item {alert_class}",
-                )
-
-                alerts_content.append(alert_div)
-
-        if not alerts_content:
-            alerts_content = [html.P("Aucune alerte active", className="no-alerts")]
-
-        return gauge_fig, hist_fig, analysis_content, alerts_content
-
-    except Exception as e:
-        logger.error(f"❌ Erreur callback Fear & Greed Gauge: {e}")
-
-        # Retourner vides en cas d'erreur
-        empty_fig = go.Figure()
-        empty_fig.update_layout(title="Données non disponibles")
-
-        error_content = [html.P(f"Erreur: {str(e)}", className="error-message")]
-
-        return empty_fig, empty_fig, error_content, error_content
+# Callbacks pour le widget - MIGRÉS vers MarketCallbacks manager
+# Le callback update_fear_greed_gauge a été déplacé dans dash_modules/callbacks/managers/market_callbacks.py

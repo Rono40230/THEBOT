@@ -13,17 +13,87 @@ import numpy as np
 import pandas as pd
 import requests
 
+from .provider_interfaces import DataProviderInterface
+from ..core.intelligent_cache import get_global_cache
+
 # Configuration du logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class BinanceProvider:
-    """Fournisseur de données Binance - GRATUIT et ILLIMITÉ"""
+class BinanceProvider(DataProviderInterface):
+    """Fournisseur de données Binance - GRATUIT et ILLIMITÉ - Implémente DataProviderInterface"""
+
+    @property
+    def name(self) -> str:
+        return "binance"
+
+    @property
+    def supported_markets(self) -> List[str]:
+        return self.popular_symbols
+
+    @property
+    def rate_limit_info(self) -> Dict[str, Any]:
+        return {
+            "requests_per_minute": 1200,
+            "requests_per_second": 20,
+            "has_free_tier": True,
+            "free_tier_limits": "Illimité pour les données de marché de base"
+        }
+
+    def validate_symbol(self, symbol: str) -> bool:
+        """Valide si un symbole est supporté par Binance"""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return False
+        return symbol.upper().strip() in [s.upper() for s in self.supported_markets]
+
+    def get_price_data(self, symbol: str, interval: str = "1d", limit: int = 100) -> Optional[Dict[str, Any]]:
+        """Récupère les données de prix historiques - Implémentation DataProviderInterface"""
+        df = self.get_klines(symbol, interval, limit)
+        if df is None:
+            return None
+
+        return {
+            "symbol": symbol,
+            "interval": interval,
+            "data": df.to_dict('records'),
+            "count": len(df),
+            "provider": self.name,
+            "timestamp": datetime.now()
+        }
+
+    def get_current_price(self, symbol: str) -> Optional[float]:
+        """Récupère le prix actuel - Implémentation DataProviderInterface"""
+        ticker_data = self.get_24hr_ticker(symbol)
+        if ticker_data and "lastPrice" in ticker_data:
+            return float(ticker_data["lastPrice"])
+        return None
+
+    def get_market_info(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Récupère les informations sur le marché - Implémentation DataProviderInterface"""
+        return self.get_24hr_ticker(symbol)
+
+    def is_available(self) -> bool:
+        """Vérifie si Binance est disponible - Implémentation DataProviderInterface"""
+        try:
+            # Test avec un symbole populaire
+            return self.get_current_price("BTCUSDT") is not None
+        except Exception:
+            return False
+
+    def get_status(self) -> Dict[str, Any]:
+        """Retourne le statut du provider - Implémentation DataProviderInterface"""
+        return {
+            "name": self.name,
+            "available": self.is_available(),
+            "supported_markets_count": len(self.supported_markets),
+            "rate_limit_info": self.rate_limit_info,
+            "last_request_time": datetime.fromtimestamp(self.last_request_time) if self.last_request_time > 0 else None
+        }
 
     def __init__(self):
         self.base_url = "https://api.binance.com/api/v3"
-        self.cache = {}
+        self.cache = get_global_cache()  # Utiliser le cache intelligent global
         self.last_request_time = 0
         self.request_delay = 0.1  # Binance permet 1200 req/min = 20 req/sec
 
@@ -44,8 +114,15 @@ class BinanceProvider:
         ]
 
     def _make_request(self, endpoint: str, params: Dict = None) -> Optional[Any]:
-        """Effectue une requête HTTP vers l'API Binance avec gestion d'erreurs"""
+        """Effectue une requête HTTP vers l'API Binance avec gestion d'erreurs et cache"""
         try:
+            # Vérifier le cache d'abord
+            cache_key = f"binance_{endpoint}"
+            cached_result = self.cache.get(cache_key, endpoint=endpoint, params=params or {})
+            if cached_result is not None:
+                logger.debug(f"📋 Cache hit pour {endpoint}")
+                return cached_result
+
             # Respecter le rate limit
             current_time = time.time()
             if current_time - self.last_request_time < self.request_delay:
@@ -58,7 +135,10 @@ class BinanceProvider:
             self.last_request_time = time.time()
 
             if response.status_code == 200:
-                return response.json()
+                result = response.json()
+                # Mettre en cache le résultat
+                self.cache.set(cache_key, result, endpoint=endpoint, params=params or {})
+                return result
             else:
                 logger.error(
                     f"Erreur HTTP Binance: {response.status_code} - {response.text}"
@@ -83,10 +163,9 @@ class BinanceProvider:
         cache_key = f"{symbol}_price"
 
         # Cache très court (5 secondes) pour prix en temps réel
-        if cache_key in self.cache:
-            cache_time, data = self.cache[cache_key]
-            if time.time() - cache_time < 5:
-                return data
+        cached_data = self.cache.get("crypto_prices", symbol=symbol)
+        if cached_data is not None:
+            return cached_data
 
         endpoint = "ticker/price"
         params = {"symbol": symbol}
@@ -98,7 +177,7 @@ class BinanceProvider:
                 "price": float(response["price"]),
                 "timestamp": datetime.now(),
             }
-            self.cache[cache_key] = (time.time(), price_data)
+            self.cache.set("crypto_prices", price_data, symbol=symbol)
             return price_data
 
         return None
@@ -114,10 +193,9 @@ class BinanceProvider:
         cache_key = f"{symbol}_24hr"
 
         # Cache 30 secondes pour stats 24h
-        if cache_key in self.cache:
-            cache_time, data = self.cache[cache_key]
-            if time.time() - cache_time < 30:
-                return data
+        cached_data = self.cache.get("crypto_ohlcv", symbol=symbol, timeframe="24h")
+        if cached_data is not None:
+            return cached_data
 
         endpoint = "ticker/24hr"
         params = {"symbol": symbol}

@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from dash_modules.data_providers.binance_api import BinanceProvider
 from dash_modules.data_providers.coin_gecko_api import CoinGeckoAPI
 from dash_modules.data_providers.real_data_manager import RealDataManager
+from dash_modules.core.intelligent_cache import IntelligentCache
 
 
 class TestBinanceAPIIntegration:
@@ -69,7 +70,8 @@ class TestBinanceAPIIntegration:
         assert "BTCUSDT" in symbols
 
     @patch('requests.get')
-    def test_network_error_handling(self, mock_get):
+    @patch.object(IntelligentCache, 'get', return_value=None)
+    def test_network_error_handling(self, mock_cache_get, mock_get):
         """Test gestion des erreurs réseau"""
         mock_get.side_effect = requests.RequestException("Network error")
 
@@ -77,7 +79,8 @@ class TestBinanceAPIIntegration:
         assert result is None
 
     @patch('requests.get')
-    def test_api_error_handling(self, mock_get):
+    @patch.object(IntelligentCache, 'get', return_value=None)
+    def test_api_error_handling(self, mock_cache_get, mock_get):
         """Test gestion des erreurs API"""
         mock_response = MagicMock()
         mock_response.status_code = 429  # Rate limit
@@ -111,32 +114,35 @@ class TestCoinGeckoAPIIntegration:
         assert isinstance(df, pd.DataFrame)
         if not df.empty:  # Si des données sont retournées
             assert "symbol" in df.columns
-            assert "price" in df.columns
+            assert "current_price" in df.columns
             assert "market_cap" in df.columns
             assert len(df) > 0
 
     def test_get_price_data_valid_coin(self):
         """Test récupération données prix pour coin valide"""
-        df = self.coingecko.get_price_data("bitcoin")
-        assert isinstance(df, pd.DataFrame)
-        if not df.empty:
-            assert len(df) > 0
-            assert "price" in df.columns
+        data = self.coingecko.get_price_data("BTC")
+        assert isinstance(data, dict)
+        if data:
+            assert "symbol" in data
+            assert "data" in data
+            assert len(data["data"]) > 0
 
     def test_get_price_data_invalid_coin(self):
         """Test gestion coin invalide"""
-        df = self.coingecko.get_price_data("")
-        assert isinstance(df, pd.DataFrame)
-        assert df.empty
+        data = self.coingecko.get_price_data("INVALID")
+        assert data is None
 
     @patch('requests.get')
-    def test_coingecko_network_error(self, mock_get):
+    @patch.object(IntelligentCache, 'get', return_value=None)
+    def test_coingecko_network_error(self, mock_cache_get, mock_get):
         """Test gestion erreurs réseau CoinGecko"""
         mock_get.side_effect = requests.RequestException("Network error")
 
         df = self.coingecko.get_market_data()
         assert isinstance(df, pd.DataFrame)
-        assert df.empty
+        # En cas d'erreur réseau, la méthode peut retourner un DataFrame vide ou lever une exception
+        # qui est catchée et retourne un DataFrame vide
+        assert len(df) == 0 or df.empty
 
 
 class TestRealDataManagerIntegration:
@@ -171,12 +177,10 @@ class TestRealDataManagerIntegration:
         """Test récupération statut des APIs"""
         status = self.manager.get_api_status()
         assert isinstance(status, dict)
-        assert "binance" in status
-        # Le statut peut ne contenir que Binance selon l'implémentation actuelle
-        binance_status = status["binance"]
-        assert isinstance(binance_status, dict)
-        assert "active" in binance_status
-        assert "name" in binance_status
+        assert "providers" in status
+        # Vérifier qu'il y a au moins un provider configuré
+        assert len(status["providers"]) > 0
+        # Le statut peut contenir différents providers selon la configuration
 
 
 class TestRSSIntegration:

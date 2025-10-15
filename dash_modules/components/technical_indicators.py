@@ -37,17 +37,36 @@ class TechnicalIndicators:
 
     # === INDICATEURS DE BASE ===
 
-    def calculate_sma(self, data: pd.Series, period: int = 20) -> pd.Series:
+    def calculate_sma(self, data: pd.DataFrame, period: int = 20) -> pd.Series:
         """Calcule la moyenne mobile simple via IndicatorFactory"""
         if FACTORY_AVAILABLE:
             result = _indicator_factory.calculate_sma(data, period=period)
-            return pd.Series(result, index=data.index)
+            return result
         else:
             # Fallback direct (code original)
-            return data.rolling(window=period).mean()
+            return data['close'].rolling(window=period).mean()
 
-    def calculate_ema(self, data: pd.Series, period: int = 21) -> pd.Series:
+    def calculate_ema(self, data: pd.DataFrame, period: int = 21) -> pd.Series:
         """Calcule la moyenne mobile exponentielle via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            result = _indicator_factory.calculate_ema(data, period=period)
+            return result
+        else:
+            # Fallback direct
+            return data['close'].ewm(span=period).mean()
+
+    def calculate_rsi(self, data: pd.DataFrame, period: int = 14) -> pd.Series:
+        """Calcule le RSI via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            result = _indicator_factory.calculate_rsi(data, period=period)
+            return result
+        else:
+            # Fallback direct
+            delta = data['close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            return 100 - (100 / (1 + rs))
         if FACTORY_AVAILABLE:
             result = _indicator_factory.calculate_ema(data, period=period)
             return pd.Series(result, index=data.index)
@@ -148,10 +167,15 @@ class TechnicalIndicators:
             }
 
     def calculate_macd(
-        self, prices: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
+        self, data: pd.DataFrame, fast: int = 12, slow: int = 26, signal: int = 9
     ) -> Dict:
-        """Calcule le MACD"""
-        try:
+        """Calcule le MACD via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            result = _indicator_factory.calculate_macd(data, fast_period=fast, slow_period=slow, signal_period=signal)
+            return result
+        else:
+            # Fallback direct
+            prices = data['close']
             # EMA rapide et lente
             ema_fast = prices.ewm(span=fast).mean()
             ema_slow = prices.ewm(span=slow).mean()
@@ -166,13 +190,6 @@ class TechnicalIndicators:
             histogram = macd_line - signal_line
 
             return {"macd": macd_line, "signal": signal_line, "histogram": histogram}
-        except Exception as e:
-            print(f"⚠️ Erreur calcul MACD: {e}")
-            return {
-                "macd": pd.Series([0] * len(prices), index=prices.index),
-                "signal": pd.Series([0] * len(prices), index=prices.index),
-                "histogram": pd.Series([0] * len(prices), index=prices.index),
-            }
 
     # === INDICATEURS STRUCTURELS ===
 
@@ -436,6 +453,154 @@ class TechnicalIndicators:
             print(f"⚠️ Erreur calcul Pivots: {e}")
             return {"pivot_levels": []}
 
+    # === NOUVEAUX INDICATEURS AVANCÉS ===
+
+    def calculate_supertrend(self, data: pd.DataFrame, period: int = 10, multiplier: float = 3.0) -> pd.DataFrame:
+        """Calcule SuperTrend via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_supertrend(data, period=period, multiplier=multiplier)
+        else:
+            # Fallback simple
+            supertrend_values = []
+            direction_values = []
+            
+            for i in range(len(data)):
+                if i < period:
+                    supertrend_values.append(data['close'].iloc[i])
+                    direction_values.append(0)
+                else:
+                    # Logique SuperTrend simplifiée
+                    atr_window = data['high'].iloc[i-period:i+1] - data['low'].iloc[i-period:i+1]
+                    atr = atr_window.mean()
+                    hl2 = (data['high'].iloc[i] + data['low'].iloc[i]) / 2
+                    supertrend_values.append(hl2 - atr * multiplier)
+                    direction_values.append(1)
+            
+            return pd.DataFrame({
+                'supertrend': supertrend_values,
+                'direction': direction_values
+            }, index=data.index)
+
+    def calculate_breakout(self, data: pd.DataFrame, period: int = 20, breakout_threshold: float = 2.0) -> pd.Series:
+        """Calcule Breakout via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_breakout(data, period=period, breakout_threshold=breakout_threshold)
+        else:
+            # Fallback simple
+            breakout_signals = []
+            for i in range(len(data)):
+                if i < period:
+                    breakout_signals.append(0)
+                else:
+                    recent_high = data['high'].iloc[i-period:i].max()
+                    recent_low = data['low'].iloc[i-period:i].min()
+                    current_close = data['close'].iloc[i]
+                    
+                    if current_close > recent_high * (1 + breakout_threshold/100):
+                        breakout_signals.append(1)  # Breakout up
+                    elif current_close < recent_low * (1 - breakout_threshold/100):
+                        breakout_signals.append(-1)  # Breakout down
+                    else:
+                        breakout_signals.append(0)  # No breakout
+            
+            return pd.Series(breakout_signals, index=data.index)
+
+    def calculate_squeeze(self, data: pd.DataFrame, bb_period: int = 20, kc_period: int = 20,
+                          bb_multiplier: float = 2.0, kc_multiplier: float = 1.5) -> pd.Series:
+        """Calcule Squeeze via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_squeeze(data, bb_period=bb_period, kc_period=kc_period,
+                                                       bb_multiplier=bb_multiplier, kc_multiplier=kc_multiplier)
+        else:
+            # Fallback simple - Squeeze Momentum simplifié
+            squeeze_values = []
+            for i in range(len(data)):
+                if i < max(bb_period, kc_period):
+                    squeeze_values.append(0)
+                else:
+                    # Bollinger Bands
+                    bb_sma = data['close'].iloc[i-bb_period:i].mean()
+                    bb_std = data['close'].iloc[i-bb_period:i].std()
+                    bb_upper = bb_sma + bb_std * bb_multiplier
+                    bb_lower = bb_sma - bb_std * bb_multiplier
+                    
+                    # Keltner Channels (simplifié)
+                    kc_sma = data['close'].iloc[i-kc_period:i].mean()
+                    kc_atr = (data['high'].iloc[i-kc_period:i] - data['low'].iloc[i-kc_period:i]).mean()
+                    kc_upper = kc_sma + kc_atr * kc_multiplier
+                    kc_lower = kc_sma - kc_atr * kc_multiplier
+                    
+                    # Squeeze condition
+                    squeeze = 1 if (bb_upper < kc_upper and bb_lower > kc_lower) else 0
+                    squeeze_values.append(squeeze)
+            
+            return pd.Series(squeeze_values, index=data.index)
+
+    def calculate_obv(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule OBV via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_obv(data)
+        else:
+            # Fallback simple
+            obv_values = [0]  # Start with 0
+            for i in range(1, len(data)):
+                if data['close'].iloc[i] > data['close'].iloc[i-1]:
+                    obv_values.append(obv_values[-1] + data['volume'].iloc[i])
+                elif data['close'].iloc[i] < data['close'].iloc[i-1]:
+                    obv_values.append(obv_values[-1] - data['volume'].iloc[i])
+                else:
+                    obv_values.append(obv_values[-1])
+            
+            return pd.Series(obv_values, index=data.index)
+
+    def calculate_support_resistance(self, data: pd.DataFrame, lookback: int = 50) -> Dict[str, List[float]]:
+        """Calcule Support et Résistance via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_support_resistance(data, lookback=lookback)
+        else:
+            # Fallback simple
+            recent_data = data.tail(lookback)
+            
+            # Support: minima locaux
+            supports = []
+            for i in range(2, len(recent_data)-2):
+                if (recent_data['low'].iloc[i] < recent_data['low'].iloc[i-1] and 
+                    recent_data['low'].iloc[i] < recent_data['low'].iloc[i-2] and
+                    recent_data['low'].iloc[i] < recent_data['low'].iloc[i+1] and 
+                    recent_data['low'].iloc[i] < recent_data['low'].iloc[i+2]):
+                    supports.append(recent_data['low'].iloc[i])
+            
+            # Résistance: maxima locaux
+            resistances = []
+            for i in range(2, len(recent_data)-2):
+                if (recent_data['high'].iloc[i] > recent_data['high'].iloc[i-1] and 
+                    recent_data['high'].iloc[i] > recent_data['high'].iloc[i-2] and
+                    recent_data['high'].iloc[i] > recent_data['high'].iloc[i+1] and 
+                    recent_data['high'].iloc[i] > recent_data['high'].iloc[i+2]):
+                    resistances.append(recent_data['high'].iloc[i])
+            
+            return {
+                "supports": sorted(list(set(supports)))[-3:],  # Top 3 supports
+                "resistances": sorted(list(set(resistances)))[-3:]  # Top 3 resistances
+            }
+
+    def calculate_pivot_points(self, high: float, low: float, close: float) -> Dict[str, float]:
+        """Calcule Pivot Points via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_pivot_points(high, low, close)
+        else:
+            # Fallback simple
+            pivot = (high + low + close) / 3
+            return {
+                "pivot": pivot,
+                "r1": 2 * pivot - low,
+                "r2": pivot + (high - low),
+                "r3": high + 2 * (pivot - low),
+                "s1": 2 * pivot - high,
+                "s2": pivot - (high - low),
+                "s3": low - 2 * (high - pivot)
+            }
+
     # === MÉTHODE PRINCIPALE ===
 
     def calculate_all_indicators(
@@ -451,17 +616,17 @@ class TechnicalIndicators:
             # Indicateurs de base
             if config.get("sma_enabled", False):
                 results["sma"] = self.calculate_sma(
-                    data["close"], config.get("sma_period", 20)
+                    data, config.get("sma_period", 20)
                 )
 
             if config.get("ema_enabled", False):
                 results["ema"] = self.calculate_ema(
-                    data["close"], config.get("ema_period", 21)
+                    data, config.get("ema_period", 21)
                 )
 
             if config.get("rsi_enabled", False):
                 results["rsi"] = self.calculate_rsi(
-                    data["close"], config.get("rsi_period", 14)
+                    data, config.get("rsi_period", 14)
                 )
 
             if config.get("atr_enabled", False):
@@ -471,10 +636,42 @@ class TechnicalIndicators:
 
             if config.get("macd_enabled", False):
                 results["macd"] = self.calculate_macd(
-                    data["close"],
+                    data,
                     config.get("macd_fast", 12),
                     config.get("macd_slow", 26),
                     config.get("macd_signal", 9),
+                )
+
+            # Nouveaux indicateurs avancés
+            if config.get("supertrend_enabled", False):
+                results["supertrend"] = self.calculate_supertrend(
+                    data, 
+                    period=config.get("supertrend_period", 10),
+                    multiplier=config.get("supertrend_multiplier", 3.0)
+                )
+
+            if config.get("breakout_enabled", False):
+                results["breakout"] = self.calculate_breakout(
+                    data,
+                    period=config.get("breakout_period", 20),
+                    breakout_threshold=config.get("breakout_threshold", 2.0)
+                )
+
+            if config.get("squeeze_enabled", False):
+                results["squeeze"] = self.calculate_squeeze(
+                    data,
+                    bb_period=config.get("squeeze_bb_period", 20),
+                    kc_period=config.get("squeeze_kc_period", 20),
+                    bb_multiplier=config.get("squeeze_bb_multiplier", 2.0),
+                    kc_multiplier=config.get("squeeze_kc_multiplier", 1.5)
+                )
+
+            if config.get("obv_enabled", False):
+                results["obv"] = self.calculate_obv(data)
+
+            if config.get("volume_profile_enabled", False):
+                results["volume_profile"] = self.calculate_volume_profile(
+                    data, bins=config.get("volume_profile_bins", 50)
                 )
 
             # Indicateurs structurels
@@ -510,6 +707,67 @@ class TechnicalIndicators:
             print(f"❌ Erreur calcul indicateurs: {e}")
 
         return results
+
+    # === NOUVEAUX INDICATEURS VIA FACTORY ===
+
+    def calculate_supertrend(self, data: pd.DataFrame, period: int = 10, multiplier: float = 3.0) -> pd.DataFrame:
+        """Calcule le SuperTrend via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_supertrend(data, period=period, multiplier=multiplier)
+        else:
+            # Fallback simple
+            return pd.DataFrame({"supertrend": [0] * len(data), "direction": [0] * len(data)}, index=data.index)
+
+    def calculate_breakout(self, data: pd.DataFrame, period: int = 20, breakout_threshold: float = 2.0) -> pd.Series:
+        """Calcule les signaux de breakout via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_breakout(data, period=period, breakout_threshold=breakout_threshold)
+        else:
+            # Fallback simple
+            return pd.Series([0] * len(data), index=data.index)
+
+    def calculate_squeeze(self, data: pd.DataFrame, bb_period: int = 20, kc_period: int = 20, 
+                          bb_multiplier: float = 2.0, kc_multiplier: float = 1.5) -> pd.Series:
+        """Calcule le Squeeze Momentum via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_squeeze(data, bb_period=bb_period, kc_period=kc_period,
+                                                       bb_multiplier=bb_multiplier, kc_multiplier=kc_multiplier)
+        else:
+            # Fallback simple
+            return pd.Series([0] * len(data), index=data.index)
+
+    def calculate_obv(self, data: pd.DataFrame) -> pd.Series:
+        """Calcule l'On Balance Volume via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_obv(data)
+        else:
+            # Fallback simple
+            return pd.Series([0] * len(data), index=data.index)
+
+    def calculate_volume_profile(self, data: pd.DataFrame, bins: int = 50) -> Dict:
+        """Calcule le Volume Profile via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_volume_profile(data, bins=bins)
+        else:
+            # Fallback simple
+            return {"volume_profile": [0] * bins, "price_levels": [0] * bins}
+
+    def calculate_fibonacci_levels(self, high: float, low: float) -> Dict[str, float]:
+        """Calcule les niveaux de Fibonacci via IndicatorFactory"""
+        if FACTORY_AVAILABLE:
+            return _indicator_factory.calculate_fibonacci(high, low)
+        else:
+            # Fallback simple
+            diff = high - low
+            return {
+                "0.0": low,
+                "0.236": low + diff * 0.236,
+                "0.382": low + diff * 0.382,
+                "0.5": low + diff * 0.5,
+                "0.618": low + diff * 0.618,
+                "0.786": low + diff * 0.786,
+                "1.0": high
+            }
 
 
 # Instance globale pour l'utilisation dans les modules

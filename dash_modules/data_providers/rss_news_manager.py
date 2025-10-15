@@ -12,13 +12,55 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from ..core.rss_parser import RSSParser
+from .provider_interfaces import NewsProviderInterface
 from .rss_sources_config import rss_sources_config
 
 logger = logging.getLogger(__name__)
 
 
-class RSSNewsManager:
-    """Gestionnaire principal des flux RSS pour THEBOT"""
+class RSSNewsManager(NewsProviderInterface):
+    """Gestionnaire principal des flux RSS pour THEBOT - Implémente NewsProviderInterface"""
+
+    @property
+    def name(self) -> str:
+        return "rss_news"
+
+    def get_news(self, symbol: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """Récupère les actualités - Implémentation NewsProviderInterface"""
+        # Si un symbole est spécifié, on filtre par catégories pertinentes
+        categories = None
+        if symbol:
+            # Pour les cryptos, on utilise les catégories crypto
+            if symbol.upper() in ["BTC", "ETH", "BNB", "ADA", "SOL"]:
+                categories = ["crypto"]
+            else:
+                categories = ["business", "technology"]
+
+        return self.get_news(
+            categories=categories,
+            limit=limit,
+            use_cache=True
+        )
+
+    def search_news(self, query: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Recherche d'actualités par requête - Implémentation NewsProviderInterface"""
+        # Recherche dans toutes les sources
+        all_news = self.get_news(limit=limit * 2)  # Récupère plus pour filtrer
+
+        # Filtrage par requête (simple recherche dans titre et description)
+        filtered_news = []
+        query_lower = query.lower()
+
+        for news_item in all_news:
+            title = news_item.get("title", "").lower()
+            description = news_item.get("description", "").lower()
+
+            if query_lower in title or query_lower in description:
+                filtered_news.append(news_item)
+                if len(filtered_news) >= limit:
+                    break
+
+        return filtered_news
 
     def __init__(self, max_workers: int = 5):
         """

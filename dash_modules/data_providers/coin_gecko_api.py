@@ -6,14 +6,136 @@ Provides comprehensive cryptocurrency market data
 import json
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import requests
 
+from .provider_interfaces import DataProviderInterface
+from ..core.intelligent_cache import get_global_cache
 
-class CoinGeckoAPI:
-    """CoinGecko API client for cryptocurrency market data"""
+
+class CoinGeckoAPI(DataProviderInterface):
+    """CoinGecko API client for cryptocurrency market data - Implémente DataProviderInterface"""
+
+    @property
+    def name(self) -> str:
+        return "coin_gecko"
+
+    @property
+    def supported_markets(self) -> List[str]:
+        # CoinGecko supporte tous les cryptos, mais on liste les principales
+        return ["bitcoin", "ethereum", "binancecoin", "cardano", "solana", "polkadot", "chainlink",
+                "litecoin", "avalanche-2", "polygon-pos", "cosmos", "ripple"]
+
+    @property
+    def rate_limit_info(self) -> Dict[str, Any]:
+        return {
+            "requests_per_minute": 25 if not self.api_key else 500,
+            "has_free_tier": True,
+            "free_tier_limits": "25 appels/minute",
+            "pro_tier_limits": "500 appels/minute"
+        }
+
+    def validate_symbol(self, symbol: str) -> bool:
+        """Valide si un symbole est supporté par CoinGecko"""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return False
+        # CoinGecko utilise des IDs (bitcoin, ethereum) plutôt que des symboles (BTC, ETH)
+        # On fait une conversion basique
+        symbol_mapping = {
+            "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin",
+            "ADA": "cardano", "SOL": "solana", "DOT": "polkadot",
+            "LINK": "chainlink", "LTC": "litecoin", "AVAX": "avalanche-2",
+            "MATIC": "polygon-pos", "ATOM": "cosmos", "XRP": "ripple"
+        }
+        coin_id = symbol_mapping.get(symbol.upper())
+        return coin_id in self.supported_markets if coin_id else False
+
+    def get_price_data(self, symbol: str, interval: str = "1d", limit: int = 100) -> Optional[Dict[str, Any]]:
+        """Récupère les données de prix historiques - Implémentation DataProviderInterface"""
+        # CoinGecko utilise des IDs, pas des symboles
+        symbol_mapping = {
+            "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin",
+            "ADA": "cardano", "SOL": "solana", "DOT": "polkadot"
+        }
+        coin_id = symbol_mapping.get(symbol.upper())
+        if not coin_id:
+            return None
+
+        # Pour les données historiques, on utilise une méthode simplifiée
+        # CoinGecko n'a pas d'endpoint direct pour les OHLCV comme Binance
+        current_data = self.get_current_price(symbol)
+        if current_data is None:
+            return None
+
+        return {
+            "symbol": symbol,
+            "interval": interval,
+            "data": [{"timestamp": datetime.now(), "close": current_data}],
+            "count": 1,
+            "provider": self.name,
+            "timestamp": datetime.now(),
+            "note": "CoinGecko fournit principalement des données actuelles, pas historiques complètes"
+        }
+
+    def get_current_price(self, symbol: str) -> Optional[float]:
+        """Récupère le prix actuel - Implémentation DataProviderInterface"""
+        symbol_mapping = {
+            "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin",
+            "ADA": "cardano", "SOL": "solana", "DOT": "polkadot"
+        }
+        coin_id = symbol_mapping.get(symbol.upper())
+        if not coin_id:
+            return None
+
+        data = self.get_market_data([coin_id])
+        if data is not None and not data.empty and 'current_price' in data.columns:
+            return float(data.iloc[0]['current_price'])
+        return None
+
+    def get_market_info(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Récupère les informations sur le marché - Implémentation DataProviderInterface"""
+        symbol_mapping = {
+            "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin",
+            "ADA": "cardano", "SOL": "solana", "DOT": "polkadot"
+        }
+        coin_id = symbol_mapping.get(symbol.upper())
+        if not coin_id:
+            return None
+
+        data = self.get_market_data([coin_id])
+        if data is not None and not data.empty:
+            row = data.iloc[0]
+            return {
+                "symbol": symbol,
+                "name": row.get('name', ''),
+                "current_price": row.get('current_price', 0),
+                "market_cap": row.get('market_cap', 0),
+                "price_change_24h": row.get('price_change_percentage_24h', 0),
+                "provider": self.name,
+                "timestamp": datetime.now()
+            }
+        return None
+
+    def is_available(self) -> bool:
+        """Vérifie si CoinGecko est disponible - Implémentation DataProviderInterface"""
+        try:
+            return self.get_current_price("BTC") is not None
+        except Exception:
+            return False
+
+    def get_status(self) -> Dict[str, Any]:
+        """Retourne le statut du provider - Implémentation DataProviderInterface"""
+        return {
+            "name": self.name,
+            "available": self.is_available(),
+            "supported_markets_count": len(self.supported_markets),
+            "rate_limit_info": self.rate_limit_info,
+            "api_key_configured": self.api_key is not None,
+            "rate_limit_calls": self.rate_limit_calls,
+            "rate_limit_reset": self.rate_limit_reset
+        }
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key
@@ -22,11 +144,19 @@ class CoinGeckoAPI:
         else:
             self.base_url = "https://api.coingecko.com/api/v3"
 
+        self.cache = get_global_cache()  # Utiliser le cache intelligent global
         self.rate_limit_calls = 0
         self.rate_limit_reset = datetime.now()
 
     def _make_request(self, endpoint: str, params: Dict = None) -> Dict:
-        """Make API request with rate limiting"""
+        """Make API request with rate limiting and caching"""
+        # Vérifier le cache d'abord
+        cache_key = f"coingecko_{endpoint}"
+        cached_result = self.cache.get(cache_key, endpoint=endpoint, params=params or {})
+        if cached_result is not None:
+            print(f"📋 Cache hit pour CoinGecko {endpoint}")
+            return cached_result
+
         # Rate limiting: 30 calls/minute for free tier, 500/minute for pro
         max_calls = 500 if self.api_key else 25  # Leave margin for free tier
         reset_period = timedelta(minutes=1)
@@ -56,7 +186,10 @@ class CoinGeckoAPI:
 
             if response.status_code == 200:
                 try:
-                    return response.json()
+                    result = response.json()
+                    # Mettre en cache le résultat
+                    self.cache.set(cache_key, result, endpoint=endpoint, params=params or {})
+                    return result
                 except ValueError as e:
                     print(f"❌ Erreur parsing JSON CoinGecko: {e}")
                     return {}
@@ -104,7 +237,7 @@ class CoinGeckoAPI:
                         "id": coin.get("id", ""),
                         "symbol": coin.get("symbol", "").upper(),
                         "name": coin.get("name", ""),
-                        "price": coin.get("current_price", 0),
+                        "current_price": coin.get("current_price", 0),
                         "market_cap": coin.get("market_cap", 0),
                         "market_cap_rank": coin.get("market_cap_rank", 0),
                         "volume_24h": coin.get("total_volume", 0),
@@ -131,7 +264,7 @@ class CoinGeckoAPI:
             print(f"❌ CoinGecko market data error: {e}")
             return pd.DataFrame()
 
-    def get_price_data(self, coin_id: str, days: int = 7) -> pd.DataFrame:
+    def get_historical_price_data(self, coin_id: str, days: int = 7) -> pd.DataFrame:
         """Get historical price data for a specific coin"""
         # Validation du coin_id
         if not isinstance(coin_id, str) or not coin_id.strip():

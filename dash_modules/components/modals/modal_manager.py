@@ -17,6 +17,9 @@ from .controls.base_controls import CUSTOM_CONTROLS_CSS, ControlsFactory
 from .tabs.advanced_indicators import advanced_indicators_tab
 from .tabs.basic_indicators import basic_indicators_tab
 
+# Import du manager de callbacks modaux
+from ...callbacks.managers.modal_callbacks import ModalCallbacks
+
 
 class ModalIndicatorsManager:
     """Gestionnaire principal de la modal des indicateurs modulaire"""
@@ -26,8 +29,10 @@ class ModalIndicatorsManager:
         self.controls_factory = ControlsFactory()
         self.active_tabs = {}  # Cache des modules chargés
 
-        # Registrer les callbacks
-        self._register_callbacks()
+        # Initialiser le manager de callbacks modaux
+        self.modal_callbacks = ModalCallbacks(None, self)  # App sera défini plus tard
+
+        # Supprimé : _register_callbacks() - maintenant géré par ModalCallbacks
 
     def create_modal(self) -> dbc.Modal:
         """Créer la modal principale avec architecture modulaire"""
@@ -188,70 +193,10 @@ class ModalIndicatorsManager:
 
         return tabs
 
-    def _register_callbacks(self):
-        """Enregistrer tous les callbacks de la modal"""
-
-        @callback(
-            Output("indicators-modal-content", "children"),
-            Input("indicators-tabs", "active_tab"),
-        )
-        def update_tab_content(active_tab):
-            """Mettre à jour le contenu selon l'onglet actif"""
-            try:
-                if active_tab == "basic_indicators":
-                    return self._create_basic_indicators_content()
-                elif active_tab == "advanced_indicators":
-                    return self._create_advanced_indicators_content()
-                elif active_tab == "trading_styles":
-                    return self._create_trading_styles_content()
-                elif active_tab == "configuration":
-                    return self._create_configuration_content()
-                else:
-                    return html.Div("Onglet non trouvé", className="text-warning")
-
-            except Exception as e:
-                return html.Div(
-                    [
-                        dbc.Alert(
-                            [
-                                html.H6("❌ Erreur de chargement", className="mb-2"),
-                                html.P(f"Erreur: {str(e)}", className="mb-0"),
-                            ],
-                            color="danger",
-                        )
-                    ]
-                )
-
-        # Callback pour debug info
-        @callback(
-            Output("debug-info-container", "children"),
-            [Input({"type": "indicator-control", "id": ALL}, "value")],
-        )
-        def update_debug_info(values):
-            """Afficher les informations de debug"""
-            if not values:
-                return []
-
-            current_config = self.parameters.get_all_basic_indicators()
-
-            debug_info = dbc.Alert(
-                [
-                    html.H6("🔍 Debug Info", className="mb-2"),
-                    html.Pre(
-                        json.dumps(current_config, indent=2),
-                        className="mb-0",
-                        style={
-                            "fontSize": "0.75rem",
-                            "maxHeight": "150px",
-                            "overflowY": "auto",
-                        },
-                    ),
-                ],
-                color="info",
-                className="mt-3",
-            )
-
-            return debug_info
+    def register_callbacks(self, app):
+        """Enregistrer les callbacks via le manager de callbacks modaux"""
+        self.modal_callbacks.app = app  # Définir l'app maintenant
+        self.modal_callbacks.register_all_callbacks()
 
     def _create_basic_indicators_content(self) -> html.Div:
         """Créer le contenu des indicateurs de base"""

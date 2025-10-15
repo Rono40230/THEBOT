@@ -55,9 +55,9 @@ def register_indicators_modal_callbacks(app):
     try:
         from .modal_adapter import modal_adapter
 
-        # Les callbacks du nouveau système sont automatiquement enregistrés
-        # via le modal_adapter qui utilise le modal_manager
-        print("🔄 Nouveau système modulaire activé")
+        # Enregistrer les callbacks du nouveau système modulaire
+        modal_adapter.register_callbacks(app)
+        print("🔄 Nouveau système modulaire activé avec callbacks")
 
     except ImportError as e:
         print(f"⚠️ Erreur import nouveau système: {e}")

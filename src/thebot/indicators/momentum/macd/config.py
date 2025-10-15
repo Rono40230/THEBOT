@@ -159,29 +159,29 @@ class MACDConfig:
         for period_name in periods:
             period_value = getattr(self, period_name)
             if not isinstance(period_value, int):
-                raise ConfigurationError(f"{period_name} must be an integer")
+                raise ValueError(f"{period_name} must be an integer")
 
             if period_value < 2:
-                raise ConfigurationError(f"{period_name} must be at least 2")
+                raise ValueError(f"{period_name} must be at least 2")
 
             if period_value > 200:
-                raise ConfigurationError(f"{period_name} must not exceed 200")
+                raise ValueError(f"{period_name} must not exceed 200")
 
         # Validation cohérence des périodes
         if self.fast_period >= self.slow_period:
-            raise ConfigurationError("fast_period must be < slow_period")
+            raise ValueError("fast_period must be < slow_period")
 
         # Validation sensibilité
         if not isinstance(self.zero_line_sensitivity, Decimal):
             try:
                 self.zero_line_sensitivity = Decimal(str(self.zero_line_sensitivity))
             except (ValueError, TypeError):
-                raise ConfigurationError(
+                raise ValueError(
                     "zero_line_sensitivity must be convertible to Decimal"
                 )
 
         if self.zero_line_sensitivity <= 0:
-            raise ConfigurationError("zero_line_sensitivity must be positive")
+            raise ValueError("zero_line_sensitivity must be positive")
 
     def to_dict(self) -> dict:
         """Export configuration vers dictionnaire"""

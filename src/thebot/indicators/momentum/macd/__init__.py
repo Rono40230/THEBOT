@@ -141,7 +141,8 @@ class MACD:
             **kwargs: Paramètres à modifier
         """
         # Créer nouvelle config avec paramètres modifiés
-        config_dict = self.config.dict()
+        from dataclasses import asdict
+        config_dict = asdict(self.config)
         config_dict.update(kwargs)
 
         self.config = MACDConfig(**config_dict)

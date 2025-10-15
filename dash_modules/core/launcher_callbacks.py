@@ -16,6 +16,20 @@ from ..core.alerts_manager import alerts_manager
 from ..core.api_config import api_config
 from ..data_providers.websocket_manager import ws_manager
 
+# Import des callbacks des modals
+from ..components.indicators_modal import register_indicators_modal_callbacks
+
+# Import des managers de callbacks
+from ..callbacks.managers.alerts_callbacks import AlertsCallbacks
+from ..callbacks.managers.alert_modal_manager import AlertModalManager
+from ..callbacks.managers.market_callbacks import MarketCallbacks
+from ..callbacks.managers.market_modal_manager import MarketModalManager
+from ..callbacks.managers.news_callbacks import NewsCallbacks
+from ..callbacks.managers.news_modal_manager import NewsModalManager
+from ..callbacks.managers.price_alerts_callbacks import PriceAlertsCallbacks
+from ..callbacks.managers.trading_callbacks import TradingCallbacks
+from ..callbacks.managers.trading_modal_manager import TradingModalManager
+
 # Configuration du logging conforme .clinerules
 logger = logging.getLogger(__name__)
 
@@ -50,6 +64,17 @@ class LauncherCallbacks:
         self.current_tab: str = "economic_news"
         self.logger: logging.Logger = logging.getLogger("thebot.launcher_callbacks")
 
+        # Initialiser les managers de callbacks spécialisés
+        self.alerts_callbacks = AlertsCallbacks(app)
+        self.alert_modal_manager = AlertModalManager(app)
+        self.market_modal_manager = MarketModalManager(app)
+        self.news_modal_manager = NewsModalManager(app)
+        self.trading_modal_manager = TradingModalManager(app)
+        self.market_callbacks = MarketCallbacks(app)
+        self.news_callbacks = NewsCallbacks(app)
+        self.price_alerts_callbacks = PriceAlertsCallbacks(app)
+        self.trading_callbacks = TradingCallbacks(app)
+
         self.logger.info("🔗 LauncherCallbacks initialisé")
 
     def register_all_callbacks(self) -> None:
@@ -64,6 +89,37 @@ class LauncherCallbacks:
             self._register_realtime_data_callbacks()
             self._register_navigation_callbacks()
             self._register_control_bar_callbacks()
+            
+            # Enregistrer les callbacks des modals
+            register_indicators_modal_callbacks(self.app)
+            
+                        # Enregistrer les callbacks des alertes
+            self.alerts_callbacks.register_all_callbacks()
+            
+            # Enregistrer les callbacks du modal d'alertes (MVC)
+            self.alert_modal_manager.register_all_callbacks()
+            
+            # Enregistrer les callbacks du modal de marché (MVC)
+            self.market_modal_manager.register_all_callbacks()
+            
+            # Enregistrer les callbacks du modal de news (MVC)
+            self.news_modal_manager.register_all_callbacks()
+            
+            # Enregistrer les callbacks du modal de trading (MVC)
+            self.trading_modal_manager.register_all_callbacks()
+            
+            # Enregistrer les callbacks du marché
+            self.market_callbacks.register_all_callbacks()
+            
+            # Enregistrer les callbacks des news
+            self.news_callbacks.register_all_callbacks()
+            
+            # Enregistrer les callbacks de trading
+            self.trading_callbacks.register_all_callbacks()
+            
+            # Enregistrer les callbacks des alertes de prix
+            self.price_alerts_callbacks.register_all_callbacks()
+
             # CALLBACKS PROBLÉMATIQUES SUPPRIMÉS CAR ILS CASSAIENT L'APPLICATION
             # self._register_symbol_selection_callbacks()  # ❌ INPUTS MANQUANTS
             # self._register_api_config_callbacks()        # ❌ CALLBACKS COMPLEXES

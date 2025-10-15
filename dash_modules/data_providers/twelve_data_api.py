@@ -6,16 +6,108 @@ Professional financial data provider with stocks, forex, crypto, and news
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import requests
 
+from .provider_interfaces import DataProviderInterface
+
 logger = logging.getLogger(__name__)
 
 
-class TwelveDataAPI:
-    """Twelve Data API client for financial data and news"""
+class TwelveDataAPI(DataProviderInterface):
+    """Twelve Data API client for financial data and news - Implémente DataProviderInterface"""
+
+    @property
+    def name(self) -> str:
+        return "twelve_data"
+
+    @property
+    def supported_markets(self) -> List[str]:
+        # Twelve Data supporte actions, crypto, forex, indices
+        return ["AAPL", "GOOGL", "MSFT", "TSLA", "BTC/USD", "ETH/USD", "EUR/USD", "GBP/USD"]
+
+    @property
+    def rate_limit_info(self) -> Dict[str, Any]:
+        return {
+            "requests_per_minute": 800,  # Free tier
+            "has_free_tier": True,
+            "free_tier_limits": "800 appels/jour, 8 appels/minute",
+            "paid_tier_limits": "Plus élevé selon le plan"
+        }
+
+    def validate_symbol(self, symbol: str) -> bool:
+        """Valide si un symbole est supporté par Twelve Data"""
+        if not isinstance(symbol, str) or not symbol.strip():
+            return False
+        # Twelve Data supporte différents formats selon le type d'actif
+        return symbol.upper().strip() in [s.upper() for s in self.supported_markets]
+
+    def get_price_data(self, symbol: str, interval: str = "1d", limit: int = 100) -> Optional[Dict[str, Any]]:
+        """Récupère les données de prix historiques - Implémentation DataProviderInterface"""
+        # Twelve Data utilise des endpoints différents selon le type d'actif
+        # Pour simplifier, on utilise l'endpoint time_series
+        data = self._make_request("/time_series", {
+            "symbol": symbol,
+            "interval": interval,
+            "outputsize": limit
+        })
+
+        if data and "values" in data:
+            return {
+                "symbol": symbol,
+                "interval": interval,
+                "data": data["values"],
+                "count": len(data["values"]),
+                "provider": self.name,
+                "timestamp": datetime.now()
+            }
+        return None
+
+    def get_current_price(self, symbol: str) -> Optional[float]:
+        """Récupère le prix actuel - Implémentation DataProviderInterface"""
+        data = self._make_request("/quote", {"symbol": symbol})
+        if data and "close" in data:
+            return float(data["close"])
+        return None
+
+    def get_market_info(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Récupère les informations sur le marché - Implémentation DataProviderInterface"""
+        data = self._make_request("/quote", {"symbol": symbol})
+        if data:
+            return {
+                "symbol": symbol,
+                "name": data.get("name", ""),
+                "current_price": data.get("close", 0),
+                "open": data.get("open", 0),
+                "high": data.get("high", 0),
+                "low": data.get("low", 0),
+                "volume": data.get("volume", 0),
+                "change_percent": data.get("percent_change", 0),
+                "provider": self.name,
+                "timestamp": datetime.now()
+            }
+        return None
+
+    def is_available(self) -> bool:
+        """Vérifie si Twelve Data est disponible - Implémentation DataProviderInterface"""
+        try:
+            # Test avec Apple
+            return self.get_current_price("AAPL") is not None
+        except Exception:
+            return False
+
+    def get_status(self) -> Dict[str, Any]:
+        """Retourne le statut du provider - Implémentation DataProviderInterface"""
+        return {
+            "name": self.name,
+            "available": self.is_available(),
+            "supported_markets_count": len(self.supported_markets),
+            "rate_limit_info": self.rate_limit_info,
+            "api_key_configured": self.api_key is not None,
+            "last_request_time": datetime.fromtimestamp(self.last_request_time) if self.last_request_time > 0 else None
+        }
 
     def __init__(self, api_key: str = ""):
         self.api_key = api_key

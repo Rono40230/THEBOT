@@ -122,6 +122,14 @@ class ModalAdapter:
                         "advanced_indicators", indicator, key, value
                     )
 
+    def register_callbacks(self, app):
+        """Enregistrer les callbacks du nouveau système modulaire"""
+        if self.use_new_system and self.new_modal:
+            self.new_modal.register_callbacks(app)
+            print("✅ Callbacks du nouveau système modulaire enregistrés")
+        else:
+            print("⚠️ Nouveau système non disponible pour l'enregistrement des callbacks")
+
     def export_debug_info(self) -> Dict[str, Any]:
         """Exporter les informations de debug"""
         return {

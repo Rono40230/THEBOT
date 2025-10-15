@@ -178,78 +178,13 @@ class AlertsNotificationComponent:
 # Instance globale
 alerts_notification_component = AlertsNotificationComponent()
 
-# Callbacks pour les notifications
+# Callbacks pour les notifications - MIGRÉS vers AlertsCallbacks manager
+# Les callbacks suivants ont été déplacés dans dash_modules/callbacks/managers/alerts_callbacks.py
+
+# Callback update_notifications_store MIGRÉ vers AlertsCallbacks
 
 
-@callback(
-    Output("notifications-store", "data"),
-    Input("notifications-interval", "n_intervals"),
-    State("notifications-store", "data"),
-    prevent_initial_call=False,
-)
-def update_notifications_store(n_intervals, current_notifications):
-    """Mettre à jour le store avec les nouvelles notifications"""
-    # Récupérer les notifications récentes
-    recent_notifications = notification_manager.get_recent_notifications(limit=5)
-
-    # Convertir en format compatible avec Dash
-    notifications_data = []
-    for notif in recent_notifications:
-        if notif not in current_notifications:
-            notifications_data.append(
-                {
-                    "id": notif["id"],
-                    "title": notif["title"],
-                    "message": notif["message"],
-                    "timestamp": notif["timestamp"],
-                    "show": True,
-                }
-            )
-
-    # Garder les notifications existantes qui sont encore valides
-    current_time = time.time()
-    for notif in current_notifications or []:
-        # Garder les notifications de moins de 15 secondes
-        if notif.get("show", True):
-            notifications_data.append(notif)
-
-    # Limiter à 3 notifications maximum
-    return notifications_data[-3:]
-
-
-@callback(
-    Output("notifications-container", "children"),
-    Input("notifications-store", "data"),
-    prevent_initial_call=False,
-)
-def update_notifications_display(notifications_data):
-    """Mettre à jour l'affichage des notifications"""
-    if not notifications_data:
-        return []
-
-    notification_elements = []
-    for notif in notifications_data:
-        if not notif.get("show", True):
-            continue
-
-        notification_element = html.Div(
-            [
-                html.Button(
-                    "×",
-                    className="alert-notification-close",
-                    id={"type": "close-notification", "index": notif["id"]},
-                ),
-                html.Div(notif["title"], className="alert-notification-header"),
-                html.Div(notif["message"], className="alert-notification-body"),
-                html.Div(notif["timestamp"], className="alert-notification-time"),
-            ],
-            className="alert-notification",
-            id=f"notification-{notif['id']}",
-        )
-
-        notification_elements.append(notification_element)
-
-    return notification_elements
+# Callback update_notifications_display MIGRÉ vers AlertsCallbacks
 
 
 # Callback côté client pour auto-fermer les notifications
@@ -302,25 +237,4 @@ def create_monitoring_status_component():
     )
 
 
-@callback(
-    [
-        Output("monitoring-status-display", "children"),
-        Output("monitoring-status-display", "className"),
-    ],
-    Input("monitoring-status-interval", "n_intervals"),
-    prevent_initial_call=False,
-)
-def update_monitoring_status(n_intervals):
-    """Mettre à jour le statut de surveillance"""
-    status = alerts_monitor.get_status()
-
-    if status["is_running"]:
-        status_text = (
-            f"🔔 Surveillance active ({status['active_alerts_count']} alertes)"
-        )
-        status_class = "monitoring-status"
-    else:
-        status_text = "🔔 Surveillance inactive"
-        status_class = "monitoring-status inactive"
-
-    return status_text, status_class
+# Callback update_monitoring_status MIGRÉ vers AlertsCallbacks

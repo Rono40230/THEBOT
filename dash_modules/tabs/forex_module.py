@@ -28,9 +28,17 @@ class ForexModule(BaseMarketModule):
     """Forex market module using Alpha Vantage API"""
 
     def __init__(self, calculators: Dict = None):
-        # Get Alpha Vantage API key from config
-        forex_provider = api_config.get_provider("forex", "Alpha Vantage")
-        api_key = forex_provider["config"].get("api_key", "") if forex_provider else ""
+        # Get forex provider from new config system
+        from ..core.config_manager import get_global_config
+        config = get_global_config()
+
+        # Use Twelve Data for forex if enabled, otherwise Yahoo Finance
+        if config.get("providers.twelve_data.enabled"):
+            forex_provider = "twelve_data"
+            api_key = config.get("providers.twelve_data.api_key", "")
+        else:
+            forex_provider = "yahoo_finance"
+            api_key = ""  # Yahoo Finance doesn't require API key
 
         super().__init__(
             market_type="forex",

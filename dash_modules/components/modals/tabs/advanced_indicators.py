@@ -23,9 +23,6 @@ class AdvancedIndicatorsTab:
         self.parameters = parameters_manager
         self.controls_factory = ControlsFactory()
 
-        # Registrer les callbacks spécifiques à ce module
-        self._register_callbacks()
-
     def create_content(self) -> html.Div:
         """Créer le contenu complet des indicateurs avancés"""
         config = self.parameters.get_all_advanced_indicators()
@@ -357,119 +354,6 @@ class AdvancedIndicatorsTab:
             ],
             className="mt-4",
         )
-
-    def _register_callbacks(self):
-        """Enregistrer tous les callbacks du module"""
-
-        # Callback pour les previews en temps réel
-        @callback(
-            [
-                Output("sr-preview", "children"),
-                Output("fibonacci-preview", "children"),
-                Output("pivot-preview", "children"),
-            ],
-            [
-                Input("advanced-sr-strength", "value"),
-                Input("advanced-sr-lookback", "value"),
-                Input("advanced-fibonacci-swing", "value"),
-                Input("advanced-fibonacci-line-width", "value"),
-                Input("advanced-pivot-method", "value"),
-                Input("advanced-pivot-levels", "value"),
-            ],
-        )
-        def update_advanced_previews(
-            sr_strength, sr_lookback, fib_swing, fib_width, pivot_method, pivot_levels
-        ):
-            """Mettre à jour les previews des indicateurs avancés"""
-
-            # S/R Preview
-            sr_preview = html.Div(
-                [
-                    dbc.Badge(
-                        f"Force: {sr_strength or 2}", color="info", className="me-2"
-                    ),
-                    dbc.Badge(
-                        f"Lookback: {sr_lookback or 50}",
-                        color="secondary",
-                        className="me-1",
-                    ),
-                ]
-            )
-
-            # Fibonacci Preview
-            fib_preview = html.Div(
-                [
-                    dbc.Badge(
-                        f"Swing: {fib_swing or 20}", color="primary", className="me-2"
-                    ),
-                    dbc.Badge(
-                        f"Ligne: {fib_width or 1}px", color="success", className="me-1"
-                    ),
-                    dbc.Badge("7 niveaux", color="warning", className="me-1"),
-                ]
-            )
-
-            # Pivot Preview
-            method_labels = {
-                "traditional": "Standard",
-                "fibonacci": "Fibonacci",
-                "camarilla": "Camarilla",
-                "woodie": "Woodie",
-                "demark": "DeMark",
-            }
-            pivot_preview = html.Div(
-                [
-                    dbc.Badge(
-                        f"Méthode: {method_labels.get(pivot_method or 'traditional', 'Standard')}",
-                        color="primary",
-                        className="me-2",
-                    ),
-                    dbc.Badge(
-                        f"{len(pivot_levels or [])} niveaux",
-                        color="info",
-                        className="me-1",
-                    ),
-                ]
-            )
-
-            return sr_preview, fib_preview, pivot_preview
-
-        # Callback pour le statut global
-        @callback(
-            Output("advanced-indicators-status", "children"),
-            [
-                Input("advanced-sr-enabled", "value"),
-                Input("advanced-fibonacci-enabled", "value"),
-                Input("advanced-pivot-enabled", "value"),
-            ],
-        )
-        def update_advanced_status(sr_enabled, fib_enabled, pivot_enabled):
-            """Mettre à jour le statut global des indicateurs avancés"""
-            enabled_count = sum(
-                [sr_enabled or False, fib_enabled or False, pivot_enabled or False]
-            )
-
-            total_indicators = 3
-
-            if enabled_count == 0:
-                color = "secondary"
-                text = "Indicateurs avancés désactivés"
-                icon = "fas fa-pause-circle"
-            elif enabled_count == total_indicators:
-                color = "success"
-                text = f"Tous les indicateurs avancés activés ({enabled_count}/{total_indicators})"
-                icon = "fas fa-check-circle"
-            else:
-                color = "warning"
-                text = (
-                    f"Indicateurs avancés partiels ({enabled_count}/{total_indicators})"
-                )
-                icon = "fas fa-exclamation-circle"
-
-            return dbc.Alert(
-                [html.I(className=f"{icon} me-2"), text], color=color, className="mb-0"
-            )
-
 
 # Instance du module
 advanced_indicators_tab = AdvancedIndicatorsTab()
