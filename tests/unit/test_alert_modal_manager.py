@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Tests pour le gestionnaire modal d'alertes THEBOT
 """

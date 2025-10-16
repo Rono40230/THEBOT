@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Strategies Module for THEBOT
 Handles trading strategies, backtesting, and AI-driven recommendations
@@ -780,7 +781,7 @@ class StrategiesModule(BaseMarketModule):
             )
 
         except Exception as e:
-            print(f"Erreur module MACD en stratégie: {e}")
+            logger.info(f"Erreur module MACD en stratégie: {e}")
             # Fallback vers calcul manuel
             ema_fast = data["close"].ewm(span=12).mean()
             ema_slow = data["close"].ewm(span=26).mean()
@@ -1483,7 +1484,7 @@ class StrategiesModule(BaseMarketModule):
             }
 
         except Exception as e:
-            print(f"Erreur dans run_strategy_backtest: {e}")
+            logger.info(f"Erreur dans run_strategy_backtest: {e}")
             return {
                 "performance_metrics": {},
                 "equity_curve": [],

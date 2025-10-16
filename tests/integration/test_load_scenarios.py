@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Tests de charge Phase 5 - Simulation utilisation réelle
 Tests avec volumes de données réalistes et scénarios de stress
@@ -53,7 +54,7 @@ class TestLoadScenarios:
             symbols[alert.symbol] = symbols.get(alert.symbol, 0) + 1
 
         assert len(symbols) <= 10  # Au plus 10 symboles différents
-        print(f"✅ Stress test alertes: {creation_time:.2f}s pour {alerts_created} alertes")
+        logger.info(f"✅ Stress test alertes: {creation_time:.2f}s pour {alerts_created} alertes")
 
     def test_concurrent_user_simulation(self):
         """Test simulation d'utilisateurs concurrents"""
@@ -107,7 +108,7 @@ class TestLoadScenarios:
         # Temps acceptable pour utilisateurs concurrents
         assert total_time < 30.0, f"Utilisation concurrente trop lente: {total_time:.2f}s"
 
-        print(f"✅ Simulation 10 utilisateurs: {total_time:.2f}s pour 200 alertes")
+        logger.info(f"✅ Simulation 10 utilisateurs: {total_time:.2f}s pour 200 alertes")
 
     def test_large_market_data_processing(self):
         """Test traitement de gros volumes de données de marché"""
@@ -141,7 +142,7 @@ class TestLoadScenarios:
         assert processed_count == 100
         assert processing_time < 5.0, f"Traitement données marché trop lent: {processing_time:.2f}s"
 
-        print(f"✅ Traitement 100 cryptos: {processing_time:.2f}s")
+        logger.info(f"✅ Traitement 100 cryptos: {processing_time:.2f}s")
 
     def test_news_feed_high_volume(self):
         """Test flux d'actualités à haut volume"""
@@ -186,7 +187,7 @@ class TestLoadScenarios:
             source_counts[article.source] = source_counts.get(article.source, 0) + 1
 
         assert len(source_counts) <= len(sources)
-        print(f"✅ Traitement 1000 actualités: {processing_time:.2f}s")
+        logger.info(f"✅ Traitement 1000 actualités: {processing_time:.2f}s")
 
 
 class TestStressTesting:
@@ -233,7 +234,7 @@ class TestStressTesting:
         assert creation_time < 60.0, f"Création 10000 alertes trop lente: {creation_time:.2f}s"
         assert memory_used < 200.0, f"Utilisation mémoire excessive: {memory_used:.2f}MB"
 
-        print(f"✅ Stress test 10000 alertes: {creation_time:.2f}s, {memory_used:.2f}MB")
+        logger.info(f"✅ Stress test 10000 alertes: {creation_time:.2f}s, {memory_used:.2f}MB")
 
     def test_concurrent_data_access_stress(self):
         """Test stress accès concurrent aux données"""
@@ -289,7 +290,7 @@ class TestStressTesting:
         # Performance acceptable
         assert total_time < 45.0, f"Stress concurrent trop lent: {total_time:.2f}s"
 
-        print(f"✅ Stress concurrent 20 workers: {total_time:.2f}s, {total_success} opérations")
+        logger.info(f"✅ Stress concurrent 20 workers: {total_time:.2f}s, {total_success} opérations")
 
     def test_api_timeout_simulation(self):
         """Test simulation de timeouts API sous charge"""
@@ -332,7 +333,7 @@ class TestStressTesting:
         assert successful_calls > 50, f"Trop d'échecs API: {successful_calls} succès, {timeout_errors} timeouts"
         assert total_time < 60.0, f"Test timeout trop lent: {total_time:.2f}s"
 
-        print(f"✅ Simulation API timeouts: {successful_calls} succès, {timeout_errors} timeouts en {total_time:.2f}s")
+        logger.info(f"✅ Simulation API timeouts: {successful_calls} succès, {timeout_errors} timeouts en {total_time:.2f}s")
 
 
 class TestRealisticUsageScenarios:
@@ -382,7 +383,7 @@ class TestRealisticUsageScenarios:
         assert updated_count == 10
         assert deleted_count == 10
 
-        print(f"✅ Simulation journée trading: {morning_alerts} créées, {updated_count} mises à jour, {deleted_count} supprimées")
+        logger.info(f"✅ Simulation journée trading: {morning_alerts} créées, {updated_count} mises à jour, {deleted_count} supprimées")
 
     def test_multi_user_collaboration(self):
         """Test collaboration multi-utilisateurs"""
@@ -422,7 +423,7 @@ class TestRealisticUsageScenarios:
             for alert in alerts:
                 assert alert.symbol.startswith(user[:3].upper())
 
-        print(f"✅ Collaboration {len(users)} utilisateurs: {total_expected} alertes totales")
+        logger.info(f"✅ Collaboration {len(users)} utilisateurs: {total_expected} alertes totales")
 
     def test_data_backup_recovery_scenario(self):
         """Test scénario de sauvegarde et récupération de données"""
@@ -461,7 +462,7 @@ class TestRealisticUsageScenarios:
                 assert original.symbol == recovered.symbol
                 assert original.price == recovered.price
 
-            print(f"✅ Sauvegarde/récupération: {len(recovered_alerts)} alertes préservées")
+            logger.info(f"✅ Sauvegarde/récupération: {len(recovered_alerts)} alertes préservées")
 
         finally:
             # Nettoyer

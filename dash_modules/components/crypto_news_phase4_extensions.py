@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Phase 4 Extensions for Crypto News Module
 Widgets compacts modulaires pour intégration dans crypto_news_module
@@ -17,10 +18,10 @@ try:
     from ..components.top_performers import top_performers
 
     PHASE4_AVAILABLE = True
-    print("✅ Phase 4 crypto widgets disponibles")
+    logger.info("✅ Phase 4 crypto widgets disponibles")
 except ImportError:
     PHASE4_AVAILABLE = False
-    print("⚠️ Phase 4 crypto widgets non disponibles")
+    logger.info("⚠️ Phase 4 crypto widgets non disponibles")
 
 
 class CryptoNewsPhase4Extensions:

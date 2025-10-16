@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Widget Manager - Phase 3 THEBOT
 Gestionnaire des widgets du dashboard avec persistence et personnalisation

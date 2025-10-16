@@ -6,16 +6,16 @@ Module ultra-modulaire - Responsabilité unique : Interface et signaux
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from thebot.core.types import (
+from ....core.types import (
     IndicatorResult,
     MarketData,
     Signal,
     SignalDirection,
     SignalStrength,
 )
-from thebot.indicators.base.indicator import BaseIndicator
-from thebot.indicators.basic.ema.calculator import EMACalculator
-from thebot.indicators.basic.ema.config import EMAConfig
+from ...base.indicator import BaseIndicator
+from .calculator import EMACalculator
+from .config import EMAConfig
 
 
 class EMAIndicator(BaseIndicator):

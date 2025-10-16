@@ -18,7 +18,7 @@ class TestAlertService:
         self.temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
         self.temp_file.write('[]')  # Fichier vide
         self.temp_file.close()
-        self.service = AlertService(data_file=self.temp_file.name)
+        self.service = AlertService()
 
     def teardown_method(self):
         """Nettoyage après chaque test"""

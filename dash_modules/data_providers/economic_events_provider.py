@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Gestionnaire de données pour les événements économiques du calendrier
 Simule un fournisseur d'API d'événements économiques avec données réalistes
@@ -39,7 +40,7 @@ class EconomicEventsProvider:
         self.historical_data = {}
         self._generate_historical_data()
 
-        print("✅ Economic Events Provider initialisé")
+        logger.info("✅ Economic Events Provider initialisé")
 
     def _generate_historical_data(self):
         """Générer des données historiques cohérentes pour les événements"""

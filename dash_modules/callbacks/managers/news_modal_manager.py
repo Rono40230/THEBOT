@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 News Modal Manager - Contrôleur MVC pour les actualités
 Gère les callbacks en utilisant NewsService pour la logique métier

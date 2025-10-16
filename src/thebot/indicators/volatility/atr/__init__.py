@@ -6,16 +6,16 @@ Module ultra-modulaire - Responsabilité unique : Interface et signaux de volati
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from thebot.core.types import (
+from ....core.types import (
     IndicatorResult,
     MarketData,
     Signal,
     SignalDirection,
     SignalStrength,
 )
-from thebot.indicators.base.indicator import BaseIndicator
-from thebot.indicators.volatility.atr.calculator import ATRCalculator
-from thebot.indicators.volatility.atr.config import ATRConfig
+from ...base.indicator import BaseIndicator
+from .calculator import ATRCalculator
+from .config import ATRConfig
 
 
 class ATRIndicator(BaseIndicator):

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Price Alerts Callbacks Manager - Gestionnaire centralisé des callbacks alertes prix
 Regroupe tous les callbacks liés aux alertes de prix et notifications

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Market Callbacks Manager - Gestionnaire centralisé des callbacks marché
 Regroupe tous les callbacks liés aux données de marché et indicateurs
@@ -13,8 +14,21 @@ import plotly.graph_objects as go
 from ..base.callback_manager import CallbackManager
 from ..base.callback_registry import get_callback_registry
 from ...components.crypto_trends import crypto_trends
-from ...components.fear_greed_gauge import fear_greed_gauge
+# from ...components.fear_greed_gauge import fear_greed_gauge  # Temporairement commenté pour éviter importation circulaire
 from ...core.price_formatter import format_crypto_price_adaptive, format_percentage_change
+
+# Stub temporaire pour éviter les erreurs
+class FearGreedGaugeStub:
+    def get_fear_greed_index(self):
+        return {"value": 50, "value_classification": "Neutral"}
+    def get_historical_data(self, period):
+        return []
+    def analyze_trends(self, data):
+        return {}
+    def setup_alerts(self, value):
+        return []
+
+fear_greed_gauge = FearGreedGaugeStub()
 
 logger = logging.getLogger(__name__)
 

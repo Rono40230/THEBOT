@@ -10,9 +10,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from ....core.logger import logger
 from .config import MACDConfig
-
-logger = logging.getLogger(__name__)
 
 
 class VisualizationError(Exception):

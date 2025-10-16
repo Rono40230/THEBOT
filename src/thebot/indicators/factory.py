@@ -1,3 +1,4 @@
+from .core.logger import logger
 """
 Indicator Factory - Point d'entrée unifié pour tous les indicateurs
 Centralise l'accès aux calculateurs THEBOT avec cache intelligent

@@ -1,94 +1,86 @@
 """
-Configuration pour l'indicateur RSI (Relative Strength Index)
-Module ultra-modulaire - Responsabilité unique : Validation des paramètres RSI
+RSI Configuration Module
+Single responsibility: Manage RSI-specific configuration with Pydantic validation
 """
 
-from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any, Dict
 
-from thebot.core.exceptions import ConfigurationError
+from pydantic import BaseModel, Field, field_validator
+
+from ....core.exceptions import ConfigError
 
 
-@dataclass
-class RSIConfig:
-    """Configuration validée pour l'indicateur RSI"""
+class RSIConfig(BaseModel):
+    """Relative Strength Index configuration with Pydantic validation"""
 
-    period: int = 14
-    overbought_level: Decimal = Decimal("70")  # Niveau de surachat
-    oversold_level: Decimal = Decimal("30")  # Niveau de survente
-    extreme_overbought: Decimal = Decimal("80")  # Niveau extrême
-    extreme_oversold: Decimal = Decimal("20")  # Niveau extrême
-    smoothing_method: str = "ema"  # "ema" ou "sma"
-    enable_signals: bool = True
-    use_decimal: bool = True
-    store_history: bool = True
+    # Core parameters
+    period: int = Field(14, gt=1, le=100, description="RSI calculation period")
 
-    def __post_init__(self):
-        """Validation automatique des paramètres"""
-        self.validate()
+    # RSI levels
+    overbought_level: Decimal = Field(Decimal("70"), ge=0, le=100, description="Overbought threshold")
+    oversold_level: Decimal = Field(Decimal("30"), ge=0, le=100, description="Oversold threshold")
+    extreme_overbought: Decimal = Field(Decimal("80"), ge=0, le=100, description="Extreme overbought threshold")
+    extreme_oversold: Decimal = Field(Decimal("20"), ge=0, le=100, description="Extreme oversold threshold")
 
-    def validate(self) -> None:
-        """Validation complète des paramètres RSI"""
+    # Calculation options
+    smoothing_method: str = Field("ema", description="Smoothing method: 'ema' or 'sma'")
 
-        # Validation période
-        if not isinstance(self.period, int):
-            raise ConfigurationError("period must be an integer")
+    # Signal generation
+    enable_signals: bool = Field(True, description="Enable signal generation")
 
-        if self.period < 2:
-            raise ConfigurationError("period must be at least 2")
+    # Performance options
+    use_decimal: bool = Field(True, description="Use Decimal for precision")
+    store_history: bool = Field(True, description="Store calculation history")
 
-        if self.period > 100:
-            raise ConfigurationError("period must not exceed 100")
+    class Config:
+        """Pydantic configuration"""
+        validate_assignment = True
+        arbitrary_types_allowed = True
 
-        # Validation niveaux
-        levels = [
-            "overbought_level",
-            "oversold_level",
-            "extreme_overbought",
-            "extreme_oversold",
-        ]
-        for level_name in levels:
-            level_value = getattr(self, level_name)
-            if not isinstance(level_value, Decimal):
-                try:
-                    setattr(self, level_name, Decimal(str(level_value)))
-                    level_value = getattr(self, level_name)
-                except (ValueError, TypeError):
-                    raise ConfigurationError(
-                        f"{level_name} must be convertible to Decimal"
-                    )
+    @field_validator('smoothing_method')
+    @classmethod
+    def validate_smoothing_method(cls, v):
+        """Validate smoothing method"""
+        if v not in ["sma", "ema"]:
+            raise ValueError("smoothing_method must be 'sma' or 'ema'")
+        return v
 
-            if not (0 <= level_value <= 100):
-                raise ConfigurationError(f"{level_name} must be between 0 and 100")
+    @field_validator('oversold_level', 'overbought_level', 'extreme_oversold', 'extreme_overbought')
+    @classmethod
+    def validate_levels(cls, v, info):
+        """Validate level relationships"""
+        field_name = info.field_name
+        data = info.data
 
-        # Vérification cohérence des niveaux
-        if self.oversold_level >= self.overbought_level:
-            raise ConfigurationError("oversold_level must be < overbought_level")
-
-        if self.extreme_oversold >= self.oversold_level:
-            raise ConfigurationError("extreme_oversold must be < oversold_level")
-
-        if self.extreme_overbought <= self.overbought_level:
-            raise ConfigurationError("extreme_overbought must be > overbought_level")
-
-        # Validation méthode de lissage
-        if self.smoothing_method not in ["sma", "ema"]:
-            raise ConfigurationError("smoothing_method must be 'sma' or 'ema'")
+        if field_name == 'oversold_level' and 'overbought_level' in data:
+            if v >= data['overbought_level']:
+                raise ValueError("oversold_level must be < overbought_level")
+        elif field_name == 'overbought_level' and 'oversold_level' in data:
+            if v <= data['oversold_level']:
+                raise ValueError("overbought_level must be > oversold_level")
+        elif field_name == 'extreme_oversold' and 'oversold_level' in data:
+            if v >= data['oversold_level']:
+                raise ValueError("extreme_oversold must be < oversold_level")
+        elif field_name == 'extreme_overbought' and 'overbought_level' in data:
+            if v <= data['overbought_level']:
+                raise ValueError("extreme_overbought must be > overbought_level")
+        return v
 
     def get_smoothing_alpha(self) -> Decimal:
-        """Retourne alpha pour lissage EMA"""
+        """Return alpha for EMA smoothing"""
         return Decimal("2") / (Decimal(str(self.period)) + 1)
 
-    def to_dict(self) -> dict:
-        """Export configuration vers dictionnaire"""
-        return {
-            "period": self.period,
-            "overbought_level": float(self.overbought_level),
-            "oversold_level": float(self.oversold_level),
-            "extreme_overbought": float(self.extreme_overbought),
-            "extreme_oversold": float(self.extreme_oversold),
-            "smoothing_method": self.smoothing_method,
-            "enable_signals": self.enable_signals,
-            "use_decimal": self.use_decimal,
-            "store_history": self.store_history,
-        }
+    def validate_config(self) -> None:
+        """Legacy validation method for compatibility"""
+        # Pydantic handles validation automatically
+        pass
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return self.dict()
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "RSIConfig":
+        """Create from dictionary"""
+        return cls(**data)

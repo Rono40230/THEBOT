@@ -10,9 +10,8 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from ....core.logger import logger
 from .config import MACDConfig
-
-logger = logging.getLogger(__name__)
 
 
 class ValidationError(Exception):

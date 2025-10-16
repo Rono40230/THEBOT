@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 CoinGecko API Module for THEBOT
 Provides comprehensive cryptocurrency market data
@@ -12,7 +13,7 @@ import pandas as pd
 import requests
 
 from .provider_interfaces import DataProviderInterface
-from ..core.intelligent_cache import get_global_cache
+from src.thebot.core.cache import get_global_cache
 
 
 class CoinGeckoAPI(DataProviderInterface):
@@ -154,7 +155,7 @@ class CoinGeckoAPI(DataProviderInterface):
         cache_key = f"coingecko_{endpoint}"
         cached_result = self.cache.get(cache_key, endpoint=endpoint, params=params or {})
         if cached_result is not None:
-            print(f"📋 Cache hit pour CoinGecko {endpoint}")
+            logger.info(f"📋 Cache hit pour CoinGecko {endpoint}")
             return cached_result
 
         # Rate limiting: 30 calls/minute for free tier, 500/minute for pro
@@ -169,7 +170,7 @@ class CoinGeckoAPI(DataProviderInterface):
         if self.rate_limit_calls >= max_calls:
             wait_time = 60 - (current_time - self.rate_limit_reset).seconds
             if wait_time > 0:
-                print(f"⏱️ CoinGecko rate limit: waiting {wait_time}s...")
+                logger.info(f"⏱️ CoinGecko rate limit: waiting {wait_time}s...")
                 time.sleep(min(wait_time, 30))
 
         try:
@@ -191,24 +192,24 @@ class CoinGeckoAPI(DataProviderInterface):
                     self.cache.set(cache_key, result, endpoint=endpoint, params=params or {})
                     return result
                 except ValueError as e:
-                    print(f"❌ Erreur parsing JSON CoinGecko: {e}")
+                    logger.info(f"❌ Erreur parsing JSON CoinGecko: {e}")
                     return {}
             else:
-                print(f"❌ CoinGecko API error: {response.status_code}")
+                logger.info(f"❌ CoinGecko API error: {response.status_code}")
                 return {}
 
         except requests.RequestException as e:
-            print(f"❌ CoinGecko request error: {e}")
+            logger.info(f"❌ CoinGecko request error: {e}")
             return {}
         except Exception as e:
-            print(f"❌ CoinGecko unexpected error: {e}")
+            logger.info(f"❌ CoinGecko unexpected error: {e}")
             return {}
 
     def get_market_data(
         self, coin_ids: List[str] = None, vs_currency: str = "usd"
     ) -> pd.DataFrame:
         """Get market data for cryptocurrencies"""
-        print(f"📊 Fetching CoinGecko market data...")
+        logger.info(f"📊 Fetching CoinGecko market data...")
 
         try:
             params = {
@@ -226,7 +227,7 @@ class CoinGeckoAPI(DataProviderInterface):
             data = self._make_request("/coins/markets", params)
 
             if not data:
-                print("❌ No CoinGecko market data received")
+                logger.info("❌ No CoinGecko market data received")
                 return pd.DataFrame()
 
             # Convert to DataFrame
@@ -257,23 +258,23 @@ class CoinGeckoAPI(DataProviderInterface):
                 )
 
             df = pd.DataFrame(df_data)
-            print(f"✅ Retrieved market data for {len(df)} cryptocurrencies")
+            logger.info(f"✅ Retrieved market data for {len(df)} cryptocurrencies")
             return df
 
         except Exception as e:
-            print(f"❌ CoinGecko market data error: {e}")
+            logger.info(f"❌ CoinGecko market data error: {e}")
             return pd.DataFrame()
 
     def get_historical_price_data(self, coin_id: str, days: int = 7) -> pd.DataFrame:
         """Get historical price data for a specific coin"""
         # Validation du coin_id
         if not isinstance(coin_id, str) or not coin_id.strip():
-            print(f"❌ Coin ID invalide: {coin_id}")
+            logger.info(f"❌ Coin ID invalide: {coin_id}")
             return pd.DataFrame()
 
         coin_id = coin_id.lower().strip()
 
-        print(f"📈 Fetching price history for {coin_id}...")
+        logger.info(f"📈 Fetching price history for {coin_id}...")
 
         try:
             params = {
@@ -285,7 +286,7 @@ class CoinGeckoAPI(DataProviderInterface):
             data = self._make_request(f"/coins/{coin_id}/market_chart", params)
 
             if not data or "prices" not in data:
-                print(f"❌ No price data for {coin_id}")
+                logger.info(f"❌ No price data for {coin_id}")
                 return pd.DataFrame()
 
             # Convert to DataFrame
@@ -304,11 +305,11 @@ class CoinGeckoAPI(DataProviderInterface):
             )
 
             df = df.set_index("timestamp")
-            print(f"✅ Retrieved {len(df)} price points for {coin_id}")
+            logger.info(f"✅ Retrieved {len(df)} price points for {coin_id}")
             return df
 
         except Exception as e:
-            print(f"❌ Error getting price data for {coin_id}: {e}")
+            logger.info(f"❌ Error getting price data for {coin_id}: {e}")
             return pd.DataFrame()
 
     def get_trending_coins(self) -> List[Dict]:
@@ -332,11 +333,11 @@ class CoinGeckoAPI(DataProviderInterface):
                     }
                 )
 
-            print(f"✅ Retrieved {len(trending)} trending coins")
+            logger.info(f"✅ Retrieved {len(trending)} trending coins")
             return trending
 
         except Exception as e:
-            print(f"❌ Error getting trending coins: {e}")
+            logger.info(f"❌ Error getting trending coins: {e}")
             return []
 
     def search_coins(self, query: str) -> List[Dict]:
@@ -362,7 +363,7 @@ class CoinGeckoAPI(DataProviderInterface):
             return results
 
         except Exception as e:
-            print(f"❌ Error searching coins: {e}")
+            logger.info(f"❌ Error searching coins: {e}")
             return []
 
     def get_news(self, limit: int = 20) -> List[Dict]:
@@ -424,11 +425,11 @@ class CoinGeckoAPI(DataProviderInterface):
                     }
                 ]
 
-            print(f"✅ Generated {len(news_items)} market updates from CoinGecko")
+            logger.info(f"✅ Generated {len(news_items)} market updates from CoinGecko")
             return news_items[:limit]
 
         except Exception as e:
-            print(f"❌ CoinGecko news error: {e}")
+            logger.info(f"❌ CoinGecko news error: {e}")
             return []
 
 

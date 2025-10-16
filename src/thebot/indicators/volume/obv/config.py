@@ -1,59 +1,45 @@
 """
-Configuration pour l'indicateur OBV (On-Balance Volume)
-Module ultra-modulaire - Responsabilité unique : Validation des paramètres OBV
+OBV Configuration Module
+Single responsibility: Manage OBV-specific configuration with Pydantic validation
 """
 
-from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any, Dict
+
+from pydantic import BaseModel, Field
 
 from ....core.exceptions import ConfigError
 
 
-@dataclass
-class OBVConfig:
-    """Configuration validée pour l'indicateur OBV"""
+class OBVConfig(BaseModel):
+    """On-Balance Volume configuration with Pydantic validation"""
 
-    enable_signals: bool = True
-    signal_smoothing: int = 3  # Périodes pour lisser les signaux
-    volume_threshold: Decimal = Decimal("0.1")  # Seuil volume significatif
-    use_decimal: bool = True
-    store_history: bool = True
+    # Signal generation
+    enable_signals: bool = Field(True, description="Enable signal generation")
+    signal_smoothing: int = Field(3, ge=1, le=20, description="Periods for signal smoothing")
 
-    def __post_init__(self):
-        """Validation automatique des paramètres"""
-        self.validate()
+    # Volume parameters
+    volume_threshold: Decimal = Field(Decimal("0.1"), ge=0, description="Significant volume threshold")
 
-    def validate(self) -> None:
-        """Validation complète des paramètres OBV"""
+    # Performance options
+    use_decimal: bool = Field(True, description="Use Decimal for precision")
+    store_history: bool = Field(True, description="Store calculation history")
 
-        # Validation lissage signaux
-        if not isinstance(self.signal_smoothing, int):
-            raise ConfigurationError("signal_smoothing must be an integer")
+    class Config:
+        """Pydantic configuration"""
+        validate_assignment = True
+        arbitrary_types_allowed = True
 
-        if self.signal_smoothing < 1:
-            raise ConfigurationError("signal_smoothing must be at least 1")
+    def validate_config(self) -> None:
+        """Legacy validation method for compatibility"""
+        # Pydantic handles validation automatically
+        pass
 
-        if self.signal_smoothing > 20:
-            raise ConfigurationError("signal_smoothing should not exceed 20")
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return self.dict()
 
-        # Validation seuil volume
-        if not isinstance(self.volume_threshold, Decimal):
-            try:
-                self.volume_threshold = Decimal(str(self.volume_threshold))
-            except (ValueError, TypeError):
-                raise ConfigurationError(
-                    "volume_threshold must be convertible to Decimal"
-                )
-
-        if self.volume_threshold < 0:
-            raise ConfigurationError("volume_threshold must be positive")
-
-    def to_dict(self) -> dict:
-        """Export configuration vers dictionnaire"""
-        return {
-            "enable_signals": self.enable_signals,
-            "signal_smoothing": self.signal_smoothing,
-            "volume_threshold": float(self.volume_threshold),
-            "use_decimal": self.use_decimal,
-            "store_history": self.store_history,
-        }
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "OBVConfig":
+        """Create from dictionary"""
+        return cls(**data)

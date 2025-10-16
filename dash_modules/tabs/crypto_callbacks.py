@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 📊 CRYPTO CALLBACKS CENTRALISÉS - CONFORME .CLINERULES
 =====================================================
@@ -9,7 +10,7 @@ Architecture:
 - register_all_crypto_callbacks() : Point d'entrée principal
 - Callbacks séparés par responsabilité
 - Gestion d'erreur robuste
-- Logging approprié (pas de print())
+- Logging approprié (pas de logger.info())
 - Type hints obligatoires
 """
 

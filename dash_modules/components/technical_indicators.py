@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 THEBOT - Technical Indicators Module
 Module dédié pour tous les indicateurs techniques et structurels
@@ -13,7 +14,7 @@ from dash_modules.core.price_formatter import format_price_label_adaptive
 
 # Import de la factory unifiée
 try:
-    from thebot.indicators.factory import get_indicator_factory
+    from src.thebot.indicators.factory import get_indicator_factory
     _indicator_factory = get_indicator_factory()
     FACTORY_AVAILABLE = True
 except ImportError:
@@ -154,7 +155,7 @@ class TechnicalIndicators:
                 "contraction_signals": contraction_signals,
             }
         except Exception as e:
-            print(f"⚠️ Erreur calcul ATR signaux: {e}")
+            logger.info(f"⚠️ Erreur calcul ATR signaux: {e}")
             return {
                 "atr": [1] * len(data),
                 "atr_ma": [1] * len(data),
@@ -260,7 +261,7 @@ class TechnicalIndicators:
             }
 
         except Exception as e:
-            print(f"⚠️ Erreur calcul S/R: {e}")
+            logger.info(f"⚠️ Erreur calcul S/R: {e}")
             return {"support_levels": [], "resistance_levels": []}
 
     def calculate_fibonacci_retracements(
@@ -339,7 +340,7 @@ class TechnicalIndicators:
             }
 
         except Exception as e:
-            print(f"⚠️ Erreur calcul Fibonacci: {e}")
+            logger.info(f"⚠️ Erreur calcul Fibonacci: {e}")
             return {"retracement_levels": [], "extension_levels": []}
 
     def calculate_pivot_points(
@@ -450,7 +451,7 @@ class TechnicalIndicators:
             return {"pivot_levels": levels}
 
         except Exception as e:
-            print(f"⚠️ Erreur calcul Pivots: {e}")
+            logger.info(f"⚠️ Erreur calcul Pivots: {e}")
             return {"pivot_levels": []}
 
     # === NOUVEAUX INDICATEURS AVANCÉS ===
@@ -704,7 +705,7 @@ class TechnicalIndicators:
                 )
 
         except Exception as e:
-            print(f"❌ Erreur calcul indicateurs: {e}")
+            logger.info(f"❌ Erreur calcul indicateurs: {e}")
 
         return results
 

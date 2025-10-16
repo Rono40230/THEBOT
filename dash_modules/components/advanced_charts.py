@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Advanced Charts - Phase 3 THEBOT
 Composants de graphiques avancés avec indicateurs techniques
@@ -586,7 +587,7 @@ class AdvancedCharts:
             return macd_line, signal_line, histogram
 
         except Exception as e:
-            print(f"Erreur MACD module: {e}")
+            logger.info(f"Erreur MACD module: {e}")
             # Fallback vers ancienne méthode
             ema_fast = prices.ewm(span=fast).mean()
             ema_slow = prices.ewm(span=slow).mean()

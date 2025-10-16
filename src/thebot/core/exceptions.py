@@ -3,11 +3,13 @@ Custom exceptions for THEBOT platform
 Modular exception hierarchy for precise error handling
 """
 
+from typing import Optional, Dict, Any
+
 
 class TheBotError(Exception):
     """Base exception for all THEBOT errors"""
 
-    def __init__(self, message: str, error_code: str = None, details: dict = None):
+    def __init__(self, message: str, error_code: Optional[str] = None, details: Optional[Dict[str, Any]] = None):
         super().__init__(message)
         self.message = message
         self.error_code = error_code or "GENERAL_ERROR"
@@ -41,7 +43,7 @@ class ConfigurationError(ConfigError):
 class APIError(TheBotError):
     """API-related errors"""
 
-    def __init__(self, message: str, status_code: int = None, **kwargs):
+    def __init__(self, message: str, status_code: Optional[int] = None, **kwargs):
         super().__init__(message, **kwargs)
         self.status_code = status_code
 

@@ -19,7 +19,7 @@ class BaseIndicator(ABC):
     Implements common functionality once
     """
 
-    def __init__(self, name: str, config: Dict[str, Any] = None):
+    def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
         self.name = name
         self.config = config or {}
         self._data_points: List[MarketData] = []

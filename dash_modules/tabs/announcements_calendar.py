@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Module Calendrier des Annonces Économiques
 ==========================================
@@ -41,7 +42,7 @@ class AnnouncementsCalendarModule:
         self.calculators = calculators or {}
 
         # Configuration des widgets (version simplifiée)
-        print(f"📅 {self.name} initialisé")
+        logger.info(f"📅 {self.name} initialisé")
 
         # Configuration simplifiée - TOUS LES ÉVÉNEMENTS par défaut
         # État actuel du calendrier
@@ -248,7 +249,7 @@ class AnnouncementsCalendarModule:
                 return self.events_cache[cache_key]
 
             # PRIORITÉ 1: Essayer l'API Finnhub d'abord
-            print(
+            logger.info(
                 f"🏛️ Tentative API Finnhub: {days_ahead} jours, pays={countries}, impacts={impacts}"
             )
 
@@ -259,11 +260,11 @@ class AnnouncementsCalendarModule:
                 max_events=100,  # Plus d'événements pour un meilleur résultat
             )
 
-            print(f"✅ Finnhub: {len(events)} événements récupérés")
+            logger.info(f"✅ Finnhub: {len(events)} événements récupérés")
 
             # FALLBACK: Si Finnhub échoue ou retourne peu d'événements, utiliser RSS
             if len(events) < 5:
-                print(
+                logger.info(
                     f"🔄 Fallback RSS car Finnhub a retourné {len(events)} événements"
                 )
 
@@ -280,7 +281,7 @@ class AnnouncementsCalendarModule:
                 if impacts:
                     rss_events = [e for e in rss_events if e.get("impact") in impacts]
 
-                print(f"✅ RSS Fallback: {len(rss_events)} événements après filtrage")
+                logger.info(f"✅ RSS Fallback: {len(rss_events)} événements après filtrage")
 
                 # Combiner Finnhub + RSS pour plus de données
                 events.extend(rss_events)
@@ -295,7 +296,7 @@ class AnnouncementsCalendarModule:
                         unique_events.append(event)
 
                 events = unique_events[:100]  # Limiter à 100
-                print(f"📊 Total après déduplication: {len(events)} événements")
+                logger.info(f"📊 Total après déduplication: {len(events)} événements")
 
             # Mise en cache
             self.events_cache[cache_key] = events
@@ -304,10 +305,10 @@ class AnnouncementsCalendarModule:
             return events
 
         except Exception as e:
-            print(f"❌ Erreur récupération événements: {e}")
+            logger.info(f"❌ Erreur récupération événements: {e}")
             return self._get_fallback_events()
         except Exception as e:
-            print(f"❌ Erreur récupération événements économiques: {e}")
+            logger.info(f"❌ Erreur récupération événements économiques: {e}")
             # Retourner quelques événements de fallback
             return self._get_fallback_events()
 
@@ -965,8 +966,8 @@ class AnnouncementsCalendarModule:
         }
 
         # Debug: afficher les catégories demandées
-        print(f"🔍 Filtrage par catégories: {categories}")
-        print(f"📊 Événements avant filtrage: {len(events)}")
+        logger.info(f"🔍 Filtrage par catégories: {categories}")
+        logger.info(f"📊 Événements avant filtrage: {len(events)}")
 
         # Créer une liste étendue de catégories acceptées
         extended_categories = set(categories)
@@ -974,7 +975,7 @@ class AnnouncementsCalendarModule:
             if cat in category_mapping:
                 extended_categories.update(category_mapping[cat])
 
-        print(f"🔍 Catégories étendues acceptées: {sorted(extended_categories)}")
+        logger.info(f"🔍 Catégories étendues acceptées: {sorted(extended_categories)}")
 
         filtered_events = []
         for event in events:
@@ -989,15 +990,15 @@ class AnnouncementsCalendarModule:
 
             if category_match:
                 filtered_events.append(event)
-                print(
+                logger.info(
                     f"✅ Événement gardé: {event['title']} (catégorie: {event_category})"
                 )
             else:
-                print(
+                logger.info(
                     f"❌ Événement filtré: {event['title']} (catégorie: {event_category})"
                 )
 
-        print(f"📊 Événements après filtrage: {len(filtered_events)}")
+        logger.info(f"📊 Événements après filtrage: {len(filtered_events)}")
         return filtered_events
 
     def generate_calendar_view(
@@ -1586,7 +1587,7 @@ class AnnouncementsCalendarModule:
                     return True, title, content
 
                 except Exception as e:
-                    print(f"❌ Erreur lors du clic sur jour: {e}")
+                    logger.info(f"❌ Erreur lors du clic sur jour: {e}")
                     return (
                         True,
                         "❌ Erreur",
@@ -1635,7 +1636,7 @@ class AnnouncementsCalendarModule:
                 return dash.no_update, dash.no_update, False, False, False, True
 
             trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-            print(f"🔄 Callback déclenché par: {trigger_id}")
+            logger.info(f"🔄 Callback déclenché par: {trigger_id}")
 
             # Gestion de la navigation temporelle
             if trigger_id == "calendar-prev-month":
@@ -1667,7 +1668,7 @@ class AnnouncementsCalendarModule:
             self.current_impact_filter = impact_filter
 
             # Récupérer TOUS les événements économiques
-            print("📊 Récupération de TOUS les événements économiques...")
+            logger.info("📊 Récupération de TOUS les événements économiques...")
             events = self.get_real_economic_events(
                 days_ahead=self.filter_period,
                 countries=None,  # TOUS les pays
@@ -1676,19 +1677,19 @@ class AnnouncementsCalendarModule:
 
             # Si pas d'événements API, utiliser fallback
             if not events:
-                print("🔄 Utilisation des événements de fallback")
+                logger.info("🔄 Utilisation des événements de fallback")
                 events = self._get_fallback_events()
 
             # Filtrer par impact seulement si pas "tous"
             if impact_filter != "all":
-                print(f"🔍 Filtrage par impact: {impact_filter}")
+                logger.info(f"🔍 Filtrage par impact: {impact_filter}")
                 filtered_events = [
                     e for e in events if e.get("impact", "").lower() == impact_filter
                 ]
                 events = filtered_events
-                print(f"📊 Événements après filtrage impact: {len(events)}")
+                logger.info(f"📊 Événements après filtrage impact: {len(events)}")
             else:
-                print(f"📊 TOUS les événements affichés: {len(events)}")
+                logger.info(f"📊 TOUS les événements affichés: {len(events)}")
 
             # Générer toujours le contenu calendrier
             try:
@@ -1697,14 +1698,14 @@ class AnnouncementsCalendarModule:
                 # Titre du mois pour le calendrier
                 month_title = f"{calendar.month_name[self.current_date.month]} {self.current_date.year}"
 
-                print(
+                logger.info(
                     f"✅ Contenu généré: {len(events)} événements, vue: calendrier, impact: {impact_filter}"
                 )
 
                 return content, month_title, *impact_buttons
 
             except Exception as e:
-                print(f"❌ Erreur génération contenu: {e}")
+                logger.info(f"❌ Erreur génération contenu: {e}")
                 error_content = html.Div(
                     [
                         dbc.Alert(

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Provider Manager - Gestionnaire unifié des providers de données THEBOT
 Utilise les interfaces communes pour une architecture modulaire

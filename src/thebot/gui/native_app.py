@@ -1,3 +1,4 @@
+from .core.logger import logger
 #!/usr/bin/env python3
 """
 THEBOT - Application Native Desktop
@@ -821,11 +822,11 @@ def create_tkinter_app():
 
 if __name__ == "__main__":
     if PYQT_AVAILABLE:
-        print("🚀 Lancement THEBOT avec PyQt6...")
+        logger.info("🚀 Lancement THEBOT avec PyQt6...")
         app, window = create_native_app()
         sys.exit(app.exec())
     else:
-        print("⚠️  PyQt6 non disponible, utilisation de Tkinter...")
-        print("Pour une meilleure expérience: pip install PyQt6")
+        logger.info("⚠️  PyQt6 non disponible, utilisation de Tkinter...")
+        logger.info("Pour une meilleure expérience: pip install PyQt6")
         app = create_tkinter_app()
         app.run()

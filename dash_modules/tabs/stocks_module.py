@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Stocks Market Module for THEBOT
 Handles stock data using Alpha Vantage API
@@ -114,18 +115,18 @@ class StocksModule(BaseMarketModule):
     ) -> pd.DataFrame:
         """Load stock market data from Alpha Vantage"""
         try:
-            print(f"🔄 Loading stock data for {symbol}...")
+            logger.info(f"🔄 Loading stock data for {symbol}...")
             data = self.data_provider.get_stock_data(symbol, interval)
 
             if not data.empty:
-                print(f"✅ {symbol}: {len(data)} stock data points loaded")
+                logger.info(f"✅ {symbol}: {len(data)} stock data points loaded")
                 return data
             else:
-                print(f"⚠️ No stock data for {symbol}, using fallback")
+                logger.info(f"⚠️ No stock data for {symbol}, using fallback")
                 return self._create_fallback_stock_data(symbol)
 
         except Exception as e:
-            print(f"❌ Error loading stock data for {symbol}: {e}")
+            logger.info(f"❌ Error loading stock data for {symbol}: {e}")
             return self._create_fallback_stock_data(symbol)
 
     def get_layout(self):
@@ -282,7 +283,7 @@ class StocksModule(BaseMarketModule):
 
     def _create_fallback_stock_data(self, symbol: str) -> pd.DataFrame:
         """Create fallback stock data when API unavailable"""
-        print(f"📊 Creating fallback stock data for {symbol}")
+        logger.info(f"📊 Creating fallback stock data for {symbol}")
 
         # Base prices for popular stocks
         base_prices = {

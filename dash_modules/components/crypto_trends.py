@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Component Crypto Trends - Phase 4 THEBOT
 Indicateurs de tendance crypto via Binance API

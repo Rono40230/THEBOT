@@ -1,91 +1,74 @@
 """
-Configuration pour l'indicateur ATR (Average True Range)
-Module ultra-modulaire - Responsabilité unique : Validation des paramètres ATR
+ATR Configuration Module
+Single responsibility: Manage ATR-specific configuration with Pydantic validation
 """
 
-from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from thebot.core.exceptions import ConfigurationError
+from pydantic import BaseModel, Field, field_validator
+
+from ....core.exceptions import ConfigError
 
 
-@dataclass
-class ATRConfig:
-    """Configuration validée pour l'indicateur ATR"""
+class ATRConfig(BaseModel):
+    """Average True Range configuration with Pydantic validation"""
 
-    period: int
-    smoothing_method: str = "sma"  # "sma" ou "ema"
-    enable_signals: bool = True
-    volatility_threshold_low: Decimal = Decimal("0.5")  # % ATR faible
-    volatility_threshold_high: Decimal = Decimal("2.0")  # % ATR élevé
-    use_decimal: bool = True
-    store_history: bool = True
+    # Core parameters
+    period: int = Field(14, gt=1, le=100, description="ATR calculation period")
 
-    def __post_init__(self):
-        """Validation automatique des paramètres"""
-        self.validate()
+    # Calculation options
+    smoothing_method: str = Field("sma", description="Smoothing method: 'sma' or 'ema'")
 
-    def validate(self) -> None:
-        """Validation complète des paramètres ATR"""
+    # Volatility thresholds
+    volatility_threshold_low: Decimal = Field(Decimal("0.5"), ge=0, description="Low volatility threshold (%)")
+    volatility_threshold_high: Decimal = Field(Decimal("2.0"), gt=0, description="High volatility threshold (%)")
 
-        # Validation période
-        if not isinstance(self.period, int):
-            raise ConfigurationError("period must be an integer")
+    # Signal generation
+    enable_signals: bool = Field(True, description="Enable signal generation")
 
-        if self.period < 2:
-            raise ConfigurationError("period must be at least 2")
+    # Performance options
+    use_decimal: bool = Field(True, description="Use Decimal for precision")
+    store_history: bool = Field(True, description="Store calculation history")
 
-        if self.period > 100:
-            raise ConfigurationError("period must not exceed 100")
+    class Config:
+        """Pydantic configuration"""
+        validate_assignment = True
+        arbitrary_types_allowed = True
 
-        # Validation méthode de lissage
-        if self.smoothing_method not in ["sma", "ema"]:
-            raise ConfigurationError("smoothing_method must be 'sma' or 'ema'")
+    @field_validator('smoothing_method')
+    @classmethod
+    def validate_smoothing_method(cls, v):
+        """Validate smoothing method"""
+        if v not in ["sma", "ema"]:
+            raise ValueError("smoothing_method must be 'sma' or 'ema'")
+        return v
 
-        # Validation seuils de volatilité
-        if not isinstance(self.volatility_threshold_low, Decimal):
-            try:
-                self.volatility_threshold_low = Decimal(
-                    str(self.volatility_threshold_low)
-                )
-            except (ValueError, TypeError):
-                raise ConfigurationError(
-                    "volatility_threshold_low must be convertible to Decimal"
-                )
-
-        if not isinstance(self.volatility_threshold_high, Decimal):
-            try:
-                self.volatility_threshold_high = Decimal(
-                    str(self.volatility_threshold_high)
-                )
-            except (ValueError, TypeError):
-                raise ConfigurationError(
-                    "volatility_threshold_high must be convertible to Decimal"
-                )
-
-        if self.volatility_threshold_low < 0:
-            raise ConfigurationError("volatility_threshold_low must be positive")
-
-        if self.volatility_threshold_high <= self.volatility_threshold_low:
-            raise ConfigurationError(
-                "volatility_threshold_high must be > volatility_threshold_low"
-            )
+    @field_validator('volatility_threshold_high')
+    @classmethod
+    def validate_volatility_thresholds(cls, v, info):
+        """Validate volatility threshold relationships"""
+        data = info.data
+        if 'volatility_threshold_low' in data and v <= data['volatility_threshold_low']:
+            raise ValueError("volatility_threshold_high must be > volatility_threshold_low")
+        return v
 
     def get_smoothing_alpha(self) -> Optional[Decimal]:
-        """Retourne alpha pour EMA, None pour SMA"""
+        """Return alpha for EMA smoothing, None for SMA"""
         if self.smoothing_method == "ema":
             return Decimal("2") / (Decimal(str(self.period)) + 1)
         return None
 
-    def to_dict(self) -> dict:
-        """Export configuration vers dictionnaire"""
-        return {
-            "period": self.period,
-            "smoothing_method": self.smoothing_method,
-            "enable_signals": self.enable_signals,
-            "volatility_threshold_low": float(self.volatility_threshold_low),
-            "volatility_threshold_high": float(self.volatility_threshold_high),
-            "use_decimal": self.use_decimal,
-            "store_history": self.store_history,
-        }
+    def validate_config(self) -> None:
+        """Legacy validation method for compatibility"""
+        # Pydantic handles validation automatically
+        pass
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return self.dict()
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ATRConfig":
+        """Create from dictionary"""
+        return cls(**data)

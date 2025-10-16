@@ -1,3 +1,4 @@
+from .core.logger import logger
 """
 THEBOT - Trading Bot Indicators Package
 Indicateurs techniques ultra-modulaires traduits depuis NonoBot Rust

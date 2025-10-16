@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Service de base de données THEBOT
 Gestion centralisée des opérations de base de données

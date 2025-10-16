@@ -8,11 +8,10 @@ from typing import Dict, Optional, Tuple
 
 import pandas as pd
 
+from ....core.logger import logger
 from .calculator import MACDCalculator
 from .config import MACDConfig
 from .plotter import MACDPlotter
-
-logger = logging.getLogger(__name__)
 
 
 class MACD:

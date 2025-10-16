@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Callback Manager - Classe de base pour tous les gestionnaires de callbacks
 Fournit l'interface commune et les fonctionnalités de base

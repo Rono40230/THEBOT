@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Modal Callbacks Manager - Gestionnaire centralisé des callbacks modaux
 Regroupe tous les callbacks liés aux modaux et fenêtres popup

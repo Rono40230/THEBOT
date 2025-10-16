@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Gestionnaire de données réelles THEBOT
 Support multi-providers: Binance (gratuit), Yahoo Finance, FMP
@@ -205,43 +206,23 @@ class RealDataManager:
         """Configure API keys for all providers from configuration"""
         try:
             from ..core.api_config import APIConfig
-
+            
             config = APIConfig()
-
-            # Configure CryptoPanic API key (DEPRECATED - Phase 1)
-            for provider in config.config["providers"]["data_sources"]["news"]:
-                if provider["name"] == "CryptoPanic" and provider.get("config", {}).get(
-                    "api_key"
-                ):
-                    # crypto_panic_api.api_key = provider['config']['api_key']  # DEPRECATED
-                    logger.info(f"⚠️ CryptoPanic API deprecated - using RSS instead")
-                elif provider["name"] == "FMP" and provider.get("config", {}).get(
-                    "api_key"
-                ):
-                    # FMP API configuration désactivée (déprécié)
-                    # from .fmp_api import fmp_api
-                    # fmp_api.api_key = provider['config']['api_key']
-                    logger.info(f"⚠️ FMP API deprecated - skipping configuration")
-                elif provider["name"] == "CoinGecko" and provider.get("config", {}).get(
-                    "api_key"
-                ):
-                    coin_gecko_api.api_key = provider["config"]["api_key"]
-                    logger.info(f"✅ CoinGecko API key configured")
-                elif provider["name"] == "Twelve Data" and provider.get(
-                    "config", {}
-                ).get("api_key"):
-                    twelve_data_api.api_key = provider["config"]["api_key"]
-                    logger.info(
-                        f"✅ Twelve Data API key configured: {provider['config']['api_key'][:8]}..."
-                    )
-                    logger.info(f"✅ Twelve Data ready - 800 calls/day available")
-
+            
+            # Configure providers using new config structure
+            # CoinGecko API key
+            if config.get("providers.coingecko.api_key"):
+                coin_gecko_api.api_key = config.get("providers.coingecko.api_key")
+                logger.info(f"✅ CoinGecko API key configured")
+            
+            # Twelve Data API key
+            if config.get("providers.twelve_data.api_key"):
+                twelve_data_api.api_key = config.get("providers.twelve_data.api_key")
+                logger.info(f"✅ Twelve Data API key configured: {config.get('providers.twelve_data.api_key')[:8]}...")
+                logger.info(f"✅ Twelve Data ready - 800 calls/day available")
+        
         except Exception as e:
             logger.warning(f"⚠️ Erreur configuration API keys: {e}")
-
-    def get_available_markets(self) -> List[str]:
-        """Retourner liste des marchés disponibles"""
-        return list(self.supported_markets.keys())
 
     def get_market_data(
         self, symbol: str, timeframe: str = "1h", limit: int = 100
@@ -653,39 +634,39 @@ class RealDataManager:
 
     def get_configuration_info(self):
         """Afficher informations de configuration"""
-        print("\n" + "=" * 60)
-        print("🚀 THEBOT - CONFIGURATION APIs MULTI-PROVIDERS")
-        print("=" * 60)
-        print()
-        print("✅ APIs configurées:")
-        print(f"   📊 Marchés disponibles: {len(self.supported_markets)}")
-        print(f"   🔄 Providers actifs: {len(self.providers)}")
-        print("   🎯 Support multi-providers (Binance gratuit, CoinGecko, Twelve Data)")
-        print()
+        logger.info("\n" + "=" * 60)
+        logger.info("🚀 THEBOT - CONFIGURATION APIs MULTI-PROVIDERS")
+        logger.info("=" * 60)
+        logger.info()
+        logger.info("✅ APIs configurées:")
+        logger.info(f"   📊 Marchés disponibles: {len(self.supported_markets)}")
+        logger.info(f"   🔄 Providers actifs: {len(self.providers)}")
+        logger.info("   🎯 Support multi-providers (Binance gratuit, CoinGecko, Twelve Data)")
+        logger.info()
 
         # Test de connexion pour chaque provider
         status = self.get_api_status()
 
         for provider_name, provider_status in status["providers"].items():
             active = "✅" if provider_status["active"] else "❌"
-            print(f"{active} {provider_status['name']} - {provider_status['type']}")
-            print(f"   📊 Marchés: {provider_status['markets_count']}")
-            print(f"   🔄 Status: {provider_status['test_result']}")
-            print()
+            logger.info(f"{active} {provider_status['name']} - {provider_status['type']}")
+            logger.info(f"   📊 Marchés: {provider_status['markets_count']}")
+            logger.info(f"   🔄 Status: {provider_status['test_result']}")
+            logger.info()
 
-        print("📈 Marchés supportés:")
+        logger.info("📈 Marchés supportés:")
         crypto_count = sum(1 for m in self.supported_markets.values() if m["type"] == "crypto")
         stocks_count = sum(1 for m in self.supported_markets.values() if m["type"] == "stocks")
         forex_count = sum(1 for m in self.supported_markets.values() if m["type"] == "forex")
 
-        print(f"   • Crypto: {crypto_count} marchés")
-        print(f"   • Actions: {stocks_count} marchés")
-        print(f"   • Forex: {forex_count} marchés")
-        print()
+        logger.info(f"   • Crypto: {crypto_count} marchés")
+        logger.info(f"   • Actions: {stocks_count} marchés")
+        logger.info(f"   • Forex: {forex_count} marchés")
+        logger.info()
 
-        print("=" * 60)
-        print("🎯 Prêt pour le trading avec des données multi-providers !")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("🎯 Prêt pour le trading avec des données multi-providers !")
+        logger.info("=" * 60)
 
         return {
             "supported_providers": list(self.providers.keys()),
@@ -700,24 +681,24 @@ class RealDataManager:
         binance_status = status.get("binance", {})
 
         if binance_status.get("active", False):
-            print("🟢 STATUT: Binance API fonctionnelle")
-            print(f"   Test: {binance_status.get('test_result', 'Unknown')}")
+            logger.info("🟢 STATUT: Binance API fonctionnelle")
+            logger.info(f"   Test: {binance_status.get('test_result', 'Unknown')}")
         else:
-            print("🔴 STATUT: Binance API non accessible")
-            print(f"   Erreur: {binance_status.get('test_result', 'Unknown')}")
+            logger.info("🔴 STATUT: Binance API non accessible")
+            logger.info(f"   Erreur: {binance_status.get('test_result', 'Unknown')}")
 
-        print()
-        print("📈 Marchés supportés:")
+        logger.info()
+        logger.info("📈 Marchés supportés:")
         for i, (symbol, info) in enumerate(self.supported_markets.items()):
             if i < 5:  # Afficher 5 premiers
-                print(f"   • {symbol}: {info['label']}")
+                logger.info(f"   • {symbol}: {info['label']}")
 
         if len(self.supported_markets) > 5:
-            print(f"   ... et {len(self.supported_markets) - 5} autres")
+            logger.info(f"   ... et {len(self.supported_markets) - 5} autres")
 
-        print("\n" + "=" * 60)
-        print("🎯 Prêt pour le trading avec des données réelles gratuites !")
-        print("=" * 60)
+        logger.info("\n" + "=" * 60)
+        logger.info("🎯 Prêt pour le trading avec des données réelles gratuites !")
+        logger.info("=" * 60)
 
 
 # Instance globale

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Alerts Callbacks Manager - Gestionnaire centralisé des callbacks alertes
 Regroupe tous les callbacks liés aux alertes et notifications

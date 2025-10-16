@@ -1,60 +1,45 @@
 """
-Configuration pour l'indicateur SuperTrend
-Module ultra-modulaire - Responsabilité unique : Validation des paramètres SuperTrend
+SuperTrend Configuration Module
+Single responsibility: Manage SuperTrend-specific configuration with Pydantic validation
 """
 
-from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any, Dict
+
+from pydantic import BaseModel, Field
 
 from ....core.exceptions import ConfigError
 
 
-@dataclass
-class SuperTrendConfig:
-    """Configuration validée pour l'indicateur SuperTrend"""
+class SuperTrendConfig(BaseModel):
+    """SuperTrend configuration with Pydantic validation"""
 
-    atr_period: int = 10
-    multiplier: Decimal = Decimal("3.0")
-    enable_signals: bool = True
-    use_decimal: bool = True
-    store_history: bool = True
+    # Core parameters
+    atr_period: int = Field(10, ge=2, le=50, description="ATR calculation period")
+    multiplier: Decimal = Field(Decimal("3.0"), gt=0, le=10, description="ATR multiplier for bands")
 
-    def __post_init__(self):
-        """Validation automatique des paramètres"""
-        self.validate()
+    # Signal generation
+    enable_signals: bool = Field(True, description="Enable signal generation")
 
-    def validate(self) -> None:
-        """Validation complète des paramètres SuperTrend"""
+    # Performance options
+    use_decimal: bool = Field(True, description="Use Decimal for precision")
+    store_history: bool = Field(True, description="Store calculation history")
 
-        # Validation période ATR
-        if not isinstance(self.atr_period, int):
-            raise ConfigError("atr_period must be an integer")
+    class Config:
+        """Pydantic configuration"""
+        validate_assignment = True
+        arbitrary_types_allowed = True
 
-        if self.atr_period < 2:
-            raise ConfigError("atr_period must be at least 2")
+    def validate_config(self) -> None:
+        """Legacy validation method for compatibility"""
+        # Pydantic handles validation automatically
+        pass
 
-        if self.atr_period > 50:
-            raise ConfigError("atr_period must not exceed 50")
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return self.model_dump()
 
-        # Validation multiplicateur
-        if not isinstance(self.multiplier, Decimal):
-            try:
-                self.multiplier = Decimal(str(self.multiplier))
-            except (ValueError, TypeError):
-                raise ConfigError("multiplier must be convertible to Decimal")
-
-        if self.multiplier <= 0:
-            raise ConfigError("multiplier must be positive")
-
-        if self.multiplier > 10:
-            raise ConfigError("multiplier should not exceed 10")
-
-    def to_dict(self) -> dict:
-        """Export configuration vers dictionnaire"""
-        return {
-            "atr_period": self.atr_period,
-            "multiplier": float(self.multiplier),
-            "enable_signals": self.enable_signals,
-            "use_decimal": self.use_decimal,
-            "store_history": self.store_history,
-        }
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SuperTrendConfig":
+        """Create from dictionary"""
+        return cls(**data)

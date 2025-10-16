@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Callback Factory - Factory pour créer des callbacks standardisés
 Facilite la création de callbacks avec patterns communs

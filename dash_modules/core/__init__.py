@@ -1,9 +1,11 @@
 """
 Core Module - THEBOT Dash
 Module central avec configuration et utilitaires de base - Données réelles uniquement
+Fichiers restants : uniquement UI (config, callbacks, layout)
 """
 
-from .calculators import calculator
-from .config import dash_config
+# Imports des modules UI restants
+from .layout_manager import LayoutManager
+from .launcher_callbacks import LauncherCallbacks
 
-__all__ = ["dash_config", "calculator"]
+__all__ = ["LayoutManager", "LauncherCallbacks"]

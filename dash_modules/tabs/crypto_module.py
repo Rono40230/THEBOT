@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 THEBOT Crypto Module - Interface Moderne Complète PROPRE
 Module crypto avec architecture modulaire - Version nettoyée sans code mort

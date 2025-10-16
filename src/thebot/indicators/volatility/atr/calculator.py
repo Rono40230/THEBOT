@@ -7,8 +7,8 @@ from collections import deque
 from decimal import Decimal
 from typing import List, Optional
 
-from thebot.core.types import IndicatorResult, MarketData
-from thebot.indicators.volatility.atr.config import ATRConfig
+from ....core.types import IndicatorResult, MarketData
+from .config import ATRConfig
 
 
 class ATRCalculator:
@@ -23,18 +23,13 @@ class ATRCalculator:
 
         # État interne pour ATR
         self._previous_close: Optional[Decimal] = None
-        self._true_ranges: deque = (
-            deque(maxlen=config.period) if config.smoothing_method == "sma" else None
-        )
+        self._true_ranges: deque[Decimal] = deque(maxlen=config.period)
         self._current_atr: Optional[Decimal] = None
         self._is_initialized = False
         self._data_count = 0
 
         # Historique pour analyse (si activé)
-        if config.store_history:
-            self._history: deque = deque(maxlen=min(config.period * 2, 100))
-        else:
-            self._history = None
+        self._history: deque = deque(maxlen=min(config.period * 2, 100) if config.store_history else 0)
 
     def add_data_point(self, market_data: MarketData) -> Optional[IndicatorResult]:
         """
@@ -120,9 +115,10 @@ class ATRCalculator:
             return self._current_atr
 
         # ATR_EMA = α × TR + (1-α) × ATR_précédent
-        self._current_atr = (
-            self.alpha * true_range + (Decimal("1") - self.alpha) * self._current_atr
-        )
+        if self.alpha is not None and self._current_atr is not None:
+            self._current_atr = (
+                self.alpha * true_range + (Decimal("1") - self.alpha) * self._current_atr
+            )
         return self._current_atr
 
     def get_current_value(self) -> Optional[Decimal]:

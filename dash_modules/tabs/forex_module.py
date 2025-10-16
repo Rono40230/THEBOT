@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Forex Market Module for THEBOT
 Handles forex data using Alpha Vantage API
@@ -91,21 +92,21 @@ class ForexModule(BaseMarketModule):
                 from_symbol = symbol[:3]
                 to_symbol = symbol[3:]
             else:
-                print(f"⚠️ Invalid forex pair format: {symbol}")
+                logger.info(f"⚠️ Invalid forex pair format: {symbol}")
                 return self._create_fallback_forex_data(symbol)
 
-            print(f"🔄 Loading forex data for {from_symbol}/{to_symbol}...")
+            logger.info(f"🔄 Loading forex data for {from_symbol}/{to_symbol}...")
             data = self.data_provider.get_forex_data(from_symbol, to_symbol, interval)
 
             if not data.empty:
-                print(f"✅ {symbol}: {len(data)} forex data points loaded")
+                logger.info(f"✅ {symbol}: {len(data)} forex data points loaded")
                 return data
             else:
-                print(f"⚠️ No forex data for {symbol}, using fallback")
+                logger.info(f"⚠️ No forex data for {symbol}, using fallback")
                 return self._create_fallback_forex_data(symbol)
 
         except Exception as e:
-            print(f"⚠️ Error loading forex data: {e}")
+            logger.info(f"⚠️ Error loading forex data: {e}")
             return self._create_fallback_data(symbol)
 
     def get_layout(self):
@@ -176,7 +177,7 @@ class ForexModule(BaseMarketModule):
 
     def _create_fallback_forex_data(self, symbol: str) -> pd.DataFrame:
         """Create fallback forex data when API unavailable"""
-        print(f"📊 Creating fallback forex data for {symbol}")
+        logger.info(f"📊 Creating fallback forex data for {symbol}")
 
         # Base rates for major forex pairs
         base_rates = {

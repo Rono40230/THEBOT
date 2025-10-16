@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Market Modal Manager - Contrôleur MVC pour les données de marché
 Gère les callbacks en utilisant MarketDataService pour la logique métier

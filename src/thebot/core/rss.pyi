@@ -1,0 +1,6 @@
+# Stub file for mypy - rss parser has type issues
+from typing import Any, Optional, List
+
+class AsyncRSSParser:
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    async def parse_rss(self, *args: Any, **kwargs: Any) -> Optional[List[dict[str, Any]]]: ...

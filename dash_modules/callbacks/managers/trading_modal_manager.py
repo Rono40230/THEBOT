@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Trading Modal Manager - Contrôleur MVC pour les opérations de trading
 Gère les callbacks en utilisant MarketDataService et AlertService pour la logique métier

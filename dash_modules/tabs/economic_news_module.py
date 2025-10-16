@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Economic News Module for THEBOT
 News économiques exclusivement alimentées par RSS avec widgets AI
@@ -24,7 +25,7 @@ try:
 
     RSS_AVAILABLE = True
 except ImportError:
-    print("⚠️ RSS News Manager non disponible")
+    logger.info("⚠️ RSS News Manager non disponible")
     RSS_AVAILABLE = False
 
 # Import AI Engine
@@ -33,7 +34,7 @@ try:
 
     AI_AVAILABLE = True
 except ImportError:
-    print("⚠️ Smart AI Manager non disponible")
+    logger.info("⚠️ Smart AI Manager non disponible")
     AI_AVAILABLE = False
 
 
@@ -113,7 +114,7 @@ class EconomicNewsModule:
             "mining",
         ]
 
-        print("✅ Economic News Module initialisé (RSS exclusif)")
+        logger.info("✅ Economic News Module initialisé (RSS exclusif)")
 
     def translate_article_title(self, title: str) -> str:
         """Traduire titre d'article en français"""
@@ -129,7 +130,7 @@ class EconomicNewsModule:
                     return title
             return title
         except Exception as e:
-            print(f"❌ Erreur traduction titre: {e}")
+            logger.info(f"❌ Erreur traduction titre: {e}")
             return title
 
     def translate_article_summary(self, summary: str) -> str:
@@ -150,7 +151,7 @@ class EconomicNewsModule:
                     return summary
             return summary
         except Exception as e:
-            print(f"❌ Erreur traduction résumé: {e}")
+            logger.info(f"❌ Erreur traduction résumé: {e}")
             return summary
 
     def _format_date(self, date_value):
@@ -324,7 +325,7 @@ class EconomicNewsModule:
                 key=lambda x: (x["relevance_score"], x["published_time"]), reverse=True
             )
 
-            print(
+            logger.info(
                 f"✅ {len(economic_news)} news économiques RSS récupérées (traduites)"
             )
 
@@ -336,7 +337,7 @@ class EconomicNewsModule:
             }
 
         except Exception as e:
-            print(f"❌ Erreur récupération RSS économique: {e}")
+            logger.info(f"❌ Erreur récupération RSS économique: {e}")
             return {"news": [], "total": 0, "source": "RSS Error"}
 
     def _is_economic_news(self, article: Dict) -> bool:
@@ -428,7 +429,7 @@ class EconomicNewsModule:
             return result
 
         except Exception as e:
-            print(f"❌ Erreur analyse sentiment: {e}")
+            logger.info(f"❌ Erreur analyse sentiment: {e}")
             return {"positive": 30, "neutral": 50, "negative": 20, "confidence": 0.6}
 
     def extract_trending_topics(self, articles: List[Dict]) -> List[Dict]:
@@ -460,7 +461,7 @@ class EconomicNewsModule:
             return self.trending_cache
 
         except Exception as e:
-            print(f"❌ Erreur trending topics: {e}")
+            logger.info(f"❌ Erreur trending topics: {e}")
             return []
 
     def calculate_fear_greed_index(self, articles: List[Dict], sentiment: Dict) -> Dict:
@@ -503,7 +504,7 @@ class EconomicNewsModule:
             }
 
         except Exception as e:
-            print(f"❌ Erreur Fear & Greed: {e}")
+            logger.info(f"❌ Erreur Fear & Greed: {e}")
             return {
                 "score": 50.0,
                 "classification": "Neutral",

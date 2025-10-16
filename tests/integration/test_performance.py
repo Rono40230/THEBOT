@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Tests de performance Phase 5 - Validation des performances système
 Mesure les temps de réponse, utilisation mémoire et charge système
@@ -32,7 +33,7 @@ class TestPerformanceMetrics:
 
         # La création devrait prendre moins de 10 secondes
         assert creation_time < 10.0, f"Création trop lente: {creation_time:.2f}s"
-        print(f"✅ Temps de création dashboard: {creation_time:.2f}s")
+        logger.info(f"✅ Temps de création dashboard: {creation_time:.2f}s")
 
     def test_memory_usage_during_creation(self):
         """Test utilisation mémoire pendant la création"""
@@ -50,7 +51,7 @@ class TestPerformanceMetrics:
 
         # L'utilisation mémoire devrait être raisonnable
         assert memory_used < 300.0, f"Utilisation mémoire excessive: {memory_used:.2f}MB"
-        print(f"✅ Utilisation mémoire création: {memory_used:.2f}MB")
+        logger.info(f"✅ Utilisation mémoire création: {memory_used:.2f}MB")
 
     def test_service_initialization_performance(self):
         """Test performance d'initialisation des services"""
@@ -69,7 +70,7 @@ class TestPerformanceMetrics:
 
             # L'initialisation devrait être rapide
             assert init_time < 2.0, f"Initialisation {service_class.__name__} trop lente: {init_time:.2f}s"
-            print(f"✅ Initialisation {service_class.__name__}: {init_time:.2f}s")
+            logger.info(f"✅ Initialisation {service_class.__name__}: {init_time:.2f}s")
 
     def test_data_processing_performance(self):
         """Test performance du traitement des données"""
@@ -99,7 +100,7 @@ class TestPerformanceMetrics:
         # Le traitement devrait être rapide
         assert processing_time < 5.0, f"Traitement données trop lent: {processing_time:.2f}s"
         assert len(alerts) == 100
-        print(f"✅ Traitement 100 alertes: {processing_time:.2f}s")
+        logger.info(f"✅ Traitement 100 alertes: {processing_time:.2f}s")
 
 
 class TestLoadTesting:
@@ -150,7 +151,7 @@ class TestLoadTesting:
 
         # Le temps d'exécution devrait être raisonnable
         assert execution_time < 10.0, f"Exécution concurrente trop lente: {execution_time:.2f}s"
-        print(f"✅ Test concurrent (50 alertes): {execution_time:.2f}s")
+        logger.info(f"✅ Test concurrent (50 alertes): {execution_time:.2f}s")
 
     def test_large_dataset_handling(self):
         """Test gestion de gros volumes de données"""
@@ -184,7 +185,7 @@ class TestLoadTesting:
         assert creation_time < 60.0, f"Création dataset trop lente: {creation_time:.2f}s"  # Timeout plus réaliste
         assert retrieval_time < 5.0, f"Récupération dataset trop lente: {retrieval_time:.2f}s"
 
-        print(f"✅ Dataset 1000 alertes - Création: {creation_time:.2f}s, Récupération: {retrieval_time:.2f}s")
+        logger.info(f"✅ Dataset 1000 alertes - Création: {creation_time:.2f}s, Récupération: {retrieval_time:.2f}s")
 
     def test_memory_efficiency_large_data(self):
         """Test efficacité mémoire avec gros volumes"""
@@ -220,7 +221,7 @@ class TestLoadTesting:
         # L'utilisation mémoire devrait être proportionnelle
         # ~1KB par alerte, donc ~1MB pour 1000 alertes est acceptable
         assert memory_used < 10.0, f"Utilisation mémoire excessive: {memory_used:.2f}MB"
-        print(f"✅ Mémoire 1000 alertes: {memory_used:.2f}MB")
+        logger.info(f"✅ Mémoire 1000 alertes: {memory_used:.2f}MB")
 
 
 class TestAPIPerformance:
@@ -253,11 +254,11 @@ class TestAPIPerformance:
 
         # Le temps moyen devrait être très rapide pour des données mockées
         assert avg_time < 0.01, f"Temps de réponse API trop lent: {avg_time:.4f}s"
-        print(f"✅ Temps réponse API simulé (100 appels): {avg_time:.4f}s/appel")
+        logger.info(f"✅ Temps réponse API simulé (100 appels): {avg_time:.4f}s/appel")
 
     def test_caching_performance(self):
         """Test performance du système de cache"""
-        from dash_modules.core.intelligent_cache import IntelligentCache
+        from thebot.core.cache import IntelligentCache
 
         cache = IntelligentCache()
 
@@ -281,7 +282,7 @@ class TestAPIPerformance:
         assert write_time < 1.0, f"Écriture cache lente: {write_time:.2f}s"
         assert read_time < 1.0, f"Lecture cache lente: {read_time:.2f}s"
 
-        print(f"✅ Cache perf - Écriture: {write_time:.2f}s, Lecture: {read_time:.2f}s")
+        logger.info(f"✅ Cache perf - Écriture: {write_time:.2f}s, Lecture: {read_time:.2f}s")
 
 
 class TestResourceMonitoring:
@@ -309,7 +310,7 @@ class TestResourceMonitoring:
 
         # L'utilisation CPU ne devrait pas être excessive
         assert cpu_after < 50.0, f"Utilisation CPU excessive: {cpu_after:.1f}%"
-        print(f"✅ Utilisation CPU: {cpu_before:.1f}% → {cpu_after:.1f}%")
+        logger.info(f"✅ Utilisation CPU: {cpu_before:.1f}% → {cpu_after:.1f}%")
 
     def test_file_io_performance(self):
         """Test performance des opérations I/O fichier"""
@@ -333,7 +334,7 @@ class TestResourceMonitoring:
 
         # Les opérations I/O devraient être raisonnables
         assert io_time < 10.0, f"Opérations I/O lentes: {io_time:.2f}s"
-        print(f"✅ Performance I/O (100 sauvegardes): {io_time:.2f}s")
+        logger.info(f"✅ Performance I/O (100 sauvegardes): {io_time:.2f}s")
 
     def test_memory_cleanup(self):
         """Test nettoyage mémoire après opérations"""
@@ -373,7 +374,7 @@ class TestResourceMonitoring:
         assert memory_freed > 0, "Mémoire non libérée après nettoyage"
         assert memory_used < 100.0, f"Utilisation mémoire excessive: {memory_used:.2f}MB"
 
-        print(f"✅ Nettoyage mémoire - Utilisé: {memory_used:.2f}MB, Libéré: {memory_freed:.2f}MB")
+        logger.info(f"✅ Nettoyage mémoire - Utilisé: {memory_used:.2f}MB, Libéré: {memory_freed:.2f}MB")
 
 
 class TestProfiling:
@@ -407,5 +408,5 @@ class TestProfiling:
         assert "create_alert" in profile_output
         assert len(profile_output) > 0
 
-        print("✅ Profiling terminé - Fonctions les plus coûteuses:")
-        print(profile_output[:500] + "..." if len(profile_output) > 500 else profile_output)
+        logger.info("✅ Profiling terminé - Fonctions les plus coûteuses:")
+        logger.info(profile_output[:500] + "..." if len(profile_output) > 500 else profile_output)

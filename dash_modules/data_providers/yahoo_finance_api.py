@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Yahoo Finance API Module for THEBOT (Migrated to yfinance library)
 Provides real-time, historical market data, and financial news via yfinance
@@ -52,7 +53,7 @@ class YahooFinanceAPI:
         if self.rate_limit_calls >= 50:  # Conservative limit for yfinance
             wait_time = 3600 - (current_time - self.rate_limit_reset).seconds
             if wait_time > 0:
-                print(f"⏱️ Yahoo Finance rate limit: waiting {min(wait_time, 60)}s...")
+                logger.info(f"⏱️ Yahoo Finance rate limit: waiting {min(wait_time, 60)}s...")
                 time.sleep(min(wait_time, 60))
 
         self.rate_limit_calls += 1
@@ -62,7 +63,7 @@ class YahooFinanceAPI:
         self._rate_limit_check()
 
         try:
-            print(f"� Fetching Yahoo Finance stock data for {symbol}...")
+            logger.info(f"� Fetching Yahoo Finance stock data for {symbol}...")
 
             # Create ticker object
             ticker = yf.Ticker(symbol)
@@ -99,21 +100,21 @@ class YahooFinanceAPI:
                 # Add timestamp column
                 hist["timestamp"] = hist.index
 
-                print(f"✅ Yahoo Finance: {len(hist)} data points for {symbol}")
+                logger.info(f"✅ Yahoo Finance: {len(hist)} data points for {symbol}")
                 return hist
             else:
-                print(f"⚠️ No data found for {symbol}")
+                logger.info(f"⚠️ No data found for {symbol}")
                 return pd.DataFrame()
 
         except Exception as e:
-            print(f"❌ Yahoo Finance error for {symbol}: {e}")
+            logger.info(f"❌ Yahoo Finance error for {symbol}: {e}")
             return pd.DataFrame()
 
     def get_forex_data(self, pair: str, period: str = "1mo") -> pd.DataFrame:
         """Get forex data using yfinance"""
         self._rate_limit_check()
 
-        print(f"💱 Fetching Yahoo Finance forex data for {pair}...")
+        logger.info(f"💱 Fetching Yahoo Finance forex data for {pair}...")
 
         # Yahoo uses =X suffix for forex pairs
         if not pair.endswith("=X"):
@@ -125,7 +126,7 @@ class YahooFinanceAPI:
         """Get current quotes for symbols using yfinance"""
         self._rate_limit_check()
 
-        print(f"💰 Fetching quotes for {len(symbols)} symbols...")
+        logger.info(f"💰 Fetching quotes for {len(symbols)} symbols...")
 
         quotes = {}
 
@@ -156,13 +157,13 @@ class YahooFinanceAPI:
                     }
 
         except Exception as e:
-            print(f"❌ Error fetching quotes: {e}")
+            logger.info(f"❌ Error fetching quotes: {e}")
 
         return quotes
 
     def search_symbols(self, query: str) -> List[Dict]:
         """Search for symbols - limited functionality with yfinance"""
-        print(f"🔍 Searching Yahoo Finance for: {query}")
+        logger.info(f"🔍 Searching Yahoo Finance for: {query}")
 
         # yfinance doesn't have direct search, so we'll return common symbols
         # that match the query
@@ -186,7 +187,7 @@ class YahooFinanceAPI:
 
     def get_forex_data(self, pair: str, period: str = "1d") -> pd.DataFrame:
         """Get forex pair data"""
-        print(f"💱 Fetching Yahoo Finance forex data for {pair}...")
+        logger.info(f"💱 Fetching Yahoo Finance forex data for {pair}...")
 
         # Yahoo uses =X suffix for forex pairs
         if not pair.endswith("=X"):
@@ -196,7 +197,7 @@ class YahooFinanceAPI:
 
     def search_symbols(self, query: str) -> List[Dict]:
         """Search for symbols"""
-        print(f"🔍 Searching Yahoo Finance for: {query}")
+        logger.info(f"🔍 Searching Yahoo Finance for: {query}")
 
         endpoint = "/finance/search"
         params = {"q": query, "quotesCount": 10, "newsCount": 0}
@@ -238,12 +239,12 @@ class YahooFinanceAPI:
             if not df.empty:
                 df = df.sort_values("timestamp").reset_index(drop=True)
                 df.index = df["timestamp"]
-                print(f"✅ Yahoo Finance: {len(df)} data points for {symbol}")
+                logger.info(f"✅ Yahoo Finance: {len(df)} data points for {symbol}")
 
             return df
 
         except Exception as e:
-            print(f"❌ Error parsing Yahoo Finance data: {e}")
+            logger.info(f"❌ Error parsing Yahoo Finance data: {e}")
             return pd.DataFrame()
 
     def _parse_quotes(self, quote_response: Dict) -> Dict:
@@ -268,7 +269,7 @@ class YahooFinanceAPI:
         try:
             self._rate_limit_check()
 
-            print("🔍 Testing Yahoo Finance connection...")
+            logger.info("🔍 Testing Yahoo Finance connection...")
 
             # Test with a simple ticker
             ticker = yf.Ticker("AAPL")
@@ -306,7 +307,7 @@ class YahooFinanceAPI:
             self._rate_limit_check()
             news_items = []
 
-            print("🔄 Generating financial news from Yahoo Finance market data...")
+            logger.info("🔄 Generating financial news from Yahoo Finance market data...")
 
             # Strategy 1: Market indices analysis (always generates at least some news)
             news_items.extend(self._get_guaranteed_market_news(limit // 2))
@@ -317,13 +318,13 @@ class YahooFinanceAPI:
             # Sort by recency and limit results
             news_items.sort(key=lambda x: x["published_at"], reverse=True)
 
-            print(
+            logger.info(
                 f"✅ Retrieved {len(news_items)} financial news items from Yahoo Finance"
             )
             return news_items[:limit]
 
         except Exception as e:
-            print(f"❌ Yahoo Finance news error: {e}")
+            logger.info(f"❌ Yahoo Finance news error: {e}")
             # Fallback: return at least some basic news
             return self._get_fallback_news(limit)
 
@@ -380,7 +381,7 @@ class YahooFinanceAPI:
                         news_items.append(news_item)
 
                 except Exception as e:
-                    print(f"⚠️ Error with {symbol}: {e}")
+                    logger.info(f"⚠️ Error with {symbol}: {e}")
                     # Create fallback news even if data fails
                     title = f"Market Watch: {name} Index Analysis"
                     summary = f"Monitoring {name} index performance in current market conditions."
@@ -413,7 +414,7 @@ class YahooFinanceAPI:
                     news_items.append(news_item)
 
         except Exception as e:
-            print(f"⚠️ Error in guaranteed news: {e}")
+            logger.info(f"⚠️ Error in guaranteed news: {e}")
 
         return news_items
 
@@ -462,7 +463,7 @@ class YahooFinanceAPI:
                 news_items.append(news_item)
 
         except Exception as e:
-            print(f"⚠️ Error in general news: {e}")
+            logger.info(f"⚠️ Error in general news: {e}")
 
         return news_items
 
@@ -559,11 +560,11 @@ class YahooFinanceAPI:
                             news_items.append(news_item)
 
                 except Exception as e:
-                    print(f"⚠️ Error with symbol {symbol}: {e}")
+                    logger.info(f"⚠️ Error with symbol {symbol}: {e}")
                     continue
 
         except Exception as e:
-            print(f"⚠️ Error generating market indices news: {e}")
+            logger.info(f"⚠️ Error generating market indices news: {e}")
 
         return news_items
 
@@ -625,11 +626,11 @@ class YahooFinanceAPI:
                             news_items.append(news_item)
 
                 except Exception as e:
-                    print(f"⚠️ Error with sector {sector_name}: {e}")
+                    logger.info(f"⚠️ Error with sector {sector_name}: {e}")
                     continue
 
         except Exception as e:
-            print(f"⚠️ Error generating sector news: {e}")
+            logger.info(f"⚠️ Error generating sector news: {e}")
 
         return news_items
 
@@ -700,11 +701,11 @@ class YahooFinanceAPI:
                             news_items.append(news_item)
 
                 except Exception as e:
-                    print(f"⚠️ Error with stock {symbol}: {e}")
+                    logger.info(f"⚠️ Error with stock {symbol}: {e}")
                     continue
 
         except Exception as e:
-            print(f"⚠️ Error generating stock highlights: {e}")
+            logger.info(f"⚠️ Error generating stock highlights: {e}")
 
         return news_items
 
@@ -754,11 +755,11 @@ class YahooFinanceAPI:
                             continue
 
                 except Exception as e:
-                    print(f"⚠️ RSS feed {feed_url} failed: {e}")
+                    logger.info(f"⚠️ RSS feed {feed_url} failed: {e}")
                     continue
 
         except Exception as e:
-            print(f"⚠️ Error fetching RSS news: {e}")
+            logger.info(f"⚠️ Error fetching RSS news: {e}")
 
         return news_items
 

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Callback Validator - Validation et tests des callbacks
 Vérifie la conformité et la robustesse des callbacks

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 IA Locale Gratuite - Solution Open Source pour THEBOT
 Phase 6 - Intelligence Artificielle 100% Gratuite

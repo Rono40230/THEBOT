@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 WebSocket Manager pour données crypto en temps réel
 Gestion des connexions WebSocket Binance avec reconnexion automatique

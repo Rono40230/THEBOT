@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 RSS News Manager - Gestionnaire principal des flux RSS
 Coordonne la récupération et la normalisation des nouvelles RSS

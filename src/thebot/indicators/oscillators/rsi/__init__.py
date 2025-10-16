@@ -6,16 +6,16 @@ Module ultra-modulaire - Responsabilité unique : Interface et signaux RSI
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from thebot.core.types import (
+from ....core.types import (
     IndicatorResult,
     MarketData,
     Signal,
     SignalDirection,
     SignalStrength,
 )
-from thebot.indicators.base.indicator import BaseIndicator
-from thebot.indicators.oscillators.rsi.calculator import RSICalculator
-from thebot.indicators.oscillators.rsi.config import RSIConfig
+from ...base.indicator import BaseIndicator
+from .calculator import RSICalculator
+from .config import RSIConfig
 
 
 class RSIIndicator(BaseIndicator):

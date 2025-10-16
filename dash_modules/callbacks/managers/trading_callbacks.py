@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Trading Callbacks Manager - Gestionnaire centralisé des callbacks trading
 Regroupe tous les callbacks liés au trading et aux décisions d'investissement

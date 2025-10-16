@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 IA Hybride Smart - Combine gratuit + payant optimisé
 Phase 6 - Intelligence Artificielle Optimisée Budget

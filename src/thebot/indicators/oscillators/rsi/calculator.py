@@ -7,8 +7,8 @@ from collections import deque
 from decimal import Decimal
 from typing import Optional
 
-from thebot.core.types import IndicatorResult, MarketData
-from thebot.indicators.oscillators.rsi.config import RSIConfig
+from ....core.types import IndicatorResult, MarketData
+from .config import RSIConfig
 
 
 class RSICalculator:
@@ -36,10 +36,7 @@ class RSICalculator:
         self._is_initialized = False
 
         # Historique pour analyse (si activé)
-        if config.store_history:
-            self._history: deque = deque(maxlen=min(config.period * 3, 200))
-        else:
-            self._history = None
+        self._history: deque = deque(maxlen=min(config.period * 3, 200) if config.store_history else 0)
 
     def add_data_point(self, market_data: MarketData) -> Optional[IndicatorResult]:
         """

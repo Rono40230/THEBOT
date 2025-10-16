@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Base Market Module for THEBOT
 Provides common interface for Crypto, Forex, and Stocks markets
@@ -659,5 +660,5 @@ class BaseMarketModule(ABC):
             }
 
         except Exception as e:
-            print(f"❌ Error updating {self.market_type} data for {symbol}: {e}")
+            logger.info(f"❌ Error updating {self.market_type} data for {symbol}: {e}")
             return {"error": str(e)}

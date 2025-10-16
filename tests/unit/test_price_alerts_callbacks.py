@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Tests pour les callbacks d'alertes de prix THEBOT
 """

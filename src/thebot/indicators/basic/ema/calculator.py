@@ -7,8 +7,8 @@ from collections import deque
 from decimal import Decimal
 from typing import List, Optional
 
-from thebot.core.types import IndicatorResult, MarketData
-from thebot.indicators.basic.ema.config import EMAConfig
+from ....core.types import IndicatorResult, MarketData
+from .config import EMAConfig
 
 
 class EMACalculator:
@@ -28,10 +28,7 @@ class EMACalculator:
         self._data_count = 0
 
         # Historique pour analyse de tendance (si activé)
-        if config.store_history:
-            self._history: deque = deque(maxlen=min(config.period * 2, 100))
-        else:
-            self._history = None
+        self._history: deque = deque(maxlen=min(config.period * 2, 100) if config.store_history else 0)
 
     def add_data_point(self, market_data: MarketData) -> Optional[IndicatorResult]:
         """
@@ -52,12 +49,13 @@ class EMACalculator:
             self._is_initialized = True
         else:
             # EMA = α × prix_actuel + (1-α) × EMA_précédent
-            self._current_ema = (
-                self.alpha * price + self.one_minus_alpha * self._current_ema
-            )
+            if self.one_minus_alpha is not None and self._current_ema is not None:
+                self._current_ema = (
+                    self.alpha * price + self.one_minus_alpha * self._current_ema
+                )
 
         # Stocker dans l'historique si activé
-        if self._history is not None:
+        if self._history is not None and len(self._history) < (self._history.maxlen or float('inf')):
             self._history.append(
                 {
                     "timestamp": market_data.timestamp,

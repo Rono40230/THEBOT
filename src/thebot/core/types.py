@@ -91,6 +91,7 @@ class IndicatorResult:
     indicator_name: str
     is_valid: bool = True
     metadata: Optional[Dict[str, Any]] = None
+    signals: Optional[List[Signal]] = None
 
 
 @dataclass

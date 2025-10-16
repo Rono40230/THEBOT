@@ -1,3 +1,4 @@
+from .core.logger import logger
 """
 Order Blocks (Blocs d'Ordres) - Indicateur Smart Money
 API unifiée pour l'analyse des zones institutionnelles
@@ -190,8 +191,8 @@ data.set_index('timestamp', inplace=True)
 
 # Obtenir les signaux
 signals = get_order_blocks_signals(data, style='day_trading')
-print(f"Blocs actifs: {signals['statistics']['active_blocks']}")
-print(f"Signal actuel: {signals['signals']}")
+logger.info(f"Blocs actifs: {signals['statistics']['active_blocks']}")
+logger.info(f"Signal actuel: {signals['signals']}")
 """,
     "advanced": """
 # Utilisation avancée avec configuration personnalisée
@@ -224,9 +225,9 @@ for new_data in data_stream:
     signals = calculator.get_trading_signals(new_data['close'].iloc[-1])
     
     if signals.get('buy_signal'):
-        print("Signal d'achat détecté près d'un Order Block bullish!")
+        logger.info("Signal d'achat détecté près d'un Order Block bullish!")
     elif signals.get('sell_signal'):
-        print("Signal de vente détecté près d'un Order Block bearish!")
+        logger.info("Signal de vente détecté près d'un Order Block bearish!")
 """,
 }
 
@@ -278,17 +279,17 @@ def quick_test():
     df.set_index("timestamp", inplace=True)
 
     # Test rapide
-    print("🧪 Test Order Blocks...")
+    logger.info("🧪 Test Order Blocks...")
 
     try:
         result = get_order_blocks_signals(df, style="day_trading")
-        print(f"✅ Blocs détectés: {len(result['blocks'])}")
-        print(f"✅ Blocs actifs: {result['statistics']['active_blocks']}")
-        print(f"✅ Score moyen: {result['statistics']['average_strength']}")
+        logger.info(f"✅ Blocs détectés: {len(result['blocks'])}")
+        logger.info(f"✅ Blocs actifs: {result['statistics']['active_blocks']}")
+        logger.info(f"✅ Score moyen: {result['statistics']['average_strength']}")
 
         return True
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        logger.info(f"❌ Erreur: {e}")
         return False
 
 

@@ -1,0 +1,6 @@
+# Stub file for mypy - support_resistance has type issues
+from typing import Any, Optional
+
+class SupportResistanceCalculator:
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def calculate(self, *args: Any, **kwargs: Any) -> Optional[Any]: ...

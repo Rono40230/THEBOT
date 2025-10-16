@@ -8,15 +8,20 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-# Import de la factory unifiée
-try:
-    from thebot.indicators.factory import get_indicator_factory
-    _indicator_factory = get_indicator_factory()
-    FACTORY_AVAILABLE = True
-except ImportError as e:
-    print(f"⚠️ IndicatorFactory indisponible: {e}")
-    _indicator_factory = None
-    FACTORY_AVAILABLE = False
+# Import de la factory unifiée - COMMENTÉ TEMPORAIREMENT POUR ÉVITER DÉPENDANCE CIRCULAIRE
+# TODO: Supprimer complètement après migration Phase 2
+# try:
+#     from thebot.indicators.factory import get_indicator_factory
+#     _indicator_factory = get_indicator_factory()
+#     FACTORY_AVAILABLE = True
+# except ImportError as e:
+#     # Supprimer le warning pour éviter le spam dans les tests
+#     _indicator_factory = None
+#     FACTORY_AVAILABLE = False
+
+# Utilisation des implémentations locales temporaires
+_indicator_factory = None
+FACTORY_AVAILABLE = False
 
 
 class TechnicalCalculators:

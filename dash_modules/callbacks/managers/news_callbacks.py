@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 News Callbacks Manager - Gestionnaire centralisé des callbacks news
 Regroupe tous les callbacks liés aux news (économiques et crypto)

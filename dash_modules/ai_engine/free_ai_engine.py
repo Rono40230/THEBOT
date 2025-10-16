@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 IA Gratuite Publique - APIs avec tiers gratuits
 Phase 6 - Intelligence Artificielle Gratuite Limitée

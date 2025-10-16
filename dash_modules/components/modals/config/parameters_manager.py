@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 📊 PARAMETERS MANAGER - Gestion Unifiée Configuration
 ====================================================
@@ -154,7 +155,7 @@ class ParametersManager:
                 return self.default_config.copy()
 
         except Exception as e:
-            print(f"⚠️ Erreur loading config: {e}")
+            logger.info(f"⚠️ Erreur loading config: {e}")
             return self.default_config.copy()
 
     def _merge_configs(self, default: Dict, loaded: Dict) -> Dict:
@@ -185,14 +186,14 @@ class ParametersManager:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
         except Exception as e:
-            print(f"⚠️ Erreur saving config: {e}")
+            logger.info(f"⚠️ Erreur saving config: {e}")
 
     def get_indicator_config(self, category: str, indicator: str) -> Dict[str, Any]:
         """Récupère la configuration d'un indicateur spécifique"""
         try:
             return self.config[category][indicator].copy()
         except KeyError:
-            print(f"⚠️ Config not found: {category}.{indicator}")
+            logger.info(f"⚠️ Config not found: {category}.{indicator}")
             return {}
 
     def update_indicator_config(
@@ -208,10 +209,10 @@ class ParametersManager:
             self.config[category][indicator][key] = value
             self._save_config(self.config)
 
-            print(f"✅ Config updated: {category}.{indicator}.{key} = {value}")
+            logger.info(f"✅ Config updated: {category}.{indicator}.{key} = {value}")
 
         except Exception as e:
-            print(f"⚠️ Erreur updating config: {e}")
+            logger.info(f"⚠️ Erreur updating config: {e}")
 
     def get_all_basic_indicators(self) -> Dict[str, Any]:
         """Récupère tous les indicateurs de base"""
@@ -230,7 +231,7 @@ class ParametersManager:
         try:
             styles = self.config.get("trading_styles", {}).get("styles", {})
             if style_name not in styles:
-                print(f"⚠️ Style non trouvé: {style_name}")
+                logger.info(f"⚠️ Style non trouvé: {style_name}")
                 return
 
             style_config = styles[style_name]
@@ -245,25 +246,25 @@ class ParametersManager:
                         self.config["basic_indicators"][indicator][key] = value
 
             self._save_config(self.config)
-            print(f"✅ Style appliqué: {style_name}")
+            logger.info(f"✅ Style appliqué: {style_name}")
 
         except Exception as e:
-            print(f"⚠️ Erreur applying style: {e}")
+            logger.info(f"⚠️ Erreur applying style: {e}")
 
     def reset_to_defaults(self):
         """Remet à zéro tous les paramètres aux valeurs par défaut"""
         self.config = self.default_config.copy()
         self._save_config(self.config)
-        print("✅ Configuration reset to defaults")
+        logger.info("✅ Configuration reset to defaults")
 
     def export_config(self, filepath: str):
         """Exporte la configuration actuelle vers un fichier"""
         try:
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
-            print(f"✅ Configuration exported to: {filepath}")
+            logger.info(f"✅ Configuration exported to: {filepath}")
         except Exception as e:
-            print(f"⚠️ Erreur exporting config: {e}")
+            logger.info(f"⚠️ Erreur exporting config: {e}")
 
     def import_config(self, filepath: str):
         """Importe une configuration depuis un fichier"""
@@ -273,10 +274,10 @@ class ParametersManager:
 
             self.config = self._merge_configs(self.default_config, imported_config)
             self._save_config(self.config)
-            print(f"✅ Configuration imported from: {filepath}")
+            logger.info(f"✅ Configuration imported from: {filepath}")
 
         except Exception as e:
-            print(f"⚠️ Erreur importing config: {e}")
+            logger.info(f"⚠️ Erreur importing config: {e}")
 
 
 # Instance globale

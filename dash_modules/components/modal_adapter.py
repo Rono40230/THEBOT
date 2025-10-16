@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 🔄 MODAL ADAPTER - Intégration Progressive Nouveau/Ancien
 ========================================================
@@ -126,9 +127,9 @@ class ModalAdapter:
         """Enregistrer les callbacks du nouveau système modulaire"""
         if self.use_new_system and self.new_modal:
             self.new_modal.register_callbacks(app)
-            print("✅ Callbacks du nouveau système modulaire enregistrés")
+            logger.info("✅ Callbacks du nouveau système modulaire enregistrés")
         else:
-            print("⚠️ Nouveau système non disponible pour l'enregistrement des callbacks")
+            logger.info("⚠️ Nouveau système non disponible pour l'enregistrement des callbacks")
 
     def export_debug_info(self) -> Dict[str, Any]:
         """Exporter les informations de debug"""

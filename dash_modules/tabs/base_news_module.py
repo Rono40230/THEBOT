@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Base News Module for THEBOT
 Contains common functionality for news modules
@@ -22,7 +23,7 @@ try:
     TRANSLATION_AVAILABLE = True
 except ImportError:
     TRANSLATION_AVAILABLE = False
-    print("⚠️ Traduction non disponible: googletrans non installé")
+    logger.info("⚠️ Traduction non disponible: googletrans non installé")
 
 
 class BaseNewsModule(BaseMarketModule):
@@ -43,7 +44,7 @@ class BaseNewsModule(BaseMarketModule):
             try:
                 self.translator = Translator()
             except Exception as e:
-                print(f"⚠️ Erreur initialisation traducteur: {e}")
+                logger.info(f"⚠️ Erreur initialisation traducteur: {e}")
 
     def get_symbols_list(self) -> List[str]:
         """Get available news categories (required by BaseMarketModule)"""
@@ -71,7 +72,7 @@ class BaseNewsModule(BaseMarketModule):
     ) -> pd.DataFrame:
         """Load news data from multiple providers via real_data_manager"""
         try:
-            print(f"🔄 Loading {self.news_type} news data for category: {category}...")
+            logger.info(f"🔄 Loading {self.news_type} news data for category: {category}...")
 
             # Get news sources based on news type
             sources = self._get_news_sources()
@@ -86,16 +87,16 @@ class BaseNewsModule(BaseMarketModule):
                 # Convert list of news items to DataFrame
                 news_data = pd.DataFrame(filtered_news)
 
-                print(
+                logger.info(
                     f"✅ {self.news_type}: {len(news_data)} news articles loaded from filtered providers"
                 )
                 return news_data
             else:
-                print(f"❌ No {self.news_type} news data available from providers")
+                logger.info(f"❌ No {self.news_type} news data available from providers")
                 return pd.DataFrame()
 
         except Exception as e:
-            print(f"❌ Error loading {self.news_type} news data: {e}")
+            logger.info(f"❌ Error loading {self.news_type} news data: {e}")
             import traceback
 
             traceback.print_exc()
@@ -124,7 +125,7 @@ class BaseNewsModule(BaseMarketModule):
             elif "published_at" in data.columns:
                 time_col = "published_at"
             else:
-                print("⚠️ No time column found, returning unfiltered data")
+                logger.info("⚠️ No time column found, returning unfiltered data")
                 return data
 
             # Convert time column to datetime if not already
@@ -146,13 +147,13 @@ class BaseNewsModule(BaseMarketModule):
 
             # Filter data
             filtered_data = data[data[time_col] >= cutoff]
-            print(
+            logger.info(
                 f"📅 Time filter ({time_range}): {len(data)} → {len(filtered_data)} articles"
             )
             return filtered_data
 
         except Exception as e:
-            print(f"⚠️ Error filtering by time: {e}")
+            logger.info(f"⚠️ Error filtering by time: {e}")
             return data
 
     def _calculate_time_ago(self, published_time: str) -> str:
@@ -190,7 +191,7 @@ class BaseNewsModule(BaseMarketModule):
                 return "À l'instant"
 
         except Exception as e:
-            print(f"⚠️ Error calculating time ago: {e}")
+            logger.info(f"⚠️ Error calculating time ago: {e}")
             return "Date inconnue"
 
     def create_news_feed(
@@ -427,7 +428,7 @@ class BaseNewsModule(BaseMarketModule):
             )
 
         except Exception as e:
-            print(f"⚠️ Error creating market impact widget: {e}")
+            logger.info(f"⚠️ Error creating market impact widget: {e}")
             return html.Div("Erreur d'analyse d'impact", className="text-muted")
 
     def create_economic_calendar_widget(self) -> html.Div:
@@ -479,7 +480,7 @@ class BaseNewsModule(BaseMarketModule):
             return translated.text if translated.text else text
 
         except Exception as e:
-            print(f"⚠️ Erreur traduction: {e}")
+            logger.info(f"⚠️ Erreur traduction: {e}")
             return text
 
     def setup_callbacks(self, app):

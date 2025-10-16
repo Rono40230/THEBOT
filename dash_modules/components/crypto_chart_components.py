@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 THEBOT - Crypto Chart Components
 Module dédié pour tous les composants graphiques crypto

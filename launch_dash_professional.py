@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 THEBOT Launcher - Architecture MVC Ultra-Léger
 Point d'entrée principal de l'application THEBOT conforme .clinerules
@@ -11,25 +12,25 @@ import dash
 import dash_bootstrap_components as dbc
 
 # Imports des modules MVC
-from dash_modules.core.base_module import BaseModule
+from src.thebot.core.base_module import BaseModule
 
 # Import calculateurs THEBOT
-from dash_modules.core.calculators import TechnicalCalculators
-from dash_modules.core.data_manager import DataManager, data_manager
-from dash_modules.core.launcher_callbacks import LauncherCallbacks
-from dash_modules.core.layout_manager import LayoutManager, layout_manager
+from src.thebot.core.calculators import TechnicalCalculators
+from src.thebot.core.data import DataManager, data_manager
+from src.thebot.core.launcher_callbacks import LauncherCallbacks
+from src.thebot.core.layout_manager import LayoutManager, layout_manager
 
 # Import style trading manager
-from dash_modules.core.style_trading import trading_style_manager
-from dash_modules.tabs.announcements_calendar import AnnouncementsCalendarModule
+from src.thebot.core.style_trading import trading_style_manager
+from src.thebot.tabs.announcements_calendar import AnnouncementsCalendarModule
 
 # Import des modules métier
-from dash_modules.tabs.crypto_module import CryptoModule
-from dash_modules.tabs.crypto_news_module import CryptoNewsModule
-from dash_modules.tabs.economic_news_module import EconomicNewsModule
-from dash_modules.tabs.forex_module import ForexModule
-from dash_modules.tabs.stocks_module import StocksModule
-from dash_modules.tabs.strategies_module import StrategiesModule
+from src.thebot.tabs.crypto_module import CryptoModule
+from src.thebot.tabs.crypto_news_module import CryptoNewsModule
+from src.thebot.tabs.economic_news_module import EconomicNewsModule
+from src.thebot.tabs.forex_module import ForexModule
+from src.thebot.tabs.stocks_module import StocksModule
+from src.thebot.tabs.strategies_module import StrategiesModule
 
 # Instance partagée des calculateurs
 shared_calculators = TechnicalCalculators()

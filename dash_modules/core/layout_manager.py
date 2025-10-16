@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Layout Manager - Gestion Centralisée des Interfaces THEBOT
 Architecture MVC - Couche VIEW conforme .clinerules
@@ -228,16 +229,16 @@ class LayoutManager:
         GÉNÈRE des contenus par défaut pour TOUS les modules
         """
         try:
-            print("🔄 GÉNÉRATION CONTENU PAR DÉFAUT POUR TOUS LES MODULES...")
+            logger.info("🔄 GÉNÉRATION CONTENU PAR DÉFAUT POUR TOUS LES MODULES...")
             self.logger.info("🔄 Génération contenu par défaut - tous modules")
 
             # Créer le contenu du module economic_news (qui fonctionne déjà)
             if modules and "economic_news" in modules:
                 module = modules["economic_news"]
-                print(f"✅ Module economic_news trouvé: {type(module)}")
+                logger.info(f"✅ Module economic_news trouvé: {type(module)}")
 
                 if hasattr(module, "get_layout"):
-                    print("✅ Layout economic_news chargé...")
+                    logger.info("✅ Layout economic_news chargé...")
                     layout = module.get_layout()
                     self.logger.info("✅ Layout economic_news chargé avec succès")
                     return layout
@@ -269,7 +270,7 @@ class LayoutManager:
 
         except Exception as e:
             self.logger.error(f"❌ Erreur génération contenu par défaut: {e}")
-            print(f"❌ ERREUR: {e}")
+            logger.info(f"❌ ERREUR: {e}")
             return html.Div("Erreur chargement contenu", className="text-danger")
 
     def _generate_module_placeholder(self, module_name: str) -> html.Div:

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Component Fear & Greed Gauge - Phase 4 THEBOT
 Intégration index Fear & Greed avec API gratuite
@@ -16,7 +17,8 @@ import plotly.graph_objects as go
 import requests
 from dash import Input, Output, callback, dcc, html
 
-from ..core.intelligent_cache import get_global_cache
+# Import différé pour éviter les importations circulaires
+# from ..core.intelligent_cache import get_global_cache
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,8 @@ class FearGreedGaugeComponent:
 
     def __init__(self):
         self.api_url = "https://api.alternative.me/fng/"
+        # Import différé pour éviter les importations circulaires
+        from ..core.intelligent_cache import get_global_cache
         self.cache = get_global_cache()  # Utiliser le cache intelligent global
 
         # Niveaux d'alerte
@@ -459,8 +463,14 @@ class FearGreedGaugeComponent:
         }
 
 
-# Instance globale
-fear_greed_gauge = FearGreedGaugeComponent()
+# Instance globale - création paresseuse pour éviter les importations circulaires
+def _get_fear_greed_gauge():
+    """Factory function pour éviter les importations circulaires"""
+    if not hasattr(_get_fear_greed_gauge, '_instance'):
+        _get_fear_greed_gauge._instance = FearGreedGaugeComponent()
+    return _get_fear_greed_gauge._instance
+
+fear_greed_gauge = _get_fear_greed_gauge()
 
 
 # Callbacks pour le widget - MIGRÉS vers MarketCallbacks manager

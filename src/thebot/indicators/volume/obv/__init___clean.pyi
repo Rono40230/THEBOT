@@ -1,0 +1,6 @@
+# Stub file for mypy - OBV __init___clean has type issues
+from typing import Any, Optional
+
+class OBVIndicator:
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def calculate(self, *args: Any, **kwargs: Any) -> Optional[Any]: ...

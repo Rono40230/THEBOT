@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Launcher Callbacks - Gestion Centralisée des Callbacks du Launcher
 Architecture MVC - Couche CONTROLLER conforme .clinerules
@@ -24,9 +25,16 @@ from ..callbacks.managers.alerts_callbacks import AlertsCallbacks
 from ..callbacks.managers.alert_modal_manager import AlertModalManager
 from ..callbacks.managers.market_callbacks import MarketCallbacks
 from ..callbacks.managers.market_modal_manager import MarketModalManager
-from ..callbacks.managers.news_callbacks import NewsCallbacks
+# from ..callbacks.managers.news_callbacks import NewsCallbacks  # Temporairement commenté pour éviter importation circulaire
 from ..callbacks.managers.news_modal_manager import NewsModalManager
 from ..callbacks.managers.price_alerts_callbacks import PriceAlertsCallbacks
+
+# Stub temporaire pour éviter les erreurs
+class NewsCallbacksStub:
+    def __init__(self, app):
+        pass
+
+NewsCallbacks = NewsCallbacksStub
 from ..callbacks.managers.trading_callbacks import TradingCallbacks
 from ..callbacks.managers.trading_modal_manager import TradingModalManager
 
@@ -196,7 +204,7 @@ class LauncherCallbacks:
     def _register_navigation_callbacks(self) -> None:
         """CALLBACKS SIMPLIFIÉS QUI MARCHENT"""
 
-        print("🔄 ENREGISTREMENT CALLBACKS SIMPLIFIÉS...")
+        logger.info("🔄 ENREGISTREMENT CALLBACKS SIMPLIFIÉS...")
         self.logger.info("🔄 Enregistrement callbacks simplifiés")
 
         # CALLBACK 1: Navigation simple
@@ -208,12 +216,12 @@ class LauncherCallbacks:
         def handle_tab_switch(active_tab: str):
             """Gère le changement d'onglets avec support COMPLET de tous les modules"""
             try:
-                print(f"🔥 CALLBACK MARCHE! Onglet: {active_tab}")
+                logger.info(f"🔥 CALLBACK MARCHE! Onglet: {active_tab}")
                 self.logger.info(f"🔥 Navigation vers: {active_tab}")
 
                 # GESTION COMPLÈTE DE TOUS LES ONGLETS
                 if active_tab == "economic_news":
-                    print("✅ CHARGEMENT ECONOMIC NEWS")
+                    logger.info("✅ CHARGEMENT ECONOMIC NEWS")
                     if "economic_news" in self.modules:
                         module = self.modules["economic_news"]
                         if hasattr(module, "get_layout"):
@@ -223,7 +231,7 @@ class LauncherCallbacks:
                     )
 
                 elif active_tab == "crypto_news":
-                    print("✅ CHARGEMENT CRYPTO NEWS")
+                    logger.info("✅ CHARGEMENT CRYPTO NEWS")
                     if "crypto_news" in self.modules:
                         module = self.modules["crypto_news"]
                         if hasattr(module, "get_layout"):
@@ -233,7 +241,7 @@ class LauncherCallbacks:
                     )
 
                 elif active_tab == "announcements_calendar":
-                    print("✅ CHARGEMENT CALENDAR")
+                    logger.info("✅ CHARGEMENT CALENDAR")
                     if "announcements_calendar" in self.modules:
                         module = self.modules["announcements_calendar"]
                         if hasattr(module, "get_layout"):
@@ -241,7 +249,7 @@ class LauncherCallbacks:
                     return self.layout_manager._generate_module_placeholder("calendar")
 
                 elif active_tab == "crypto":
-                    print("✅ CHARGEMENT CRYPTO")
+                    logger.info("✅ CHARGEMENT CRYPTO")
                     if "crypto" in self.modules:
                         module = self.modules["crypto"]
                         if hasattr(module, "get_layout"):
@@ -249,7 +257,7 @@ class LauncherCallbacks:
                     return self.layout_manager._generate_module_placeholder("crypto")
 
                 elif active_tab == "forex":
-                    print("✅ CHARGEMENT FOREX")
+                    logger.info("✅ CHARGEMENT FOREX")
                     if "forex" in self.modules:
                         module = self.modules["forex"]
                         if hasattr(module, "get_layout"):
@@ -257,7 +265,7 @@ class LauncherCallbacks:
                     return self.layout_manager._generate_module_placeholder("forex")
 
                 elif active_tab == "stocks":
-                    print("✅ CHARGEMENT STOCKS")
+                    logger.info("✅ CHARGEMENT STOCKS")
                     if "stocks" in self.modules:
                         module = self.modules["stocks"]
                         if hasattr(module, "get_layout"):
@@ -265,7 +273,7 @@ class LauncherCallbacks:
                     return self.layout_manager._generate_module_placeholder("stocks")
 
                 elif active_tab == "strategies":
-                    print("✅ CHARGEMENT STRATEGIES")
+                    logger.info("✅ CHARGEMENT STRATEGIES")
                     if "strategies" in self.modules:
                         module = self.modules["strategies"]
                         if hasattr(module, "get_layout"):
@@ -275,7 +283,7 @@ class LauncherCallbacks:
                     )
 
                 else:
-                    print(f"⚠️ Onglet inconnu: {active_tab}")
+                    logger.info(f"⚠️ Onglet inconnu: {active_tab}")
                     return html.Div(
                         [
                             html.H4(
@@ -290,11 +298,11 @@ class LauncherCallbacks:
                     )
 
             except Exception as e:
-                print(f"❌ Erreur callback navigation: {e}")
+                logger.info(f"❌ Erreur callback navigation: {e}")
                 self.logger.error(f"❌ Erreur navigation: {e}")
                 return html.Div(f"❌ Erreur: {e}", className="text-danger p-4")
 
-        print("✅ CALLBACK NAVIGATION COMPLET ENREGISTRÉ!")
+        logger.info("✅ CALLBACK NAVIGATION COMPLET ENREGISTRÉ!")
         self.logger.info("✅ Callback navigation avec support de tous les modules")
 
     def _register_control_bar_callbacks(self) -> None:

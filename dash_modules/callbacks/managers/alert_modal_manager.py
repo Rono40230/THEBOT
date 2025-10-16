@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Alert Modal Manager - Contrôleur MVC pour le modal d'alertes
 Gère les callbacks en utilisant AlertService pour la logique métier

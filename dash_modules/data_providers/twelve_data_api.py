@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Twelve Data API Provider for THEBOT
 Professional financial data provider with stocks, forex, crypto, and news

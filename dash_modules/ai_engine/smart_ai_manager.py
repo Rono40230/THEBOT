@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 #!/usr/bin/env python3
 """
 Smart AI Manager - Gestionnaire Intelligent des IA (Version Corrigée)

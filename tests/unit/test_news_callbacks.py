@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Tests pour les callbacks de news THEBOT
 """

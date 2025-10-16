@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Modal IA Trading Professionnel - THEBOT (Version Finale)
 Analyse trading complète pour l'asset actuel uniquement

@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 THEBOT - Crypto Search Bar Component
 Composant modulaire pour la barre de recherche crypto avec sélecteur de timeframe

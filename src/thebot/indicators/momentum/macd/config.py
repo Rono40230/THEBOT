@@ -1,73 +1,68 @@
 """
-Configuration pour l'indicateur MACD
-Moving Average Convergence Divergence - Architecture modulaire THEBOT
+MACD Configuration Module
+Single responsibility: Manage MACD-specific configuration with Pydantic validation
 """
 
-from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict
+
+from pydantic import BaseModel, Field, field_validator
+
+from ....core.exceptions import ConfigError
 
 
-@dataclass
-class MACDConfig:
-    """Configuration validée pour l'indicateur MACD"""
+class MACDConfig(BaseModel):
+    """Moving Average Convergence Divergence configuration with Pydantic validation"""
 
-    # Paramètres de calcul
-    fast_period: int = 12
-    slow_period: int = 26
-    signal_period: int = 9
-    source: str = "close"
+    # Core calculation parameters
+    fast_period: int = Field(12, gt=1, le=200, description="Fast EMA period")
+    slow_period: int = Field(26, gt=1, le=200, description="Slow EMA period")
+    signal_period: int = Field(9, gt=1, le=200, description="Signal line EMA period")
+    source: str = Field("close", description="Price source for calculation")
 
-    # Paramètres visuels
-    macd_color: str = "#2196F3"
-    signal_color: str = "#FF5722"
-    histogram_enabled: bool = True
-    histogram_positive_color: str = "#4CAF50"
-    histogram_negative_color: str = "#F44336"
-    line_width: int = 2
+    # Visual parameters
+    macd_color: str = Field("#2196F3", description="MACD line color")
+    signal_color: str = Field("#FF5722", description="Signal line color")
+    histogram_enabled: bool = Field(True, description="Enable histogram display")
+    histogram_positive_color: str = Field("#4CAF50", description="Positive histogram color")
+    histogram_negative_color: str = Field("#F44336", description="Negative histogram color")
+    line_width: int = Field(2, ge=1, le=5, description="Line width")
 
-    # Paramètres avancés
-    enable_signals: bool = True
-    zero_line_sensitivity: Decimal = field(default_factory=lambda: Decimal("0.001"))
-    zero_line_enabled: bool = True
-    crossover_signals: bool = True
+    # Signal generation
+    enable_signals: bool = Field(True, description="Enable signal generation")
+    zero_line_sensitivity: Decimal = Field(Decimal("0.001"), gt=0, description="Zero line crossover sensitivity")
+    zero_line_enabled: bool = Field(True, description="Enable zero line signals")
+    crossover_signals: bool = Field(True, description="Enable MACD/signal crossover signals")
 
-    def __post_init__(self):
-        """Validation après initialisation"""
-        self._validate_periods()
-        self._validate_source()
-        self._validate_line_width()
+    # Performance options
+    use_decimal: bool = Field(True, description="Use Decimal for precision")
+    store_history: bool = Field(True, description="Store calculation history")
 
-    def _validate_periods(self):
-        """Valide les périodes"""
-        if self.fast_period <= 0:
-            raise ValueError(f"fast_period doit être > 0, reçu: {self.fast_period}")
-        if self.slow_period <= 0:
-            raise ValueError(f"slow_period doit être > 0, reçu: {self.slow_period}")
-        if self.signal_period <= 0:
-            raise ValueError(f"signal_period doit être > 0, reçu: {self.signal_period}")
-        if self.fast_period >= self.slow_period:
-            raise ValueError(
-                f"fast_period ({self.fast_period}) doit être < slow_period ({self.slow_period})"
-            )
+    class Config:
+        """Pydantic configuration"""
+        validate_assignment = True
+        arbitrary_types_allowed = True
 
-    def _validate_source(self):
-        """Valide la source de prix"""
+    @field_validator('source')
+    @classmethod
+    def validate_source(cls, v):
+        """Validate price source"""
         valid_sources = ["open", "high", "low", "close", "typical", "weighted"]
-        if self.source not in valid_sources:
-            raise ValueError(
-                f"source doit être parmi {valid_sources}, reçu: {self.source}"
-            )
+        if v not in valid_sources:
+            raise ValueError(f"source must be one of {valid_sources}")
+        return v
 
-    def _validate_line_width(self):
-        """Valide l'épaisseur de ligne"""
-        if not (1 <= self.line_width <= 5):
-            raise ValueError(
-                f"line_width doit être entre 1 et 5, reçu: {self.line_width}"
-            )
+    @field_validator('slow_period')
+    @classmethod
+    def validate_period_relationship(cls, v, info):
+        """Validate period relationships"""
+        data = info.data
+        if 'fast_period' in data and v <= data['fast_period']:
+            raise ValueError("slow_period must be > fast_period")
+        return v
 
     def get_trading_style_config(self, style: str) -> "MACDConfig":
-        """Retourne la configuration optimisée pour un style de trading"""
+        """Return optimized configuration for trading style"""
         configs = {
             "scalping": {
                 "fast_period": 8,
@@ -96,101 +91,23 @@ class MACDConfig:
         }
 
         if style in configs:
-            # Créer une nouvelle instance avec les paramètres modifiés
-            config_dict = self.__dict__.copy()
+            # Create new instance with modified parameters
+            config_dict = self.model_dump()
             config_dict.update(configs[style])
             return MACDConfig(**config_dict)
 
         return self
 
+    def validate_config(self) -> None:
+        """Legacy validation method for compatibility"""
+        # Pydantic handles validation automatically
+        pass
+
     def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return {
-            "fast_period": self.fast_period,
-            "slow_period": self.slow_period,
-            "signal_period": self.signal_period,
-            "source": self.source,
-            "macd_color": self.macd_color,
-            "signal_color": self.signal_color,
-            "histogram_enabled": self.histogram_enabled,
-            "histogram_positive_color": self.histogram_positive_color,
-            "histogram_negative_color": self.histogram_negative_color,
-            "line_width": self.line_width,
-            "enable_signals": self.enable_signals,
-            "zero_line_enabled": self.zero_line_enabled,
-            "crossover_signals": self.crossover_signals,
-        }
+        """Convert to dictionary"""
+        return self.model_dump()
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MACDConfig":
-        """Crée depuis un dictionnaire"""
-        # Filtrer les clés valides
-        valid_keys = {
-            "fast_period",
-            "slow_period",
-            "signal_period",
-            "source",
-            "macd_color",
-            "signal_color",
-            "histogram_enabled",
-            "histogram_positive_color",
-            "histogram_negative_color",
-            "line_width",
-            "enable_signals",
-            "zero_line_enabled",
-            "crossover_signals",
-        }
-
-        filtered_data = {k: v for k, v in data.items() if k in valid_keys}
-        return cls(**filtered_data)
-
-    use_decimal: bool = True
-    store_history: bool = True
-
-    def __post_init__(self):
-        """Validation automatique des paramètres"""
-        self.validate()
-
-    def validate(self) -> None:
-        """Validation complète des paramètres MACD"""
-
-        # Validation périodes
-        periods = ["fast_period", "slow_period", "signal_period"]
-        for period_name in periods:
-            period_value = getattr(self, period_name)
-            if not isinstance(period_value, int):
-                raise ValueError(f"{period_name} must be an integer")
-
-            if period_value < 2:
-                raise ValueError(f"{period_name} must be at least 2")
-
-            if period_value > 200:
-                raise ValueError(f"{period_name} must not exceed 200")
-
-        # Validation cohérence des périodes
-        if self.fast_period >= self.slow_period:
-            raise ValueError("fast_period must be < slow_period")
-
-        # Validation sensibilité
-        if not isinstance(self.zero_line_sensitivity, Decimal):
-            try:
-                self.zero_line_sensitivity = Decimal(str(self.zero_line_sensitivity))
-            except (ValueError, TypeError):
-                raise ValueError(
-                    "zero_line_sensitivity must be convertible to Decimal"
-                )
-
-        if self.zero_line_sensitivity <= 0:
-            raise ValueError("zero_line_sensitivity must be positive")
-
-    def to_dict(self) -> dict:
-        """Export configuration vers dictionnaire"""
-        return {
-            "fast_period": self.fast_period,
-            "slow_period": self.slow_period,
-            "signal_period": self.signal_period,
-            "enable_signals": self.enable_signals,
-            "zero_line_sensitivity": float(self.zero_line_sensitivity),
-            "use_decimal": self.use_decimal,
-            "store_history": self.store_history,
-        }
+        """Create from dictionary"""
+        return cls(**data)

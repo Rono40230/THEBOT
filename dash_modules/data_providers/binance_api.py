@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Module Binance API - GRATUIT et ILLIMITÉ
 Données de marché crypto en temps réel
@@ -14,7 +15,7 @@ import pandas as pd
 import requests
 
 from .provider_interfaces import DataProviderInterface
-from ..core.intelligent_cache import get_global_cache
+from src.thebot.core.cache import get_global_cache
 
 # Configuration du logger
 logging.basicConfig(level=logging.INFO)
@@ -220,7 +221,7 @@ class BinanceProvider(DataProviderInterface):
                 "count": response["count"],
                 "timestamp": datetime.now(),
             }
-            self.cache[cache_key] = (time.time(), ticker_data)
+            self.cache.set("crypto_ohlcv", ticker_data, symbol=symbol, timeframe="24h")
             return ticker_data
 
         return None
@@ -242,10 +243,9 @@ class BinanceProvider(DataProviderInterface):
             "1d": 86400,
         }.get(interval, 3600)
 
-        if cache_key in self.cache:
-            cache_time, data = self.cache[cache_key]
-            if time.time() - cache_time < cache_duration:
-                return data
+        cached_data = self.cache.get("exchange_info")
+        if cached_data is not None:
+                return cached_data
 
         endpoint = "klines"
         params = {"symbol": symbol, "interval": interval, "limit": limit}
@@ -275,7 +275,7 @@ class BinanceProvider(DataProviderInterface):
             df = pd.DataFrame(df_data)
             df.set_index("timestamp", inplace=True)
 
-            self.cache[cache_key] = (time.time(), df)
+            self.cache.set("crypto_ohlcv", df, symbol=symbol, interval=interval, limit=limit)
             return df
 
         except Exception as e:
@@ -287,16 +287,15 @@ class BinanceProvider(DataProviderInterface):
         cache_key = "exchange_info"
 
         # Cache 1 heure pour infos exchange
-        if cache_key in self.cache:
-            cache_time, data = self.cache[cache_key]
-            if time.time() - cache_time < 3600:
-                return data
+        cached_data = self.cache.get("exchange_info")
+        if cached_data is not None:
+                return cached_data
 
         endpoint = "exchangeInfo"
         response = self._make_request(endpoint)
 
         if response:
-            self.cache[cache_key] = (time.time(), response)
+            self.cache.set("exchange_info", response)
             return response
 
         return None
@@ -306,10 +305,9 @@ class BinanceProvider(DataProviderInterface):
         cache_key = "all_tickers"
 
         # Cache 10 secondes pour tous les prix
-        if cache_key in self.cache:
-            cache_time, data = self.cache[cache_key]
-            if time.time() - cache_time < 10:
-                return data
+        cached_data = self.cache.get("exchange_info")
+        if cached_data is not None:
+                return cached_data
 
         endpoint = "ticker/price"
         response = self._make_request(endpoint)
@@ -319,7 +317,7 @@ class BinanceProvider(DataProviderInterface):
                 {"symbol": ticker["symbol"], "price": float(ticker["price"])}
                 for ticker in response
             ]
-            self.cache[cache_key] = (time.time(), tickers)
+            self.cache.set("crypto_prices", tickers)
             return tickers
 
         return []
@@ -333,10 +331,9 @@ class BinanceProvider(DataProviderInterface):
         cache_key = "all_usdt_symbols"
 
         # Cache 1 heure pour la liste des symboles
-        if cache_key in self.cache:
-            cache_time, data = self.cache[cache_key]
-            if time.time() - cache_time < 3600:
-                return data
+        cached_data = self.cache.get("exchange_info")
+        if cached_data is not None:
+                return cached_data
 
         try:
             exchange_info = self.get_exchange_info()
@@ -360,7 +357,7 @@ class BinanceProvider(DataProviderInterface):
             # Trier alphabétiquement
             usdt_symbols.sort()
 
-            self.cache[cache_key] = (time.time(), usdt_symbols)
+            self.cache.set("symbols_list", usdt_symbols)
             logger.info(f"✅ {len(usdt_symbols)} symboles USDT récupérés")
 
             return usdt_symbols
@@ -429,7 +426,7 @@ class BinanceProvider(DataProviderInterface):
     def get_news(self, limit: int = 20) -> List[Dict]:
         """Récupérer les annonces officielles Binance"""
         try:
-            print(f"📰 Fetching Binance official announcements...")
+            logger.info(f"📰 Fetching Binance official announcements...")
 
             # Note: Binance n'a pas d'API publique pour les news
             # On retourne des informations génériques sur Binance
@@ -454,7 +451,7 @@ class BinanceProvider(DataProviderInterface):
                 },
             ]
 
-            print(f"✅ Retrieved {len(news_items)} Binance information items")
+            logger.info(f"✅ Retrieved {len(news_items)} Binance information items")
             return news_items[:limit]
 
         except Exception as e:

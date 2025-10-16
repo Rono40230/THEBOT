@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Component Top Performers - Phase 4 THEBOT
 Tracking des meilleures et pires performances crypto

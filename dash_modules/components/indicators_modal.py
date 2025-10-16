@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 🔄 MODAL INDICATORS - Point d'entrée Migration Progressive
 =========================================================
@@ -49,7 +50,7 @@ def register_indicators_modal_callbacks(app):
     - modal_adapter.py (interface d'adaptation)
     - basic_indicators.py et advanced_indicators.py (modules spécialisés)
     """
-    print("✅ Callbacks Modal Indicateurs enregistrés (nouveau système)")
+    logger.info("✅ Callbacks Modal Indicateurs enregistrés (nouveau système)")
 
     # Import et activation du nouveau système modulaire
     try:
@@ -57,10 +58,10 @@ def register_indicators_modal_callbacks(app):
 
         # Enregistrer les callbacks du nouveau système modulaire
         modal_adapter.register_callbacks(app)
-        print("🔄 Nouveau système modulaire activé avec callbacks")
+        logger.info("🔄 Nouveau système modulaire activé avec callbacks")
 
     except ImportError as e:
-        print(f"⚠️ Erreur import nouveau système: {e}")
+        logger.info(f"⚠️ Erreur import nouveau système: {e}")
 
 
 # Instance globale de la modal

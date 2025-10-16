@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Interfaces communes pour les providers de données THEBOT
 Architecture modulaire avec pattern Adapter/Factory

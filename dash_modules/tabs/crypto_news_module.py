@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Crypto News Module for THEBOT
 News crypto exclusivement alimentées par RSS avec widgets AI
@@ -24,7 +25,7 @@ try:
 
     RSS_AVAILABLE = True
 except ImportError:
-    print("⚠️ RSS News Manager non disponible")
+    logger.info("⚠️ RSS News Manager non disponible")
     RSS_AVAILABLE = False
 
 # Import AI Engine
@@ -33,7 +34,7 @@ try:
 
     AI_AVAILABLE = True
 except ImportError:
-    print("⚠️ Smart AI Manager non disponible")
+    logger.info("⚠️ Smart AI Manager non disponible")
     AI_AVAILABLE = False
 
 # Import Phase 4 Components
@@ -44,7 +45,7 @@ try:
 
     PHASE4_COMPONENTS_AVAILABLE = True
 except ImportError:
-    print("⚠️ Phase 4 Components non disponibles")
+    logger.info("⚠️ Phase 4 Components non disponibles")
     PHASE4_COMPONENTS_AVAILABLE = False
 
 
@@ -113,7 +114,7 @@ class CryptoNewsModule:
             "p2e",
         ]
 
-        print("✅ Crypto News Module initialisé (RSS exclusif)")
+        logger.info("✅ Crypto News Module initialisé (RSS exclusif)")
 
     def translate_article_title(self, title: str) -> str:
         """Traduire titre d'article crypto en français"""
@@ -123,7 +124,7 @@ class CryptoNewsModule:
                 return translated if translated and len(translated) > 3 else title
             return title
         except Exception as e:
-            print(f"⚠️ Erreur traduction titre crypto: {e}")
+            logger.info(f"⚠️ Erreur traduction titre crypto: {e}")
             return title
 
     def translate_article_summary(self, summary: str) -> str:
@@ -134,7 +135,7 @@ class CryptoNewsModule:
                 return translated if translated and len(translated) > 5 else summary
             return summary
         except Exception as e:
-            print(f"⚠️ Erreur traduction résumé crypto: {e}")
+            logger.info(f"⚠️ Erreur traduction résumé crypto: {e}")
             return summary
 
     def _format_date(self, date_value):
@@ -229,11 +230,11 @@ class CryptoNewsModule:
             self.news_cache = crypto_news
             self.last_update = datetime.now()
 
-            print(f"✅ {len(crypto_news)} news crypto RSS récupérées (traduites)")
+            logger.info(f"✅ {len(crypto_news)} news crypto RSS récupérées (traduites)")
             return crypto_news
 
         except Exception as e:
-            print(f"❌ Erreur RSS Crypto News: {e}")
+            logger.info(f"❌ Erreur RSS Crypto News: {e}")
             return self._get_fallback_news()
 
     def _is_crypto_news(self, article: Dict) -> bool:
@@ -317,7 +318,7 @@ class CryptoNewsModule:
             return result
 
         except Exception as e:
-            print(f"❌ Erreur analyse sentiment crypto: {e}")
+            logger.info(f"❌ Erreur analyse sentiment crypto: {e}")
             return {"bullish": 40, "neutral": 35, "bearish": 25, "confidence": 0.7}
 
     def extract_crypto_trending(self, articles: List[Dict]) -> List[Dict]:
@@ -360,7 +361,7 @@ class CryptoNewsModule:
             return self.trending_cache
 
         except Exception as e:
-            print(f"❌ Erreur trending crypto: {e}")
+            logger.info(f"❌ Erreur trending crypto: {e}")
             return []
 
     def calculate_crypto_fear_greed(
@@ -421,7 +422,7 @@ class CryptoNewsModule:
             }
 
         except Exception as e:
-            print(f"❌ Erreur Crypto Fear & Greed: {e}")
+            logger.info(f"❌ Erreur Crypto Fear & Greed: {e}")
             return {
                 "score": 50.0,
                 "classification": "Neutral ⚖️",
@@ -478,7 +479,7 @@ class CryptoNewsModule:
             }
 
         except Exception as e:
-            print(f"❌ Erreur analyse impact prix: {e}")
+            logger.info(f"❌ Erreur analyse impact prix: {e}")
             return {"high": 20, "medium": 50, "low": 30}
 
     def get_layout(self) -> html.Div:
@@ -1076,7 +1077,7 @@ class CryptoNewsModule:
                 return fig
 
             except Exception as e:
-                print(f"❌ Erreur Fear & Greed Gauge: {e}")
+                logger.info(f"❌ Erreur Fear & Greed Gauge: {e}")
                 # Gauge par défaut en cas d'erreur
                 fig = go.Figure(
                     go.Indicator(
@@ -1291,7 +1292,7 @@ class CryptoNewsModule:
                 )
 
             except Exception as e:
-                print(f"❌ Erreur Top Performers: {e}")
+                logger.info(f"❌ Erreur Top Performers: {e}")
                 # Fallback en cas d'erreur
                 return html.Div(
                     [
@@ -1488,7 +1489,7 @@ class CryptoNewsModule:
                 return html.Div(trend_items)
 
             except Exception as e:
-                print(f"❌ Erreur Crypto Trends: {e}")
+                logger.info(f"❌ Erreur Crypto Trends: {e}")
                 return html.Div(
                     [
                         html.H6("⚠️ Erreur d'analyse", className="mb-1 text-warning"),

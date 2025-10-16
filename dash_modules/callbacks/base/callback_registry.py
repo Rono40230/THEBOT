@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 Callback Registry - Registre centralisé de tous les callbacks
 Gère l'enregistrement, le suivi et la validation des callbacks

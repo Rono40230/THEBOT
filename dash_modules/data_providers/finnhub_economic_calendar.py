@@ -1,3 +1,4 @@
+from src.thebot.core.logger import logger
 """
 🏛️ FINNHUB ECONOMIC CALENDAR API
 Calendrier économique professionnel pour THEBOT
@@ -495,12 +496,12 @@ finnhub_calendar = FinnhubEconomicCalendar()
 
 if __name__ == "__main__":
     # Test de l'API
-    print("🧪 TEST FINNHUB ECONOMIC CALENDAR")
-    print("=" * 40)
+    logger.info("🧪 TEST FINNHUB ECONOMIC CALENDAR")
+    logger.info("=" * 40)
 
     # Test connexion
     test_result = finnhub_calendar.test_connection()
-    print(f"Connexion: {test_result}")
+    logger.info(f"Connexion: {test_result}")
 
     # Test récupération événements
     events = finnhub_calendar.get_economic_events(
@@ -510,6 +511,6 @@ if __name__ == "__main__":
         max_events=10,
     )
 
-    print(f"\nÉvénements récupérés: {len(events)}")
+    logger.info(f"\nÉvénements récupérés: {len(events)}")
     for event in events[:3]:
-        print(f"- {event['title']} ({event['country']}) - {event['impact']}")
+        logger.info(f"- {event['title']} ({event['country']}) - {event['impact']}")
