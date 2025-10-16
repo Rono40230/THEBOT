@@ -17,6 +17,7 @@ from src.thebot.services.indicator_integration import get_integration_factory
 from src.thebot.services.real_time_updates import get_subscriber, get_signal_aggregator
 from src.thebot.services.async_callbacks import get_async_wrapper
 from src.thebot.services.data_stream import get_data_stream
+from src.thebot.services.signal_notification import get_alert_manager, AlertType
 from src.thebot.core.types import TimeFrame, SignalDirection
 
 
@@ -657,5 +658,132 @@ def create_realtime_components() -> List:
     ]
 
 
-logger.info("✅ Phase 5.2 Callbacks loaded (with Phase 5.3 real-time integration)")
+# ============================================================================
+# Phase 5.3 Part 3: Signal Alerts and Notifications
+# ============================================================================
+
+@callback(
+    Output("signal-alerts-container", "children"),
+    Input("realtime-update-interval", "n_intervals"),
+    State("signal-alerts-container", "children"),
+)
+def update_signal_alerts(n_intervals: int, current_alerts: List) -> List:
+    """
+    Update signal alerts display
+    Fetches recent alerts from AlertManager and displays as toast notifications
+    
+    Args:
+        n_intervals: Interval counter from dcc.Interval
+        current_alerts: Current alerts in container
+        
+    Returns:
+        List of alert toast components
+    """
+    try:
+        alert_manager = get_alert_manager()
+        active_alerts = alert_manager.get_active_alerts()
+        
+        if not active_alerts:
+            return []
+        
+        # Create toast components for each active alert
+        alert_components = []
+        for alert in active_alerts[-5:]:  # Show last 5 alerts
+            color = "success" if alert.signal_type == AlertType.BUY else "danger"
+            toast = dbc.Toast(
+                [
+                    html.Div([
+                        html.Strong(f"{alert.signal_type} Signal"),
+                        html.Br(),
+                        html.Small(f"{alert.symbol} @ {alert.price}"),
+                        html.Br(),
+                        html.Small(f"{alert.indicator} ({alert.timeframe})"),
+                        html.Br(),
+                        html.Small(f"Strength: {alert.strength:.2%}"),
+                    ]),
+                ],
+                id=f"alert-{alert.id}",
+                header=f"{alert.signal_type} - {alert.symbol}",
+                dismissable=True,
+                is_open=True,
+                style={"position": "fixed", "top": 20, "right": 20, "width": 350},
+                color=color,
+            )
+            alert_components.append(toast)
+        
+        return alert_components
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur mise à jour signaux: {e}")
+        return []
+
+
+@callback(
+    Output("alerts-history", "data"),
+    Input("realtime-update-interval", "n_intervals"),
+)
+def update_alerts_history(n_intervals: int) -> Dict[str, Any]:
+    """
+    Update alerts history data for display in table
+    
+    Args:
+        n_intervals: Interval counter
+        
+    Returns:
+        Dictionary with alert history data
+    """
+    try:
+        alert_manager = get_alert_manager()
+        history = alert_manager.get_alert_history(limit=20)
+        
+        alert_data = []
+        for alert in reversed(history):  # Most recent first
+            alert_data.append({
+                "timestamp": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                "signal_type": alert.signal_type,
+                "symbol": alert.symbol,
+                "price": f"{alert.price:.2f}",
+                "indicator": alert.indicator,
+                "timeframe": alert.timeframe,
+                "strength": f"{alert.strength:.2%}",
+                "status": alert.status,
+            })
+        
+        return {"alerts": alert_data, "count": len(alert_data)}
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur historique alertes: {e}")
+        return {"alerts": [], "count": 0}
+
+
+def create_signal_alert_components() -> List:
+    """
+    Create signal alert and monitoring components
+    Should be added to app layout alongside real-time components
+    
+    Returns:
+        List of Dash components for signal alerts
+    """
+    return [
+        # Hidden store for alerts history
+        dcc.Store(id="alerts-history", data={"alerts": [], "count": 0}),
+        
+        # Container for alert toasts
+        html.Div(id="signal-alerts-container", children=[]),
+        
+        # Alerts history table
+        html.Div(
+            id="alerts-history-div",
+            style={"marginTop": "20px"},
+            children=[
+                html.H5("Recent Alerts History", className="mt-3"),
+                html.Div(id="alerts-history-table", children=[
+                    html.P("No alerts yet", style={"textAlign": "center", "color": "gray"}),
+                ]),
+            ],
+        ),
+    ]
+
+
+logger.info("✅ Phase 5.2 Callbacks loaded (with Phase 5.3 real-time integration + signal alerts)")
 
