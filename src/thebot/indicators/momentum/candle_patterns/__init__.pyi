@@ -1,0 +1,13 @@
+# Stub for candle_patterns indicator
+from typing import Any, Optional
+
+class CandlePatternsConfig:
+    pass
+
+class CandlePatternsCalculator:
+    def __init__(self, config: CandlePatternsConfig) -> None: ...
+    def add_data_point(self, *args: Any, **kwargs: Any) -> Optional[Any]: ...
+
+class CandlePatternsIndicator:
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def calculate(self, *args: Any, **kwargs: Any) -> Optional[Any]: ...

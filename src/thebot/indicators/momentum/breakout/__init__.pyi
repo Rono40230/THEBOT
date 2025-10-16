@@ -1,0 +1,13 @@
+# Stub for breakout indicator
+from typing import Any, Optional
+
+class BreakoutConfig:
+    pass
+
+class BreakoutCalculator:
+    def __init__(self, config: BreakoutConfig) -> None: ...
+    def add_data_point(self, *args: Any, **kwargs: Any) -> Optional[Any]: ...
+
+class BreakoutIndicator:
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def calculate(self, *args: Any, **kwargs: Any) -> Optional[Any]: ...
