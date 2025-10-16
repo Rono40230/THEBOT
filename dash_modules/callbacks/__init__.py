@@ -13,6 +13,12 @@ from .managers.trading_callbacks import TradingCallbacks
 from .utils.callback_factory import CallbackFactory
 from .utils.callback_validator import CallbackValidator
 
+# Phase 5.2 - Modern Indicator Callbacks
+try:
+    from . import phase5_2_callbacks
+except ImportError:
+    pass  # Phase 5.2 callbacks optional
+
 __all__ = [
     'CallbackManager',
     'CallbackRegistry',
@@ -22,5 +28,6 @@ __all__ = [
     'MarketCallbacks',
     'TradingCallbacks',
     'CallbackFactory',
-    'CallbackValidator'
+    'CallbackValidator',
+    'phase5_2_callbacks',
 ]
