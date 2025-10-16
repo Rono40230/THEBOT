@@ -1,4 +1,3 @@
-from .core.logger import logger
 """
 Indicator Factory - Point d'entrée unifié pour tous les indicateurs
 Centralise l'accès aux calculateurs THEBOT avec cache intelligent
@@ -10,6 +9,7 @@ from functools import lru_cache
 import pandas as pd
 import numpy as np
 
+from src.thebot.core.logger import logger
 from .base.indicator import BaseIndicator
 from .basic.sma.calculator import SMACalculator
 from .basic.ema.calculator import EMACalculator
