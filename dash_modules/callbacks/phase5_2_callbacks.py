@@ -1,13 +1,14 @@
 """
 Phase 5.2 - Callbacks d'intégration des indicateurs
 Connexion des composants UI aux services Phase 5.1
+Phase 5.3 - Real-time data integration
 """
 
 from typing import Dict, Any, List, Optional
 import json
 from decimal import Decimal
 import pandas as pd
-from dash import callback, Input, Output, State, ctx, ALL
+from dash import callback, Input, Output, State, ctx, ALL, dcc
 import dash_bootstrap_components as dbc
 from dash import html, dash_table
 
@@ -15,6 +16,7 @@ from src.thebot.core.logger import logger
 from src.thebot.services.indicator_integration import get_integration_factory
 from src.thebot.services.real_time_updates import get_subscriber, get_signal_aggregator
 from src.thebot.services.async_callbacks import get_async_wrapper
+from src.thebot.services.data_stream import get_data_stream
 from src.thebot.core.types import TimeFrame, SignalDirection
 
 
@@ -503,4 +505,157 @@ def _build_indicator_params(
     return params
 
 
-logger.info("✅ Phase 5.2 Callbacks loaded")
+# Phase 5.3 - Real-time data integration callbacks
+
+@callback(
+    Output("realtime-data-store", "data"),
+    Input("realtime-update-interval", "n_intervals"),
+    prevent_initial_call=True
+)
+def update_realtime_data(n_intervals: int) -> Dict[str, Any]:
+    """
+    Periodic callback for real-time data updates
+    Triggered every 100ms by dcc.Interval component
+    
+    Args:
+        n_intervals: Number of intervals triggered
+        
+    Returns:
+        Dictionary with real-time data
+    """
+    try:
+        stream = get_data_stream()
+        
+        # Get current status
+        status = stream.get_status()
+        
+        # Collect symbol data
+        data_dict = {}
+        for symbol, data in stream.get_all_data().items():
+            data_dict[symbol] = {
+                "price": str(data.latest_price),
+                "bid": str(data.bid),
+                "ask": str(data.ask),
+                "volume": str(data.volume),
+                "last_update": data.last_update.isoformat() if data.last_update else None,
+            }
+        
+        return {
+            "timestamp": pd.Timestamp.now().isoformat(),
+            "running": status.get("running", False),
+            "symbols": data_dict,
+            "intervals": n_intervals,
+        }
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur mise à jour real-time: {e}")
+        return {"error": str(e), "timestamp": pd.Timestamp.now().isoformat()}
+
+
+@callback(
+    Output("metric-current-value", "children"),
+    Output("metric-change", "children"),
+    Output("metric-signals-today", "children"),
+    Output("metric-last-update", "children"),
+    Input("realtime-data-store", "data"),  # Trigger on real-time updates
+    State("indicator-selector", "value"),
+    State("timeframe-selector", "value"),
+    prevent_initial_call=True
+)
+def update_metrics_realtime(
+    realtime_data: Dict[str, Any],
+    selected_indicator: str,
+    timeframe: str
+) -> tuple:
+    """
+    Update metrics from real-time data stream
+    
+    Args:
+        realtime_data: Real-time data from periodic update
+        selected_indicator: Indicateur sélectionné
+        timeframe: Timeframe sélectionné
+        
+    Returns:
+        Tuple de (valeur_actuelle, changement, signaux_today, derniere_maj)
+    """
+    if not selected_indicator or not realtime_data:
+        return "N/A", "N/A", "0", "N/A"
+    
+    try:
+        factory, _, aggregator, _ = _get_services()
+        
+        parts = selected_indicator.split("_")
+        indicator_name = parts[0]
+        
+        timeframe_map = {
+            "1m": TimeFrame.M1,
+            "5m": TimeFrame.M5,
+            "15m": TimeFrame.M15,
+            "1h": TimeFrame.H1,
+            "4h": TimeFrame.H4,
+            "1d": TimeFrame.D1,
+        }
+        tf = timeframe_map.get(timeframe, TimeFrame.H1)
+        
+        # Calculer l'indicateur avec données actualisées
+        result = factory.calculate_indicator(
+            indicator_name=indicator_name,
+            symbol="BTCUSDT",
+            timeframe=tf,
+        )
+        
+        if not result:
+            return "N/A", "N/A", "0", "N/A"
+        
+        # Extraire les métriques
+        current_value = "N/A"
+        if result.statistics:
+            current_value = f"{result.statistics.get('current_value', 'N/A')}"
+        
+        # Changement
+        change = "N/A"
+        if result.statistics and 'change' in result.statistics:
+            val = result.statistics['change']
+            change = f"{val:+.2f}" if isinstance(val, (int, float)) else val
+        
+        # Signaux d'aujourd'hui
+        signals_today = "0"
+        if result.signals:
+            signals_today = str(len(result.signals))
+        
+        # Dernière mise à jour
+        last_update = realtime_data.get("timestamp", "N/A")
+        if last_update and last_update != "N/A":
+            last_update = "À jour ✅"
+        
+        return current_value, change, signals_today, last_update
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur mise à jour métriques real-time: {e}")
+        return "Erreur", "Erreur", "0", "Erreur"
+
+
+def create_realtime_components() -> List:
+    """
+    Create real-time update components
+    Should be added to app layout
+    
+    Returns:
+        List of Dash components for real-time updates
+    """
+    return [
+        # Hidden store for real-time data
+        dcc.Store(id="realtime-data-store", data={}),
+        
+        # Interval for periodic updates (100ms)
+        dcc.Interval(
+            id="realtime-update-interval",
+            interval=100,  # 100ms updates
+            n_intervals=0,
+            disabled=False,
+        ),
+    ]
+
+
+logger.info("✅ Phase 5.2 Callbacks loaded (with Phase 5.3 real-time integration)")
+
