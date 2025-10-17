@@ -1,5 +1,5 @@
 """
-strategies_module - Migration Phase 2
+Strategies Module - Migration Phase 2
 Stub temporaire pour compatibilité
 """
 
@@ -14,22 +14,22 @@ from src.thebot.core.logger import logger
 class StrategiesModule(BaseModule):
     """Stratégies de trading automatisées - Stub Phase 2"""
 
-    def __init__(self):
+    def __init__(self, calculators=None):
         super().__init__("strategies")
         logger.info("🎯 StrategiesModule initialisé (stub Phase 2)")
 
     def get_layout(self) -> html.Div:
         """Layout temporaire en cours de migration"""
         return html.Div([
-            html.H3("🎯 Strategies", style={"color": "white"}),
+            html.H3("🎯 Strategies", style={"color": "#ffffff", "fontSize": "24px", "fontWeight": "bold"}),
             html.P("Stratégies de trading automatisées en cours de migration...",
-                  style={"color": "gray"}),
-            html.P("🔄 Phase 2 - Migration UI", style={"color": "orange"})
-        ], style={"padding": "20px"})
+                  style={"color": "#cccccc", "fontSize": "16px"}),
+            html.P("🔄 Phase 2 - Migration UI", style={"color": "#ff6b35", "fontSize": "14px"})
+        ], style={"padding": "20px", "backgroundColor": "#1a1a1a", "minHeight": "200px"})
 
     def setup_callbacks(self, app) -> None:
         """Configuration des callbacks - stub temporaire"""
-        logger.info("�� Callbacks StrategiesModule configurés (stub Phase 2)")
+        logger.info("🎯 Callbacks StrategiesModule configurés (stub Phase 2)")
         pass
 
     def get_status(self) -> Dict[str, Any]:

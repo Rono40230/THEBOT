@@ -273,11 +273,9 @@ class AsyncDataManager:
             self.logger.error(f"❌ Erreur inattendue pour {symbol}: {e}")
             return None
 
-    def load_symbol_data(
-        self, symbol: str, interval: str = "1h", limit: int = 200
-    ) -> pd.DataFrame:
+    async def load_symbol_data(self, symbol: str, interval: str = "1h", limit: int = 200) -> pd.DataFrame:
         """
-        Charge et met en cache les données d'un symbole
+        Charge et met en cache les données d'un symbole - Version Async
 
         Args:
             symbol: Symbole à charger
@@ -288,7 +286,7 @@ class AsyncDataManager:
             pd.DataFrame: Données du symbole (réelles ou fallback)
         """
         try:
-            df = self.get_binance_data(symbol, interval, limit)
+            df = await self.get_binance_data(symbol, interval, limit)
 
             if df is not None and not df.empty:
                 self.market_data[symbol] = df
@@ -390,6 +388,65 @@ class AsyncDataManager:
                 index=[datetime.now()],
             )
 
+    def get_all_binance_symbols_sync(self) -> List[str]:
+        """
+        Version synchrone de get_all_binance_symbols pour compatibilité
+        Utilise asyncio.run() pour wrapper l'appel async
+
+        Returns:
+            List[str]: Liste des symboles Binance
+        """
+        try:
+            # Créer un event loop temporaire si nécessaire
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # Si un loop est déjà en cours, utiliser asyncio.create_task
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                    return loop.run_until_complete(self.get_all_binance_symbols())
+                else:
+                    return loop.run_until_complete(self.get_all_binance_symbols())
+            except RuntimeError:
+                # Pas de loop existant, en créer un nouveau
+                return asyncio.run(self.get_all_binance_symbols())
+        except Exception as e:
+            self.logger.error(f"❌ Erreur get_all_binance_symbols_sync: {e}")
+            return self.get_popular_symbols()
+
+    def load_symbol_data_sync(self, symbol: str, interval: str = "1h", limit: int = 200) -> pd.DataFrame:
+        """
+        Version synchrone de load_symbol_data pour compatibilité
+        Utilise asyncio.run() pour wrapper l'appel async
+
+        Args:
+            symbol: Symbole à charger
+            interval: Intervalle de temps
+            limit: Nombre de bougies
+
+        Returns:
+            pd.DataFrame: Données du symbole
+        """
+        try:
+            # Wrapper async vers sync
+            async def _load_async():
+                async with self:
+                    return await self.load_symbol_data(symbol, interval, limit)
+
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                    return loop.run_until_complete(_load_async())
+                else:
+                    return loop.run_until_complete(_load_async())
+            except RuntimeError:
+                return asyncio.run(_load_async())
+        except Exception as e:
+            self.logger.error(f"❌ Erreur load_symbol_data_sync pour {symbol}: {e}")
+            return self._create_fallback_data(symbol)
+
     def get_cached_data(self, symbol: str) -> Optional[pd.DataFrame]:
         """
         Récupère les données mises en cache
@@ -462,3 +519,7 @@ class DataManager:
     def get_binance_data(self, symbol: str, interval: Optional[str] = None, limit: Optional[int] = None) -> Optional[pd.DataFrame]:
         """⚠️ DEPRECATED: Méthode synchrone - utilisez AsyncDataManager.get_binance_data()"""
         raise NotImplementedError("Use AsyncDataManager for async operations")
+
+
+# Instance globale pour compatibilité avec launch_dash_professional.py
+data_manager = DataManager()

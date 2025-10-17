@@ -16,7 +16,7 @@ from src.thebot.core.base_module import BaseModule
 
 # Import calculateurs THEBOT
 from src.thebot.core.calculators import TechnicalCalculators
-from src.thebot.core.data import DataManager, data_manager
+from src.thebot.core.data import AsyncDataManager
 from src.thebot.core.launcher_callbacks import LauncherCallbacks
 from src.thebot.core.layout_manager import LayoutManager, layout_manager
 
@@ -70,7 +70,7 @@ class THEBOTApp:
         self.app = self._create_dash_app()
 
         # Managers MVC
-        self.data_manager = data_manager
+        self.data_manager = AsyncDataManager()
         self.layout_manager = layout_manager
 
         # Modules métier
@@ -171,13 +171,11 @@ class THEBOTApp:
         """Configure le layout principal via LayoutManager"""
         try:
             # Récupérer les données par défaut
-            all_symbols = self.data_manager.get_all_binance_symbols()
+            all_symbols = self.data_manager.get_all_binance_symbols_sync()
             default_data = self._get_default_data()
 
             # Créer le layout via le LayoutManager avec les modules
-            self.app.layout = self.layout_manager.get_main_layout(
-                all_symbols, default_data, self.modules
-            )
+            self.app.layout = self.layout_manager.create_main_layout(self.modules)
 
             # Supprimé : log layout setup
 
@@ -188,14 +186,9 @@ class THEBOTApp:
     def _setup_callbacks(self) -> None:
         """Configure les callbacks via LauncherCallbacks"""
         try:
-            self.callbacks_handler = LauncherCallbacks(
-                app=self.app,
-                modules=self.modules,
-                layout_manager=self.layout_manager,
-                data_manager=self.data_manager,
-            )
+            self.callbacks_handler = LauncherCallbacks(app=self.app, modules=self.modules)
 
-            self.callbacks_handler.register_all_callbacks()
+            self.callbacks_handler.register_callbacks()
             # Supprimé : log callbacks setup
 
         except Exception as e:
@@ -212,7 +205,7 @@ class THEBOTApp:
         try:
             # Charger données par défaut BTCUSDT
             default_symbol = "BTCUSDT"
-            df = self.data_manager.load_symbol_data(default_symbol)
+            df = self.data_manager.load_symbol_data_sync(default_symbol)
 
             if df is not None and not df.empty:
                 return {
