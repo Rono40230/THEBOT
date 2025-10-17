@@ -31,6 +31,7 @@
    - ✅ **OPTIMISATIONS** : Suggérer optimisations si impact significatif (>20%) SANS les appliquer automatiquement
    - ❌ **PAS de résumé** détaillé de ce qui a été changé (l'utilisateur voit les changements dans VSCode)
    - ❌ **PAS de jargon** technique non expliqué
+   - 
 
 5. **Gestion des bugs récurrents**
    - ✅ Après **5 tentatives échouées** sur la même correction : CHANGER DE STRATÉGIE
